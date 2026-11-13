@@ -40,6 +40,15 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck and tests on every push.
 
 Progress is saved on the device with AsyncStorage.
 
+## Deploy the web version (Vercel)
+`vercel.json` is already set up: Vercel runs `npm run build:web` (Expo web export) and serves `dist/`, sending every route to the single-page app.
+
+1. On vercel.com, click **Add New → Project** and import this GitHub repository.
+2. Keep the detected settings (Framework: Other). The build and output settings come from `vercel.json`.
+3. Click **Deploy**. Every push after that redeploys automatically.
+
+Or from a terminal: `npx vercel` (preview) and `npx vercel --prod` (live).
+
 ## Project layout
 ```
 src/app/                 Screens (Expo Router: every file is a route)

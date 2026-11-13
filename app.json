@@ -19,7 +19,12 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "Zusammen — German for couples",
+      "shortName": "Zusammen",
+      "description": "Learn German together: levels A1–C2, chat practice, duels, and Marathi support.",
+      "themeColor": "#E2557A",
+      "backgroundColor": "#FFF7F5"
     },
     "plugins": [
       "expo-router"
