@@ -49,6 +49,9 @@ Progress is saved on the device with AsyncStorage.
 
 Or from a terminal: `npx vercel` (preview) and `npx vercel --prod` (live).
 
+## Security
+Static app with no server, accounts, keys or trackers. Strict browser security headers, CodeQL, Dependabot and a dependency audit in CI. See [SECURITY.md](SECURITY.md).
+
 ## Project layout
 ```
 src/app/                 Screens (Expo Router: every file is a route)
