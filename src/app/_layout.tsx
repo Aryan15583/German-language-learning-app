@@ -30,7 +30,11 @@ function RootStack() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="setup" options={{ headerShown: false }} />
+        <Stack.Screen name="unit/[topicId]" options={{ title: "Unit" }} />
         <Stack.Screen name="lesson/[topicId]" options={{ title: "Flashcards" }} />
+        <Stack.Screen name="quiz/[topicId]" options={{ title: "Unit test" }} />
+        <Stack.Screen name="exam/[levelId]" options={{ title: "Exam" }} />
+        <Stack.Screen name="placement" options={{ title: "Placement test" }} />
         <Stack.Screen name="duel/[topicId]" options={{ title: "Quiz duel" }} />
         <Stack.Screen name="dialogue/[id]" options={{ title: "Role-play" }} />
       </Stack>

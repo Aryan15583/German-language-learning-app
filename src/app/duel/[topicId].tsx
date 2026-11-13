@@ -1,20 +1,19 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
-import { Button, Card, H1, PartnerName, ProgressBar, Row, Screen, SpeakButton, T } from "../../components/ui";
-import { findTopic, LEVELS, levelOfTopic, levelWords, type Level, type Word } from "../../content/levels";
-import { speakGerman } from "../../lib/speech";
+import { useState } from "react";
+import { Text, View } from "react-native";
+import { Quiz } from "../../components/Quiz";
+import { Button, Card, H1, PartnerName, Screen, T } from "../../components/ui";
+import { findLevel, findTopic, levelOfTopic, levelWords, type Level, type Word } from "../../content/levels";
+import { makeQuestions } from "../../lib/questions";
 import { partnerColor, usePalette } from "../../lib/theme";
-import { shuffle } from "../../lib/util";
-import { partnerName, today, useProgress, type PartnerIndex } from "../../state/progress";
+import { partnerName, today, useProgress, XP, type PartnerIndex } from "../../state/progress";
 
 const QUESTIONS = 6;
 
-type Question = { prompt: string; answer: string; german: string; deToEn: boolean; options: string[] };
-
+/** "mix-B1" means every unit in B1; anything else is a unit id. */
 function resolve(topicId: string): { title: string; pool: Word[]; level: Level } | null {
   if (topicId.startsWith("mix-")) {
-    const level = LEVELS.find((l) => l.id === topicId.slice(4));
+    const level = findLevel(topicId.slice(4));
     return level ? { title: `${level.id} mix`, pool: levelWords(level), level } : null;
   }
   const topic = findTopic(topicId);
@@ -22,37 +21,18 @@ function resolve(topicId: string): { title: string; pool: Word[]; level: Level }
   return topic && level ? { title: `${level.id} · ${topic.title}`, pool: topic.words, level } : null;
 }
 
-function makeQuestions(pool: Word[], level: Level): Question[] {
-  const distractorPool = levelWords(level);
-  return shuffle(pool)
-    .slice(0, QUESTIONS)
-    .map((w) => {
-      const deToEn = Math.random() < 0.5;
-      const others = shuffle(distractorPool.filter((o) => o.de !== w.de)).slice(0, 3);
-      return {
-        prompt: deToEn ? w.de : w.en,
-        answer: deToEn ? w.en : w.de,
-        german: w.de,
-        deToEn,
-        options: shuffle([w, ...others].map((o) => (deToEn ? o.en : o.de))),
-      };
-    });
-}
-
 export default function Duel() {
   const c = usePalette();
   const { topicId } = useLocalSearchParams<{ topicId: string }>();
   const { state, practiced, addDuel } = useProgress();
-  const info = useMemo(() => resolve(topicId), [topicId]);
-
-  const [questions, setQuestions] = useState(() => (info ? makeQuestions(info.pool, info.level) : []));
+  const [info] = useState(() => resolve(topicId));
+  // Both partners get exactly the same questions.
+  const build = () => (info ? makeQuestions(info.pool, levelWords(info.level), { count: QUESTIONS }) : []);
+  const [questions, setQuestions] = useState(build);
   const [player, setPlayer] = useState<PartnerIndex>(0);
   const [phase, setPhase] = useState<"handoff" | "play" | "result">("handoff");
-  const [q, setQ] = useState(0);
   const [scores, setScores] = useState<[number, number]>([0, 0]);
-  const [picked, setPicked] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
+  const [round, setRound] = useState(0);
 
   if (!info) {
     return (
@@ -63,37 +43,6 @@ export default function Duel() {
   }
 
   const header = <Stack.Screen options={{ title: info.title }} />;
-  const color = partnerColor(c, player);
-
-  const choose = (opt: string) => {
-    if (picked) return;
-    const item = questions[q];
-    const right = opt === item.answer;
-    setPicked(opt);
-    const newScores: [number, number] = [...scores];
-    if (right) newScores[player]++;
-    setScores(newScores);
-    if (!item.deToEn || !right) speakGerman(item.german);
-
-    timer.current = setTimeout(
-      () => {
-        setPicked(null);
-        if (q + 1 < questions.length) return setQ(q + 1);
-        if (player === 0) {
-          setPlayer(1);
-          setQ(0);
-          return setPhase("handoff");
-        }
-        // Both played: award XP (10 per correct answer, +15 for the winner).
-        const [a, b] = newScores;
-        practiced(0, a * 10 + (a > b ? 15 : 0));
-        practiced(1, b * 10 + (b > a ? 15 : 0));
-        addDuel({ title: info.title, scores: newScores, date: today() });
-        setPhase("result");
-      },
-      right ? 700 : 1500,
-    );
-  };
 
   if (phase === "handoff") {
     return (
@@ -134,10 +83,10 @@ export default function Duel() {
           <Button
             title="Revanche! (Rematch)"
             onPress={() => {
-              setQuestions(makeQuestions(info.pool, info.level));
+              setQuestions(build());
               setScores([0, 0]);
               setPlayer(0);
-              setQ(0);
+              setRound(round + 1);
               setPhase("handoff");
             }}
           />
@@ -147,50 +96,29 @@ export default function Duel() {
     );
   }
 
-  const item = questions[q];
   return (
     <Screen>
       {header}
-      <Row>
-        <PartnerName i={player} suffix="'s turn" />
-        <View style={{ flex: 1 }} />
-        <T muted style={{ fontSize: 13 }}>
-          {q + 1} / {questions.length}
-        </T>
-      </Row>
-      <ProgressBar value={q / questions.length} color={color} />
-
-      <Card style={{ marginTop: 8 }}>
-        <T muted style={{ fontSize: 13 }}>{item.deToEn ? "What does this mean?" : "How do you say this in German?"}</T>
-        <Row style={{ marginTop: 4 }}>
-          <Text style={{ color: c.text, fontSize: 21, fontWeight: "800", flexShrink: 1 }}>{item.prompt}</Text>
-          {item.deToEn ? <SpeakButton text={item.german} /> : null}
-        </Row>
-      </Card>
-
-      <View style={{ gap: 8 }}>
-        {item.options.map((o) => {
-          const isAnswer = picked && o === item.answer;
-          const isWrong = picked === o && o !== item.answer;
-          return (
-            <Pressable
-              key={o}
-              accessibilityRole="button"
-              disabled={!!picked}
-              onPress={() => choose(o)}
-              style={{
-                borderWidth: 1,
-                borderRadius: 12,
-                padding: 14,
-                borderColor: isAnswer ? c.good : isWrong ? c.bad : c.border,
-                backgroundColor: isAnswer ? c.goodSoft : isWrong ? c.badSoft : c.surface,
-              }}
-            >
-              <Text style={{ color: c.text, fontSize: 16 }}>{o}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <Quiz
+        key={`${round}-${player}`}
+        questions={questions}
+        color={partnerColor(c, player)}
+        label={<PartnerName i={player} suffix="'s turn" />}
+        onFinish={(correct) => {
+          const next: [number, number] = player === 0 ? [correct, 0] : [scores[0], correct];
+          setScores(next);
+          if (player === 0) {
+            setPlayer(1);
+            setPhase("handoff");
+            return;
+          }
+          const [a, b] = next;
+          practiced(0, a * XP.duelCorrect + (a > b ? XP.duelWin : 0));
+          practiced(1, b * XP.duelCorrect + (b > a ? XP.duelWin : 0));
+          addDuel({ title: info.title, scores: next, date: today() });
+          setPhase("result");
+        }}
+      />
     </Screen>
   );
 }

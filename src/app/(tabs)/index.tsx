@@ -4,7 +4,7 @@ import { Card, Grid, H1, H2, PartnerName, ProgressBar, Row, Screen, SpeakButton,
 import { LEVELS, levelWords } from "../../content/levels";
 import { partnerColor, usePalette } from "../../lib/theme";
 import { dailyIndex } from "../../lib/util";
-import { currentStreak, levelProgress, partnerName, today, useProgress } from "../../state/progress";
+import { currentStreak, currentSubLevel, levelProgress, partnerName, today, useProgress } from "../../state/progress";
 
 export default function Home() {
   const c = usePalette();
@@ -42,11 +42,12 @@ export default function Home() {
       </Card>
 
       <Card>
-        <T style={{ fontWeight: "700" }}>Your levels</T>
+        <T style={{ fontWeight: "700" }}>Where you are</T>
         {([0, 1] as const).map((i) => {
           const p = state.partners[i];
           const level = LEVELS[p.unlocked];
-          const prog = levelProgress(p, level.id);
+          const prog = levelProgress(p, level);
+          const sub = currentSubLevel(p);
           return (
             <View key={i} style={{ marginTop: 10 }}>
               <Row>
@@ -54,10 +55,13 @@ export default function Home() {
                 <View style={{ backgroundColor: partnerColor(c, i), borderRadius: 6, paddingHorizontal: 6 }}>
                   <Text style={{ color: "#fff", fontWeight: "800", fontSize: 12 }}>{level.id}</Text>
                 </View>
-                <T muted style={{ fontSize: 13 }}>{level.name}</T>
+                <T muted style={{ fontSize: 13 }}>
+                  {sub.id} · {sub.title}
+                </T>
                 <View style={{ flex: 1 }} />
                 <T muted style={{ fontSize: 13 }}>
-                  {prog.known}/{prog.total}
+                  {p.examsPassed.length ? "🎓".repeat(p.examsPassed.length) + " " : ""}
+                  {prog.passed}/{prog.total} units
                 </T>
               </Row>
               <ProgressBar value={prog.share} color={partnerColor(c, i)} />

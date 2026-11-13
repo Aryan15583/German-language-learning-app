@@ -5,7 +5,7 @@ import { Button, Card, H1, PartnerName, ProgressBar, Row, Screen, SpeakButton, T
 import { findTopic, levelOfTopic } from "../../content/levels";
 import { usePalette } from "../../lib/theme";
 import { shuffle } from "../../lib/util";
-import { useProgress } from "../../state/progress";
+import { useProgress, XP } from "../../state/progress";
 
 export default function Lesson() {
   const c = usePalette();
@@ -54,14 +54,19 @@ export default function Lesson() {
         <Text style={{ fontSize: 48, textAlign: "center", marginTop: 16 }}>🎉</Text>
         <H1>Toll gemacht!</H1>
         <T muted>
-          <PartnerName i={learner} /> earned {gained} XP. Now quiz each other in a duel?
+          <PartnerName i={learner} /> earned {gained} XP. Ready to test yourself?
         </T>
         <View style={{ gap: 10, marginTop: 16 }}>
           <Button
-            title="Start a duel on this topic"
+            title="📝 Take the unit test"
+            onPress={() => router.replace({ pathname: "/quiz/[topicId]", params: { topicId: topic.id } })}
+          />
+          <Button
+            title="⚔️ Duel your partner on this unit"
+            variant="secondary"
             onPress={() => router.replace({ pathname: "/duel/[topicId]", params: { topicId: topic.id } })}
           />
-          <Button title="Back to topics" variant="secondary" onPress={() => router.back()} />
+          <Button title="Back to the unit" variant="secondary" onPress={() => router.back()} />
         </View>
       </Screen>
     );
@@ -113,7 +118,7 @@ export default function Lesson() {
             style={{ flex: 1 }}
             onPress={() => {
               markKnown(learner, topic.id, deck[pos]);
-              const xp = gained + 5;
+              const xp = gained + XP.flashcard;
               setGained(xp);
               next(deck, xp);
             }}

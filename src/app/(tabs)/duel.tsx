@@ -30,10 +30,10 @@ export default function DuelHome() {
       </T>
 
       <Grid>
-        {level.topics.map((t) => (
-          <Tile key={t.id} emoji={t.emoji} title={t.title} onPress={() => start(t.id)} />
-        ))}
-        <Tile emoji="🎲" title={`Mix of ${level.id}`} subtitle="All topics" onPress={() => start(`mix-${level.id}`)} />
+        {level.subLevels.flatMap((sub) =>
+          sub.units.map((t) => <Tile key={t.id} emoji={t.emoji} title={t.title} subtitle={sub.id} onPress={() => start(t.id)} />),
+        )}
+        <Tile emoji="🎲" title={`Mix of ${level.id}`} subtitle="All units" onPress={() => start(`mix-${level.id}`)} />
       </Grid>
 
       {recent.length ? (

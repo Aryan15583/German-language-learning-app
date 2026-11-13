@@ -79,7 +79,7 @@ export default function Setup() {
           }}
         />
         <T muted style={{ marginTop: 10, textAlign: "center" }}>
-          Not sure? Pick A1. Higher levels unlock once you master 70% of a level.
+          Not sure? Pick A1 — you can take a placement test later. Each level ends with an exam that unlocks the next.
         </T>
       </View>
     </Screen>
