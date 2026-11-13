@@ -37,6 +37,7 @@ function RootStack() {
         <Stack.Screen name="placement" options={{ title: "Placement test" }} />
         <Stack.Screen name="duel/[topicId]" options={{ title: "Quiz duel" }} />
         <Stack.Screen name="dialogue/[id]" options={{ title: "Role-play" }} />
+        <Stack.Screen name="chat/[id]" options={{ title: "Chat" }} />
       </Stack>
     </>
   );

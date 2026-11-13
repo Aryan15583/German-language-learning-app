@@ -2,7 +2,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Button, Card, H1, PartnerName, ProgressBar, Row, Screen, SpeakButton, T } from "../../components/ui";
-import { findTopic, levelOfTopic } from "../../content/levels";
+import { findTopic, levelOfTopic, meaning } from "../../content/levels";
 import { usePalette } from "../../lib/theme";
 import { shuffle } from "../../lib/util";
 import { useProgress, XP } from "../../state/progress";
@@ -90,7 +90,14 @@ export default function Lesson() {
         <Card style={{ minHeight: 210, alignItems: "center", justifyContent: "center", marginTop: 8 }}>
           <Text style={{ color: c.text, fontSize: 26, fontWeight: "800", textAlign: "center" }}>{word.de}</Text>
           {flipped ? (
-            <Text style={{ color: c.accent, fontSize: 19, marginTop: 12, textAlign: "center" }}>{word.en}</Text>
+            <View style={{ alignItems: "center", marginTop: 12 }}>
+              <Text style={{ color: c.accent, fontSize: 19, textAlign: "center" }}>
+                {meaning(word, state.partners[learner].lang)}
+              </Text>
+              <Text style={{ color: c.muted, fontSize: 15, marginTop: 4, textAlign: "center" }}>
+                {meaning(word, state.partners[learner].lang === "mr" ? "en" : "mr")}
+              </Text>
+            </View>
           ) : (
             <T muted style={{ marginTop: 12 }}>Tap to reveal</T>
           )}

@@ -16,7 +16,7 @@ export default function Exam() {
   const learner = state.learner;
 
   const build = () =>
-    level ? makeQuestions(levelWords(level), levelWords(level), { count: EXAM_QUESTIONS, typingShare: 1 / 3 }) : [];
+    level ? makeQuestions(levelWords(level), levelWords(level), { count: EXAM_QUESTIONS, typingShare: 1 / 3, lang: state.partners[learner].lang }) : [];
   const [questions, setQuestions] = useState(build);
   const [phase, setPhase] = useState<"intro" | "exam" | "result">("intro");
   const [result, setResult] = useState({ correct: 0, total: 0 });

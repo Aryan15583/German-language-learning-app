@@ -5,6 +5,7 @@ import { Quiz } from "../../components/Quiz";
 import { Button, Card, H1, PartnerName, Screen, T } from "../../components/ui";
 import { findLevel, findTopic, levelOfTopic, levelWords, type Level, type Word } from "../../content/levels";
 import { makeQuestions } from "../../lib/questions";
+import { seededRng } from "../../lib/util";
 import { partnerColor, usePalette } from "../../lib/theme";
 import { partnerName, today, useProgress, XP, type PartnerIndex } from "../../state/progress";
 
@@ -26,9 +27,12 @@ export default function Duel() {
   const { topicId } = useLocalSearchParams<{ topicId: string }>();
   const { state, practiced, addDuel } = useProgress();
   const [info] = useState(() => resolve(topicId));
-  // Both partners get exactly the same questions.
-  const build = () => (info ? makeQuestions(info.pool, levelWords(info.level), { count: QUESTIONS }) : []);
-  const [questions, setQuestions] = useState(build);
+  // Both partners get the same words in the same order (same seed), each in their own language.
+  const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1e9));
+  const questionsFor = (i: PartnerIndex) =>
+    info
+      ? makeQuestions(info.pool, levelWords(info.level), { count: QUESTIONS, lang: state.partners[i].lang, rng: seededRng(seed) })
+      : [];
   const [player, setPlayer] = useState<PartnerIndex>(0);
   const [phase, setPhase] = useState<"handoff" | "play" | "result">("handoff");
   const [scores, setScores] = useState<[number, number]>([0, 0]);
@@ -53,7 +57,7 @@ export default function Duel() {
           Pass the phone to <PartnerName i={player} />
         </H1>
         <T muted style={{ marginBottom: 20 }}>
-          {player ? `No peeking at ${partnerName(state, 0)}'s score! 🙈` : `${questions.length} questions. Viel Glück!`}
+          {player ? `No peeking at ${partnerName(state, 0)}'s score! 🙈` : `${Math.min(QUESTIONS, info.pool.length)} questions. Viel Glück!`}
         </T>
         <Button title="I'm ready" onPress={() => setPhase("play")} />
       </Screen>
@@ -83,7 +87,7 @@ export default function Duel() {
           <Button
             title="Revanche! (Rematch)"
             onPress={() => {
-              setQuestions(build());
+              setSeed(Math.floor(Math.random() * 1e9));
               setScores([0, 0]);
               setPlayer(0);
               setRound(round + 1);
@@ -101,7 +105,7 @@ export default function Duel() {
       {header}
       <Quiz
         key={`${round}-${player}`}
-        questions={questions}
+        questions={questionsFor(player)}
         color={partnerColor(c, player)}
         label={<PartnerName i={player} suffix="'s turn" />}
         onFinish={(correct) => {

@@ -1,6 +1,6 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Text, View } from "react-native";
-import { Button, Card, H2, PartnerName, Row, Screen, SpeakButton, T } from "../../components/ui";
+import { Button, Card, H2, Meaning, PartnerName, Row, Screen, SpeakButton, T } from "../../components/ui";
 import { findTopic, levelOfTopic, subLevelOfTopic } from "../../content/levels";
 import { usePalette } from "../../lib/theme";
 import { knownInUnit, UNIT_PASS, UNIT_TEST_QUESTIONS, unitPassed, useProgress } from "../../state/progress";
@@ -41,6 +41,11 @@ export default function Unit() {
         <T style={{ marginTop: 4 }}>{unit.tip.body}</T>
       </Card>
 
+      <Card style={{ backgroundColor: c.bSoft, borderColor: c.bSoft }}>
+        <T style={{ fontWeight: "800" }}>🇮🇳 मराठी ↔ Deutsch</T>
+        <T style={{ marginTop: 4 }}>{p.lang === "mr" ? unit.compare.mr : unit.compare.en}</T>
+      </Card>
+
       <Card>
         <T style={{ fontWeight: "700" }}>1 · Learn the words</T>
         <T muted style={{ marginVertical: 6 }}>
@@ -58,7 +63,7 @@ export default function Unit() {
         <Button title={passed ? "Retake the test" : "📝 Take the unit test"} onPress={() => go("/quiz/[topicId]")} />
       </Card>
 
-      <H2>Words in this unit</H2>
+      <H2>Words · German | {p.lang === "mr" ? "मराठी | English" : "English | मराठी"}</H2>
       <Card>
         {unit.words.map((w, k) => (
           <View
@@ -68,7 +73,7 @@ export default function Unit() {
             <Row style={{ flexWrap: "nowrap" }}>
               <View style={{ flex: 1 }}>
                 <T style={{ fontWeight: "600" }}>{w.de}</T>
-                <T muted style={{ fontSize: 13 }}>{w.en}</T>
+                <Meaning w={w} lang={p.lang} size={14} />
               </View>
               <SpeakButton text={w.de} />
             </Row>

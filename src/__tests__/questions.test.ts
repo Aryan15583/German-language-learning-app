@@ -3,12 +3,12 @@ import { canType, makeQuestions, MAX_TYPING_LENGTH } from "../lib/questions";
 import { seededRng, shuffle } from "../lib/util";
 
 const pool: Word[] = [
-  { de: "Schatz", en: "darling" },
-  { de: "Hase", en: "bunny" },
-  { de: "Kuss", en: "kiss" },
-  { de: "Herz", en: "heart" },
-  { de: "Liebe", en: "love" },
-  { de: "Ich vermisse dich so sehr jeden Tag", en: "I miss you so much every day" },
+  { de: "Schatz", en: "darling", mr: "सोनू" },
+  { de: "Hase", en: "bunny", mr: "ससा" },
+  { de: "Kuss", en: "kiss", mr: "पापा" },
+  { de: "Herz", en: "heart", mr: "हृदय" },
+  { de: "Liebe", en: "love", mr: "प्रेम" },
+  { de: "Ich vermisse dich so sehr jeden Tag", en: "I miss you so much every day", mr: "मला रोज तुझी खूप आठवण येते" },
 ];
 
 describe("makeQuestions", () => {
@@ -37,7 +37,7 @@ describe("makeQuestions", () => {
     for (const q of makeQuestions(pool, pool, { count: 6, rng: seededRng(3) })) {
       if (q.kind !== "choice") continue;
       const word = pool.find((w) => w.de === q.german)!;
-      if (q.direction === "de-en") expect([q.prompt, q.answer]).toEqual([word.de, word.en]);
+      if (q.direction === "de-x") expect([q.prompt, q.answer]).toEqual([word.de, word.en]);
       else expect([q.prompt, q.answer]).toEqual([word.en, word.de]);
     }
   });
@@ -76,10 +76,30 @@ describe("makeQuestions", () => {
   });
 });
 
+describe("Marathi", () => {
+  it("asks for Marathi meanings when the learner chose Marathi", () => {
+    const qs = makeQuestions(pool, pool, { count: 6, typingShare: 0.5, lang: "mr", rng: seededRng(11) });
+    for (const q of qs) {
+      const word = pool.find((w) => w.de === q.german)!;
+      if (q.kind === "type") expect(q.prompt).toBe(word.mr);
+      else if (q.direction === "de-x") {
+        expect(q.answer).toBe(word.mr);
+        for (const o of q.options) expect(pool.map((w) => w.mr)).toContain(o);
+      } else expect(q.prompt).toBe(word.mr);
+    }
+  });
+
+  it("asks the same words in the same order for both languages with the same seed", () => {
+    const en = makeQuestions(pool, pool, { count: 5, lang: "en", rng: seededRng(12) });
+    const mr = makeQuestions(pool, pool, { count: 5, lang: "mr", rng: seededRng(12) });
+    expect(mr.map((q) => q.german)).toEqual(en.map((q) => q.german));
+  });
+});
+
 describe("canType", () => {
   it("skips long phrases and templates with an ellipsis", () => {
-    expect(canType({ de: "Prost!", en: "Cheers!" })).toBe(true);
-    expect(canType({ de: "Ich könnte mir vorstellen, …", en: "I could imagine …" })).toBe(false);
+    expect(canType({ de: "Prost!", en: "Cheers!", mr: "चिअर्स!" })).toBe(true);
+    expect(canType({ de: "Ich könnte mir vorstellen, …", en: "I could imagine …", mr: "मी कल्पना करू शकतो की …" })).toBe(false);
   });
 });
 

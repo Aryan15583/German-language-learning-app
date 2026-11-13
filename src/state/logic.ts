@@ -1,10 +1,12 @@
 // Pure progress rules: no React, no storage. Everything here is unit-tested.
-import { LEVELS, levelIndex, levelUnits, type Level, type LevelId, type SubLevel } from "../content/levels";
+import { LEVELS, levelIndex, levelUnits, type Lang, type Level, type LevelId, type SubLevel } from "../content/levels";
 
 export type PartnerIndex = 0 | 1;
 
 export type Partner = {
   name: string;
+  /** Language this partner learns German through (meanings, quizzes, chat help). */
+  lang: Lang;
   xp: number;
   /** Highest unlocked level (index into LEVELS). */
   unlocked: number;
@@ -14,6 +16,8 @@ export type Partner = {
   unitScores: Record<string, number>;
   /** Levels whose final exam this partner has passed. */
   examsPassed: LevelId[];
+  /** Best chat result per scenario id: number of stars (1–3). */
+  chatStars: Record<string, number>;
 };
 
 export type DuelResult = { title: string; scores: [number, number]; date: string };
@@ -32,11 +36,20 @@ export const EXAM_QUESTIONS = 12;
 export const EXAM_PASS = 0.75;
 export const PLACEMENT_QUESTIONS = 4;
 export const PLACEMENT_PASS = 3; // correct answers needed to move up a level
-export const XP = { flashcard: 5, correctAnswer: 2, unitPassed: 20, examPassed: 100, duelCorrect: 10, duelWin: 15, dialogue: 10, note: 5 };
+export const XP = { chatTurn: 5, chatDone: 15, flashcard: 5, correctAnswer: 2, unitPassed: 20, examPassed: 100, duelCorrect: 10, duelWin: 15, dialogue: 10, note: 5 };
 
 const MAX_LEVEL = LEVELS.length - 1;
 
-export const newPartner = (): Partner => ({ name: "", xp: 0, unlocked: 0, known: {}, unitScores: {}, examsPassed: [] });
+export const newPartner = (): Partner => ({
+  name: "",
+  lang: "en",
+  xp: 0,
+  unlocked: 0,
+  known: {},
+  unitScores: {},
+  examsPassed: [],
+  chatStars: {},
+});
 
 export const freshState = (): AppState => ({
   partners: [newPartner(), newPartner()],
@@ -59,6 +72,8 @@ export function migrate(raw: unknown): AppState {
     known: p?.known ?? {},
     unitScores: p?.unitScores ?? {},
     examsPassed: p?.examsPassed ?? [],
+    chatStars: p?.chatStars ?? {},
+    lang: p?.lang === "mr" ? "mr" : "en",
   });
   return {
     partners: [partner(r.partners?.[0]), partner(r.partners?.[1])],
@@ -108,6 +123,15 @@ export function recordExam(s: AppState, i: PartnerIndex, level: LevelId, score: 
     unlocked: Math.max(p.unlocked, Math.min(idx + 1, MAX_LEVEL)),
   }));
 }
+
+export const setLang = (s: AppState, i: PartnerIndex, lang: Lang): AppState => withPartner(s, i, (p) => ({ ...p, lang }));
+
+/** Keep the best chat result (stars). */
+export const recordChat = (s: AppState, i: PartnerIndex, chatId: string, stars: number): AppState =>
+  withPartner(s, i, (p) => ({
+    ...p,
+    chatStars: { ...p.chatStars, [chatId]: Math.max(p.chatStars[chatId] ?? 0, stars) },
+  }));
 
 /** Placement never takes levels away. */
 export const applyPlacement = (s: AppState, i: PartnerIndex, levelIdx: number): AppState =>

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LEVELS, type LevelId } from "../content/levels";
+import { LANGS, LEVELS, type Lang, type LevelId } from "../content/levels";
 import { speakGerman } from "../lib/speech";
 import { partnerColor, usePalette } from "../lib/theme";
 import { partnerName, useProgress, type PartnerIndex } from "../state/progress";
@@ -245,3 +245,28 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
 });
+
+/** "Learn through: English / मराठी" switch for one partner. */
+export function LangPicker({ i }: { i: PartnerIndex }) {
+  const { state, setLang } = useProgress();
+  return (
+    <Row>
+      {LANGS.map((l) => (
+        <Chip key={l.id} label={l.label} selected={state.partners[i].lang === l.id} onPress={() => setLang(i, l.id)} />
+      ))}
+    </Row>
+  );
+}
+
+/** A word's meaning in the learner's language, with the other language underneath for comparison. */
+export function Meaning({ w, lang, size = 15 }: { w: { en: string; mr: string }; lang: Lang; size?: number }) {
+  const c = usePalette();
+  const main = lang === "mr" ? w.mr : w.en;
+  const other = lang === "mr" ? w.en : w.mr;
+  return (
+    <View>
+      <Text style={{ color: c.text, fontSize: size }}>{main}</Text>
+      <Text style={{ color: c.muted, fontSize: Math.round(size * 0.85) }}>{other}</Text>
+    </View>
+  );
+}

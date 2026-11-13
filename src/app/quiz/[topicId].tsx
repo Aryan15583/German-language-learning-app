@@ -18,7 +18,7 @@ export default function UnitTest() {
   const learner = state.learner;
 
   const build = () =>
-    unit && level ? makeQuestions(unit.words, levelWords(level), { count: UNIT_TEST_QUESTIONS, typingShare: 0.25 }) : [];
+    unit && level ? makeQuestions(unit.words, levelWords(level), { count: UNIT_TEST_QUESTIONS, typingShare: 0.25, lang: state.partners[learner].lang }) : [];
   const [questions, setQuestions] = useState(build);
   const [result, setResult] = useState<{ correct: number; total: number } | null>(null);
   const [attempt, setAttempt] = useState(0);

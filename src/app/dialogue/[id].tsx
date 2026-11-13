@@ -2,7 +2,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Button, Chip, Row, Screen, SpeakButton, T } from "../../components/ui";
-import { DIALOGUES } from "../../content/levels";
+import { DIALOGUES, meaning } from "../../content/levels";
 import { partnerColor, partnerSoft, usePalette } from "../../lib/theme";
 import { partnerName, useProgress, type PartnerIndex } from "../../state/progress";
 
@@ -30,7 +30,7 @@ export default function DialogueScreen() {
     <Screen>
       <Stack.Screen options={{ title: `${d.level} · ${d.title}` }} />
       <Row style={{ marginBottom: 12 }}>
-        <Chip label="Show English" selected={showEn} onPress={() => setShowEn(!showEn)} />
+        <Chip label="Show translation" selected={showEn} onPress={() => setShowEn(!showEn)} />
         <Chip
           label="Challenge: hide German"
           selected={challenge}
@@ -75,13 +75,13 @@ export default function DialogueScreen() {
                 <SpeakButton text={l.de} />
               </View>
             )}
-            {showEn || hidden ? <T muted style={{ fontSize: 14 }}>{l.en}</T> : null}
+            {showEn || hidden ? <T muted style={{ fontSize: 14 }}>{meaning(l, state.partners[p].lang)}</T> : null}
           </Pressable>
         );
       })}
 
       <T muted style={{ textAlign: "center", marginVertical: 12 }}>
-        {challenge ? "Say each line from the English, then tap to check." : "Tip: read it twice, then swap roles."}
+        {challenge ? "Say each line from the translation, then tap to check." : "Tip: read it twice, then swap roles."}
       </T>
       <Button
         title="We did it! (+10 XP each)"

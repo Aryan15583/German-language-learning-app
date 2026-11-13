@@ -3,14 +3,14 @@ import { useState } from "react";
 import { Text } from "react-native";
 import { Quiz } from "../components/Quiz";
 import { Button, Card, H1, LearnerSwitch, PartnerName, Row, Screen, T } from "../components/ui";
-import { LEVELS, levelWords } from "../content/levels";
+import { LEVELS, levelWords, type Lang } from "../content/levels";
 import { makeQuestions } from "../lib/questions";
 import { partnerColor, usePalette } from "../lib/theme";
 import { PLACEMENT_PASS, PLACEMENT_QUESTIONS, placementContinues, placementLevel, useProgress } from "../state/progress";
 
-const questionsFor = (levelIdx: number) => {
+const questionsFor = (levelIdx: number, lang: Lang) => {
   const words = levelWords(LEVELS[levelIdx]);
-  return makeQuestions(words, words, { count: PLACEMENT_QUESTIONS });
+  return makeQuestions(words, words, { count: PLACEMENT_QUESTIONS, lang });
 };
 
 /** Adaptive placement: a few questions per level, moving up until a level is too hard. */
@@ -20,7 +20,8 @@ export default function Placement() {
   const learner = state.learner;
   const [phase, setPhase] = useState<"intro" | "test" | "done">("intro");
   const [results, setResults] = useState<number[]>([]);
-  const [questions, setQuestions] = useState(() => questionsFor(0));
+  const lang = state.partners[learner].lang;
+  const [questions, setQuestions] = useState(() => questionsFor(0, lang));
 
   const levelIdx = results.length;
   const header = <Stack.Screen options={{ title: "Placement test" }} />;
@@ -42,7 +43,14 @@ export default function Placement() {
           <T>• It stops at the first level that’s too hard — that’s where you start</T>
           <T>• It never locks levels you’ve already unlocked</T>
         </Card>
-        <Button title="Start" onPress={() => setPhase("test")} style={{ marginTop: 8 }} />
+        <Button
+          title="Start"
+          onPress={() => {
+            setQuestions(questionsFor(0, lang));
+            setPhase("test");
+          }}
+          style={{ marginTop: 8 }}
+        />
       </Screen>
     );
   }
@@ -80,7 +88,7 @@ export default function Placement() {
           const next = [...results, correct];
           setResults(next);
           if (placementContinues(next)) {
-            setQuestions(questionsFor(next.length));
+            setQuestions(questionsFor(next.length, lang));
           } else {
             applyPlacement(learner, placementLevel(next));
             setPhase("done");

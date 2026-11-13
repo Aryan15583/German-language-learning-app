@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { LevelId } from "../content/levels";
+import type { Lang, LevelId } from "../content/levels";
 import * as L from "./logic";
 import type { AppState, DuelResult, PartnerIndex } from "./logic";
 
@@ -14,8 +14,10 @@ export const yesterday = () => new Date(Date.now() - 864e5).toISOString().slice(
 type Ctx = {
   state: AppState;
   ready: boolean;
-  setNames: (a: string, b: string, levels: [number, number]) => void;
+  setNames: (a: string, b: string, levels: [number, number], langs?: [Lang, Lang]) => void;
   setLearner: (i: PartnerIndex) => void;
+  setLang: (i: PartnerIndex, lang: Lang) => void;
+  recordChat: (i: PartnerIndex, chatId: string, stars: number) => void;
   /** Award XP and keep the shared streak alive. */
   practiced: (i: PartnerIndex, xp: number) => void;
   markKnown: (i: PartnerIndex, unitId: string, wordIndex: number) => void;
@@ -49,18 +51,20 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     () => ({
       state,
       ready,
-      setNames: (a, b, levels) =>
+      setNames: (a, b, levels, langs) =>
         setState((s) => {
           const named: AppState = {
             ...s,
             partners: [
-              { ...s.partners[0], name: a },
-              { ...s.partners[1], name: b },
+              { ...s.partners[0], name: a, lang: langs?.[0] ?? s.partners[0].lang },
+              { ...s.partners[1], name: b, lang: langs?.[1] ?? s.partners[1].lang },
             ],
           };
           return L.applyPlacement(L.applyPlacement(named, 0, levels[0]), 1, levels[1]);
         }),
       setLearner: (learner) => setState((s) => ({ ...s, learner })),
+      setLang: (i, lang) => setState((s) => L.setLang(s, i, lang)),
+      recordChat: (i, chatId, stars) => setState((s) => L.recordChat(s, i, chatId, stars)),
       practiced: (i, xp) => setState((s) => L.applyPractice(s, i, xp, today(), yesterday())),
       markKnown: (i, unitId, w) => setState((s) => L.markKnown(s, i, unitId, w)),
       recordUnitScore: (i, unitId, score) => setState((s) => L.recordUnitScore(s, i, unitId, score)),

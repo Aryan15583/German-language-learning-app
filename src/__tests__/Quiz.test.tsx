@@ -10,7 +10,7 @@ jest.mock("../lib/speech", () => ({ speakGerman: jest.fn(), stopSpeaking: jest.f
 
 const choice: Question = {
   kind: "choice",
-  direction: "de-en",
+  direction: "de-x",
   prompt: "Schatz",
   answer: "darling",
   options: ["darling", "bunny", "kiss", "heart"],

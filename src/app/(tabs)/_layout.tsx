@@ -36,7 +36,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="index" options={{ title: "Zusammen 👉👈", tabBarLabel: "Home", tabBarIcon: icon("🏠") }} />
       <Tabs.Screen name="learn" options={{ title: "Learn", tabBarIcon: icon("📚") }} />
       <Tabs.Screen name="duel" options={{ title: "Duel", tabBarIcon: icon("⚔️") }} />
-      <Tabs.Screen name="dialogues" options={{ title: "Role-play", tabBarIcon: icon("🎭") }} />
+      <Tabs.Screen name="talk" options={{ title: "Talk", tabBarIcon: icon("💬") }} />
       <Tabs.Screen name="notes" options={{ title: "Notes", tabBarIcon: icon("💌") }} />
     </Tabs>
   );

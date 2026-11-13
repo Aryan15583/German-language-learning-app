@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
-import { Card, Grid, H1, H2, PartnerName, ProgressBar, Row, Screen, SpeakButton, T, Tile } from "../../components/ui";
+import { Card, Grid, H1, H2, LangPicker, PartnerName, ProgressBar, Row, Screen, SpeakButton, T, Tile } from "../../components/ui";
 import { LEVELS, levelWords } from "../../content/levels";
 import { partnerColor, usePalette } from "../../lib/theme";
 import { dailyIndex } from "../../lib/util";
@@ -38,6 +38,7 @@ export default function Home() {
           <SpeakButton text={phrase.de} />
         </Row>
         <T muted>{phrase.en}</T>
+        <T muted>{phrase.mr}</T>
         <T muted style={{ marginTop: 8 }}>💡 Use it on each other at least once today!</T>
       </Card>
 
@@ -74,9 +75,24 @@ export default function Home() {
       <Grid>
         <Tile emoji="📚" title="Flashcards" subtitle="Learn by level" onPress={() => router.navigate("/learn")} />
         <Tile emoji="⚔️" title="Quiz duel" subtitle="Pass the phone" onPress={() => router.navigate("/duel")} />
-        <Tile emoji="🎭" title="Role-play" subtitle="Read together" onPress={() => router.navigate("/dialogues")} />
+        <Tile emoji="💬" title="Chat" subtitle="Learn to talk" onPress={() => router.navigate("/talk")} />
         <Tile emoji="💌" title="Love note" subtitle="Write in German" onPress={() => router.navigate("/notes")} />
       </Grid>
+
+      <H2>Learn through · शिकण्याची भाषा</H2>
+      <Card>
+        {([0, 1] as const).map((i) => (
+          <Row key={i} style={{ marginVertical: 4 }}>
+            <View style={{ minWidth: 70 }}>
+              <PartnerName i={i} />
+            </View>
+            <LangPicker i={i} />
+          </Row>
+        ))}
+        <T muted style={{ fontSize: 13, marginTop: 6 }}>
+          Meanings, quizzes and chat help appear in this language. Flashcards always show both, so you can compare.
+        </T>
+      </Card>
 
       <Pressable
         accessibilityRole="button"

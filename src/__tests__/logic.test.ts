@@ -13,7 +13,9 @@ import {
   placementContinues,
   placementLevel,
   recordExam,
+  recordChat,
   recordUnitScore,
+  setLang,
   streakToShow,
   subLevelProgress,
   UNIT_PASS,
@@ -145,6 +147,21 @@ describe("placement", () => {
   });
 });
 
+describe("language and chat", () => {
+  it("defaults to English and switches per partner", () => {
+    const s = setLang(freshState(), 1, "mr");
+    expect(s.partners.map((p) => p.lang)).toEqual(["en", "mr"]);
+  });
+
+  it("keeps the best chat stars", () => {
+    let s = recordChat(freshState(), 0, "cafe", 2);
+    s = recordChat(s, 0, "cafe", 1);
+    expect(s.partners[0].chatStars.cafe).toBe(2);
+    s = recordChat(s, 0, "cafe", 3);
+    expect(s.partners[0].chatStars.cafe).toBe(3);
+  });
+});
+
 describe("migrate", () => {
   it("returns a fresh state for missing or broken data", () => {
     expect(migrate(null)).toEqual(freshState());
@@ -162,11 +179,16 @@ describe("migrate", () => {
       duels: [{ title: "A1 mix", scores: [4, 5], date: "2026-11-12" }],
     };
     const s = migrate(old);
-    expect(s.partners[0]).toMatchObject({ name: "Aryan", xp: 120, unlocked: 2, unitScores: {}, examsPassed: [] });
+    expect(s.partners[0]).toMatchObject({ name: "Aryan", xp: 120, unlocked: 2, unitScores: {}, examsPassed: [], lang: "en", chatStars: {} });
     expect(s.partners[0].known.essen).toEqual([1, 2]);
     expect(s.learner).toBe(1);
     expect(s.streak.count).toBe(3);
     expect(s.duels).toHaveLength(1);
+  });
+
+  it("keeps a saved Marathi choice and ignores unknown languages", () => {
+    const s = migrate({ partners: [{ lang: "mr" }, { lang: "klingon" }] });
+    expect(s.partners.map((p) => p.lang)).toEqual(["mr", "en"]);
   });
 
   it("clamps impossible level values", () => {

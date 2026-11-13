@@ -2,7 +2,7 @@ import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
 import { Share, Text, View } from "react-native";
 import { Button, Card, Chip, H1, H2, PartnerName, Row, Screen, SpeakButton, T } from "../../components/ui";
-import { NOTE_PARTS } from "../../content/levels";
+import { meaning, NOTE_PARTS } from "../../content/levels";
 import { usePalette } from "../../lib/theme";
 import { useProgress } from "../../state/progress";
 
@@ -62,7 +62,7 @@ export default function Notes() {
       <H2>Say something sweet</H2>
       <Row>
         {NOTE_PARTS.middles.map((m, i) => (
-          <Chip key={m.de} label={m.en} selected={middles.includes(i)} onPress={() => toggle(i)} />
+          <Chip key={m.de} label={meaning(m, state.partners[from].lang)} selected={middles.includes(i)} onPress={() => toggle(i)} />
         ))}
       </Row>
 

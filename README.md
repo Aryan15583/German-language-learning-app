@@ -16,9 +16,11 @@ A mobile app for two people learning German together, built with **React Native 
 - **Level exams 🎓**: once all of a level's units are passed, a 12-question exam (pass at 75%) unlocks the next level. Already know a level? **Test out** by taking its exam directly.
 - **Placement test 🧭**: 4 questions per level, starting at A1. It moves you up until a level is too hard.
 - **Forgiving typing**: `ue`/`ae`/`oe`/`ss` count as `ü`/`ä`/`ö`/`ß`, capitals and punctuation are ignored, and small typos are accepted with a spelling hint. There are on-screen umlaut keys too.
+- **Learn through English or मराठी 🇮🇳**: each partner chooses. Every word has a Marathi meaning (Devanagari), and quizzes, chat help and role-play translations use that partner's language. Flashcards and word lists show both, and each unit has a **Marathi ↔ German comparison** (e.g. du/Sie ≈ तू/तुम्ही, verb-last clauses like Marathi).
+- **Chat practice 💬**: guided conversations from A1 to C2 (café, holiday, meeting the parents, chores, a heart-to-heart, playful teasing). Pick a suggested reply or type your own. A coach explains mistakes in your language, and a conversation with no mistakes earns ⭐⭐⭐.
 - **Two partners, one app**: each partner has their own level, XP, unit scores and exams. You share one daily streak 🔥.
 - **Quiz duel ⚔️**: pass the phone, and both partners answer the same questions on any unit or level mix.
-- **Role-play dialogues 🎭** for every level, and a **love-note builder 💌**.
+- **Role-play dialogues 🎭** for every level (in the Talk tab), and a **love-note builder 💌**.
 
 ## Run it
 ```sh
@@ -41,7 +43,7 @@ Progress is saved on the device with AsyncStorage.
 ## Project layout
 ```
 src/app/                 Screens (Expo Router: every file is a route)
-  (tabs)/                Home, Learn, Duel, Role-play, Notes
+  (tabs)/                Home, Learn, Duel, Talk (chats + role-play), Notes
   unit/[topicId]         Unit page: tip, word list, links to practice
   lesson/[topicId]       Flashcards
   quiz/[topicId]         Unit test
@@ -49,8 +51,11 @@ src/app/                 Screens (Expo Router: every file is a route)
   placement.tsx          Placement test
   duel/[topicId]         Pass-the-phone duel
   dialogue/[id]          Role-play scene
+  chat/[id]              Guided chat
   setup.tsx              Names + starting levels
-src/content/levels.ts    All course content: levels → sub-levels → units  ← add words here
+src/content/levels.ts    All course content: levels → sub-levels → units (German, English, Marathi)  ← add words here
+src/content/chats.ts     Chat scenarios
+src/lib/chat.ts          Chat engine (matching typed replies, coaching, stars)
 src/state/logic.ts       Pure progress rules (streak, unit scores, exams, placement)
 src/state/progress.tsx   React context + saving to AsyncStorage
 src/lib/answers.ts       Typed-answer checking (umlauts, typos)
@@ -60,4 +65,4 @@ src/__tests__/           Jest tests
 ```
 
 ## Add content
-Edit `src/content/levels.ts`. Add units to a sub-level (each needs an id, a tip and at least 4 words), dialogues to `DIALOGUES`, or phrases to `NOTE_PARTS`. Run `npm test`: the content tests catch duplicate ids, missing tips or units too small to quiz.
+Edit `src/content/levels.ts` (every word needs `de`, `en` and `mr`) or `src/content/chats.ts`. Add units to a sub-level (each needs an id, a tip and at least 4 words), dialogues to `DIALOGUES`, or phrases to `NOTE_PARTS`. Run `npm test`: the content tests catch duplicate ids, missing tips or units too small to quiz.

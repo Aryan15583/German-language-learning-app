@@ -33,7 +33,7 @@ export function Quiz({ questions, label, color, onFinish }: Props) {
     setVerdict(v);
     if (isAccepted(v)) setCorrect((n) => n + 1);
     // Hear the German whenever it wasn't already on screen, or after a mistake.
-    if (q.kind === "type" || (q.kind === "choice" && q.direction === "en-de") || !isAccepted(v)) speakGerman(q.german);
+    if (q.kind === "type" || (q.kind === "choice" && q.direction === "x-de") || !isAccepted(v)) speakGerman(q.german);
   };
 
   const choose = (option: string) => {
@@ -59,7 +59,7 @@ export function Quiz({ questions, label, color, onFinish }: Props) {
   const instruction =
     q.kind === "type"
       ? "Type this in German"
-      : q.direction === "de-en"
+      : q.direction === "de-x"
         ? "What does this mean?"
         : "How do you say this in German?";
 
@@ -78,7 +78,7 @@ export function Quiz({ questions, label, color, onFinish }: Props) {
         <T muted style={{ fontSize: 13 }}>{instruction}</T>
         <Row style={{ marginTop: 4, flexWrap: "nowrap" }}>
           <Text style={{ color: c.text, fontSize: 21, fontWeight: "800", flexShrink: 1 }}>{q.prompt}</Text>
-          {q.kind === "choice" && q.direction === "de-en" ? <SpeakButton text={q.german} /> : null}
+          {q.kind === "choice" && q.direction === "de-x" ? <SpeakButton text={q.german} /> : null}
         </Row>
       </Card>
 

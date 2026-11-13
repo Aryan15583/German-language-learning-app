@@ -48,6 +48,33 @@ describe("course structure", () => {
   });
 });
 
+describe("Marathi", () => {
+  const devanagari = /[\u0900-\u097F]/;
+
+  it("has a Marathi meaning in Devanagari for every word", () => {
+    for (const w of LEVELS.flatMap(levelWords)) expect(w.mr).toMatch(devanagari);
+  });
+
+  it("has no duplicated Marathi meaning within a level, so quiz answers are unambiguous", () => {
+    for (const level of LEVELS) {
+      const mr = levelWords(level).map((w) => w.mr);
+      expect(new Set(mr).size).toBe(mr.length);
+    }
+  });
+
+  it("has a Marathi comparison note for every unit, in both languages", () => {
+    for (const unit of allTopics()) {
+      expect(unit.compare.en.length).toBeGreaterThan(20);
+      expect(unit.compare.mr).toMatch(devanagari);
+    }
+  });
+
+  it("translates every dialogue line and love-note phrase", () => {
+    for (const line of DIALOGUES.flatMap((d) => d.lines)) expect(line.mr).toMatch(devanagari);
+    for (const m of NOTE_PARTS.middles) expect(m.mr).toMatch(devanagari);
+  });
+});
+
 describe("dialogues", () => {
   it("belong to real levels, have unique ids and alternate speakers", () => {
     const ids = DIALOGUES.map((d) => d.id);

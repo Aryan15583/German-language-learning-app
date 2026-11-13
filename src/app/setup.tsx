@@ -1,8 +1,8 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { TextInput, View } from "react-native";
-import { Button, Card, H1, H2, LevelPicker, Screen, T } from "../components/ui";
-import { LEVELS, type LevelId } from "../content/levels";
+import { Button, Card, Chip, H1, H2, LevelPicker, Row, Screen, T } from "../components/ui";
+import { LANGS, LEVELS, type Lang, type LevelId } from "../content/levels";
 import { usePalette } from "../lib/theme";
 import { useProgress } from "../state/progress";
 
@@ -15,7 +15,24 @@ export default function Setup() {
   const [b, setB] = useState(state.partners[1].name);
   const [la, setLa] = useState<LevelId>(LEVELS[state.partners[0].unlocked].id);
   const [lb, setLb] = useState<LevelId>(LEVELS[state.partners[1].unlocked].id);
+  const [langs, setLangs] = useState<[Lang, Lang]>([state.partners[0].lang, state.partners[1].lang]);
   const ok = a.trim() && b.trim();
+
+  const langRow = (i: 0 | 1) => (
+    <>
+      <T muted style={{ marginTop: 12 }}>Learn German through · शिकण्याची भाषा</T>
+      <Row style={{ marginTop: 6 }}>
+        {LANGS.map((l) => (
+          <Chip
+            key={l.id}
+            label={l.label}
+            selected={langs[i] === l.id}
+            onPress={() => setLangs((x) => (i === 0 ? [l.id, x[1]] : [x[0], l.id]))}
+          />
+        ))}
+      </Row>
+    </>
+  );
 
   const input = {
     borderWidth: 1,
@@ -35,7 +52,7 @@ export default function Setup() {
   return (
     <Screen>
       <H1>Willkommen! 👋</H1>
-      <T muted>Learn German together — practise side by side, quiz each other, and send sweet notes in German.</T>
+      <T muted>Learn German together — practise side by side, quiz each other, chat, and send sweet notes in German. मराठीतूनही शिका!</T>
 
       <H2>You</H2>
       <Card>
@@ -51,6 +68,7 @@ export default function Setup() {
         <T muted style={{ marginTop: 12 }}>Your German level</T>
         <LevelPicker value={la} unlocked={LEVELS.length} onChange={setLa} />
         <T muted>{descr(la)}</T>
+        {langRow(0)}
       </Card>
 
       <H2>Your partner</H2>
@@ -67,6 +85,7 @@ export default function Setup() {
         <T muted style={{ marginTop: 12 }}>Their German level</T>
         <LevelPicker value={lb} unlocked={LEVELS.length} onChange={setLb} />
         <T muted>{descr(lb)}</T>
+        {langRow(1)}
       </Card>
 
       <View style={{ marginTop: 8 }}>
@@ -74,7 +93,7 @@ export default function Setup() {
           title="Los geht's! (Let's go!)"
           disabled={!ok}
           onPress={() => {
-            setNames(a.trim(), b.trim(), [levelIndex(la), levelIndex(lb)]);
+            setNames(a.trim(), b.trim(), [levelIndex(la), levelIndex(lb)], langs);
             router.replace("/");
           }}
         />
