@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LANGS, LEVELS, type Lang, type LevelId } from "../content/levels";
+import { LANGS, LEVELS, meaning, otherMeaning, type Lang, type LevelId } from "../content/levels";
 import { speakGerman } from "../lib/speech";
 import { partnerColor, usePalette } from "../lib/theme";
 import { partnerName, useProgress, type PartnerIndex } from "../state/progress";
@@ -261,8 +261,8 @@ export function LangPicker({ i }: { i: PartnerIndex }) {
 /** A word's meaning in the learner's language, with the other language underneath for comparison. */
 export function Meaning({ w, lang, size = 15 }: { w: { en: string; mr: string }; lang: Lang; size?: number }) {
   const c = usePalette();
-  const main = lang === "mr" ? w.mr : w.en;
-  const other = lang === "mr" ? w.en : w.mr;
+  const main = meaning(w, lang);
+  const other = otherMeaning(w, lang);
   return (
     <View>
       <Text style={{ color: c.text, fontSize: size }}>{main}</Text>

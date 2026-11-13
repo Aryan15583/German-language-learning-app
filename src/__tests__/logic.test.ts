@@ -189,6 +189,7 @@ describe("migrate", () => {
   it("keeps a saved Marathi choice and ignores unknown languages", () => {
     const s = migrate({ partners: [{ lang: "mr" }, { lang: "klingon" }] });
     expect(s.partners.map((p) => p.lang)).toEqual(["mr", "en"]);
+    expect(migrate({ partners: [{ lang: "mr-Latn" }, {}] }).partners[0].lang).toBe("mr-Latn");
   });
 
   it("clamps impossible level values", () => {

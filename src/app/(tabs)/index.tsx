@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { Card, Grid, H1, H2, LangPicker, PartnerName, ProgressBar, Row, Screen, SpeakButton, T, Tile } from "../../components/ui";
 import { LEVELS, levelWords } from "../../content/levels";
 import { partnerColor, usePalette } from "../../lib/theme";
+import { romanizeMarathi } from "../../lib/romanize";
 import { dailyIndex } from "../../lib/util";
 import { currentStreak, currentSubLevel, levelProgress, partnerName, today, useProgress } from "../../state/progress";
 
@@ -38,7 +39,9 @@ export default function Home() {
           <SpeakButton text={phrase.de} />
         </Row>
         <T muted>{phrase.en}</T>
-        <T muted>{phrase.mr}</T>
+        <T muted>
+          {phrase.mr} · {romanizeMarathi(phrase.mr)}
+        </T>
         <T muted style={{ marginTop: 8 }}>💡 Use it on each other at least once today!</T>
       </Card>
 

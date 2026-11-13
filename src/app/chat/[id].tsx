@@ -4,7 +4,7 @@ import { Pressable, ScrollView, Text, TextInput, View, type ScrollViewInstance }
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Card, Chip, PartnerName, Row, SpeakButton, T } from "../../components/ui";
 import { findChat } from "../../content/chats";
-import { meaning } from "../../content/levels";
+import { meaning, type Lang } from "../../content/levels";
 import { answerChat, chatStars, startChat, type ChatInput, type ChatMessage } from "../../lib/chat";
 import { partnerColor, partnerSoft, usePalette } from "../../lib/theme";
 import { useProgress, XP } from "../../state/progress";
@@ -57,10 +57,10 @@ export default function ChatScreen() {
       >
         <Card style={{ backgroundColor: c.accentSoft, borderColor: c.accentSoft }}>
           <T>
-            {chat.emoji} {lang === "mr" ? chat.intro.mr : chat.intro.en}
+            {chat.emoji} {meaning(chat.intro, lang)}
           </T>
           <Row style={{ marginTop: 8 }}>
-            <Chip label={lang === "mr" ? "भाषांतर दाखवा" : "Show translations"} selected={help} onPress={() => setHelp(!help)} />
+            <Chip label={meaning({ en: "Show translations", mr: "भाषांतर दाखवा" }, lang)} selected={help} onPress={() => setHelp(!help)} />
           </Row>
         </Card>
 
@@ -97,7 +97,7 @@ export default function ChatScreen() {
         >
           <View style={{ width: "100%", maxWidth: 640, alignSelf: "center" }}>
             <T muted style={{ fontSize: 12, marginBottom: 6 }}>
-              <PartnerName i={learner} /> · {lang === "mr" ? "उत्तर निवडा किंवा टाइप करा" : "Pick a reply or type your own"}
+              <PartnerName i={learner} /> · {meaning({ en: "Pick a reply or type your own", mr: "उत्तर निवडा किंवा टाइप करा" }, lang)}
             </T>
             <View style={{ gap: 6 }}>
               {step.replies.map((r, k) => (
@@ -176,7 +176,7 @@ function Message({
   m: ChatMessage;
   bot: { name: string; avatar: string };
   help: boolean;
-  lang: "en" | "mr";
+  lang: Lang;
   learner: 0 | 1;
 }) {
   const c = usePalette();
@@ -220,12 +220,10 @@ function Message({
 
   const body =
     m.kind === "why"
-      ? lang === "mr"
-        ? m.why.mr
-        : m.why.en
+      ? meaning(m.why, lang)
       : m.kind === "typo"
-        ? `${lang === "mr" ? "छान! फक्त स्पेलिंग पाहा:" : "Good! Just check the spelling:"} ${m.expected}`
-        : `${lang === "mr" ? "उदाहरणार्थ असं म्हणा:" : "Try something like:"} „${m.example.de}“ — ${meaning(m.example, lang)}`;
+        ? `${meaning({ en: "Good! Just check the spelling:", mr: "छान! फक्त स्पेलिंग पाहा:" }, lang)} ${m.expected}`
+        : `${meaning({ en: "Try something like:", mr: "उदाहरणार्थ असं म्हणा:" }, lang)} „${m.example.de}“ — ${meaning(m.example, lang)}`;
   return (
     <View
       accessibilityLiveRegion="polite"

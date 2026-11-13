@@ -1,5 +1,5 @@
 // Pure progress rules: no React, no storage. Everything here is unit-tested.
-import { LEVELS, levelIndex, levelUnits, type Lang, type Level, type LevelId, type SubLevel } from "../content/levels";
+import { isLang, LEVELS, levelIndex, levelUnits, type Lang, type Level, type LevelId, type SubLevel } from "../content/levels";
 
 export type PartnerIndex = 0 | 1;
 
@@ -73,7 +73,7 @@ export function migrate(raw: unknown): AppState {
     unitScores: p?.unitScores ?? {},
     examsPassed: p?.examsPassed ?? [],
     chatStars: p?.chatStars ?? {},
-    lang: p?.lang === "mr" ? "mr" : "en",
+    lang: isLang(p?.lang) ? p.lang : "en",
   });
   return {
     partners: [partner(r.partners?.[0]), partner(r.partners?.[1])],

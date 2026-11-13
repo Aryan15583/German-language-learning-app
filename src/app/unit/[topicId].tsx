@@ -1,7 +1,7 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Text, View } from "react-native";
 import { Button, Card, H2, Meaning, PartnerName, Row, Screen, SpeakButton, T } from "../../components/ui";
-import { findTopic, levelOfTopic, subLevelOfTopic } from "../../content/levels";
+import { findTopic, LANGS, levelOfTopic, meaning, subLevelOfTopic } from "../../content/levels";
 import { usePalette } from "../../lib/theme";
 import { knownInUnit, UNIT_PASS, UNIT_TEST_QUESTIONS, unitPassed, useProgress } from "../../state/progress";
 
@@ -43,7 +43,7 @@ export default function Unit() {
 
       <Card style={{ backgroundColor: c.bSoft, borderColor: c.bSoft }}>
         <T style={{ fontWeight: "800" }}>🇮🇳 मराठी ↔ Deutsch</T>
-        <T style={{ marginTop: 4 }}>{p.lang === "mr" ? unit.compare.mr : unit.compare.en}</T>
+        <T style={{ marginTop: 4 }}>{meaning(unit.compare, p.lang)}</T>
       </Card>
 
       <Card>
@@ -63,7 +63,7 @@ export default function Unit() {
         <Button title={passed ? "Retake the test" : "📝 Take the unit test"} onPress={() => go("/quiz/[topicId]")} />
       </Card>
 
-      <H2>Words · German | {p.lang === "mr" ? "मराठी | English" : "English | मराठी"}</H2>
+      <H2>Words · German | {LANGS.find((l) => l.id === p.lang)!.label} | {p.lang === "en" ? "मराठी" : "English"}</H2>
       <Card>
         {unit.words.map((w, k) => (
           <View

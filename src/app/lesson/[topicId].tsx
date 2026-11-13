@@ -2,7 +2,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Button, Card, H1, PartnerName, ProgressBar, Row, Screen, SpeakButton, T } from "../../components/ui";
-import { findTopic, levelOfTopic, meaning } from "../../content/levels";
+import { findTopic, levelOfTopic, meaning, otherMeaning } from "../../content/levels";
 import { usePalette } from "../../lib/theme";
 import { shuffle } from "../../lib/util";
 import { useProgress, XP } from "../../state/progress";
@@ -95,7 +95,7 @@ export default function Lesson() {
                 {meaning(word, state.partners[learner].lang)}
               </Text>
               <Text style={{ color: c.muted, fontSize: 15, marginTop: 4, textAlign: "center" }}>
-                {meaning(word, state.partners[learner].lang === "mr" ? "en" : "mr")}
+                {otherMeaning(word, state.partners[learner].lang)}
               </Text>
             </View>
           ) : (

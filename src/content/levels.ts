@@ -1,3 +1,5 @@
+import { romanizeMarathi } from "../lib/romanize";
+
 // Course content, organised by CEFR level (A1 → C2).
 // Each level is split into two sub-levels (e.g. A1.1, A1.2), each with units.
 // Add units or dialogues here; the app picks them up automatically.
@@ -7,16 +9,27 @@ export type LevelId = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
 
 export type Word = { de: string; en: string; mr: string };
 
-/** Languages a partner can learn German through. */
-export type Lang = "en" | "mr";
+/**
+ * Languages a partner can learn German through:
+ * English, Marathi in Devanagari, or Marathi in English letters ("majha tujhyavar prem aahe").
+ */
+export type Lang = "en" | "mr" | "mr-Latn";
 
 export const LANGS: { id: Lang; label: string }[] = [
   { id: "en", label: "English" },
   { id: "mr", label: "मराठी" },
+  { id: "mr-Latn", label: "Marathi (English letters)" },
 ];
 
-/** A word's meaning in the learner's language. */
-export const meaning = (w: { en: string; mr: string }, lang: Lang) => (lang === "mr" ? w.mr : w.en);
+export const isLang = (x: unknown): x is Lang => LANGS.some((l) => l.id === x);
+export const isMarathi = (lang: Lang) => lang !== "en";
+
+/** Text in the learner's language. Works for words and any { en, mr } pair. */
+export const meaning = (w: { en: string; mr: string }, lang: Lang) =>
+  lang === "mr" ? w.mr : lang === "mr-Latn" ? romanizeMarathi(w.mr) : w.en;
+
+/** For the second line under a meaning: English for Marathi learners, Marathi for English learners. */
+export const otherMeaning = (w: { en: string; mr: string }, lang: Lang) => (lang === "en" ? w.mr : w.en);
 
 export type Tip = { title: string; body: string };
 

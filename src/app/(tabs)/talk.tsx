@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { Fragment } from "react";
 import { Grid, H1, H2, PartnerName, Screen, T, Tile } from "../../components/ui";
 import { CHATS } from "../../content/chats";
-import { DIALOGUES, LEVELS } from "../../content/levels";
+import { DIALOGUES, LANGS, LEVELS } from "../../content/levels";
 import { useProgress } from "../../state/progress";
 
 export default function Talk() {
@@ -19,7 +19,7 @@ export default function Talk() {
       <H2>Chat practice</H2>
       <T muted style={{ fontSize: 13, marginTop: -4, marginBottom: 8 }}>
         Reply to a character in German: pick a suggestion or type your own. Mistakes get explained in{" "}
-        {p.lang === "mr" ? "मराठी" : "English"}.
+        {LANGS.find((l) => l.id === p.lang)!.label}.
       </T>
       <Grid>
         {CHATS.map((chat) => {
