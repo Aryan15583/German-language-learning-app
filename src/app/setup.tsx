@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { TextInput, View } from "react-native";
+import { Text, TextInput, View } from "react-native";
 import { Button, Card, Chip, H1, H2, LevelPicker, Row, Screen, T } from "../components/ui";
 import { LANGS, LEVELS, type Lang, type LevelId } from "../content/levels";
 import { usePalette } from "../lib/theme";
@@ -10,13 +10,13 @@ const levelIndex = (id: LevelId) => LEVELS.findIndex((l) => l.id === id);
 
 export default function Setup() {
   const c = usePalette();
-  const { state, setNames } = useProgress();
+  const { state, setNames, accountMode } = useProgress();
   const [a, setA] = useState(state.partners[0].name);
   const [b, setB] = useState(state.partners[1].name);
   const [la, setLa] = useState<LevelId>(LEVELS[state.partners[0].unlocked].id);
   const [lb, setLb] = useState<LevelId>(LEVELS[state.partners[1].unlocked].id);
   const [langs, setLangs] = useState<[Lang, Lang]>([state.partners[0].lang, state.partners[1].lang]);
-  const ok = a.trim() && b.trim();
+  const ok = accountMode ? !!a.trim() : !!(a.trim() && b.trim());
 
   const langRow = (i: 0 | 1) => (
     <>
@@ -72,7 +72,13 @@ export default function Setup() {
         {langRow(0)}
       </Card>
 
-      <H2>Your partner</H2>
+      {accountMode ? (
+        <T muted style={{ marginTop: 12 }}>
+          💞 Your partner makes their own account on their own phone. Link up afterwards in the <Text style={{ fontWeight: "800" }}>Us</Text> tab with a 6-character code.
+        </T>
+      ) : null}
+      {accountMode ? null : <H2>Your partner</H2>}
+      {accountMode ? null : (
       <Card>
         <TextInput
           style={input}
@@ -88,13 +94,14 @@ export default function Setup() {
         <T muted>{descr(lb)}</T>
         {langRow(1)}
       </Card>
+      )}
 
       <View style={{ marginTop: 8 }}>
         <Button
           title="Los geht's! (Let's go!)"
           disabled={!ok}
           onPress={() => {
-            setNames(a.trim(), b.trim(), [levelIndex(la), levelIndex(lb)], langs);
+            setNames(a.trim(), accountMode ? state.partners[1].name : b.trim(), [levelIndex(la), levelIndex(lb)], langs);
             router.replace("/");
           }}
         />

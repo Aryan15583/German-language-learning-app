@@ -1,8 +1,10 @@
 import { Stack, type ErrorBoundaryProps } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { AuthScreen } from "../components/AuthScreen";
 import { Lock } from "../components/Lock";
 import { usePalette } from "../lib/theme";
+import { AccountProvider, stateKey, useAccount } from "../state/account";
 import { ProgressProvider, useProgress } from "../state/progress";
 
 function RootStack() {
@@ -55,11 +57,39 @@ function RootStack() {
   );
 }
 
-export default function RootLayout() {
+/** Accounts on: show login until signed in; then load that person's progress. */
+function AccountGate() {
+  const c = usePalette();
+  const acct = useAccount();
+
+  if (acct.phase === "loading") {
+    return (
+      <View style={{ flex: 1, backgroundColor: c.bg, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color={c.accent} />
+      </View>
+    );
+  }
+  if (acct.phase !== "off" && acct.phase !== "ready") return <AuthScreen />;
+
+  const uid = acct.account?.id;
   return (
-    <ProgressProvider>
+    <ProgressProvider
+      key={uid ?? "local"}
+      storageKey={uid ? stateKey(uid) : undefined}
+      initial={acct.initialState}
+      onChange={uid ? acct.saveBackup : undefined}
+      accountMode={!!uid}
+    >
       <RootStack />
     </ProgressProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AccountProvider>
+      <AccountGate />
+    </AccountProvider>
   );
 }
 

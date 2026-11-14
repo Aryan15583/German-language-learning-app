@@ -52,19 +52,37 @@ Link your two phones with a **6-character partner code** (Us tab). Then:
 
 Everything is **end-to-end encrypted** (XChaCha20-Poly1305) with a key only your two phones know. Messages pass through a tiny **zero-knowledge relay** that only ever stores scrambled data. See [SECURITY.md](SECURITY.md).
 
-### Turn on in-app delivery (free Supabase relay, ~5 minutes)
-Without this, the app still works: messages travel as secure links you share yourself.
+### Accounts (like Flo) 👤
+With Supabase set up, the app has real accounts:
+- **Each person signs up** with email and password, **on their own phone**. Nobody else uses that phone's profile, so there's no profile switching.
+- **Link up with a 6-character code** in the Us tab. Either of you can create the code, and the other enters it.
+- **You see your side; your partner sees theirs.** Your own lessons, levels and settings stay yours. Your partner appears as a card (name, level, streak, weekly XP), in the chat and in duels.
+- **Log in on any phone** and everything comes back: progress, chat, and the link with your partner. Signing out removes your data from that phone.
+- **Zero-knowledge backup:** progress is encrypted on the phone with a key made from your password before it's saved. Supabase only stores scrambled data. Because of this, **a forgotten password can't recover old progress**. "Forgot password" lets you set a new one and keeps what's on the current phone.
+
+Without Supabase, the app runs as before: one shared phone, no accounts.
+
+### Set up Supabase (free, ~10 minutes)
 1. Create a free project at **supabase.com**. A region near one of you works well (e.g. Mumbai).
-2. In the project, open **SQL Editor**, paste the contents of [`supabase/migrations/0001_relay.sql`](supabase/migrations/0001_relay.sql) and click **Run**.
-3. Go to **Project Settings → API** and copy the **Project URL** and the **publishable/anon key**. That key is public by design: it can only call the two relay functions.
-4. In **Vercel → Settings → Environment Variables**, add:
+2. **SQL Editor:** run [`supabase/migrations/0001_relay.sql`](supabase/migrations/0001_relay.sql), then [`supabase/migrations/0002_accounts.sql`](supabase/migrations/0002_accounts.sql). If you connected the GitHub repo in Supabase with migrations enabled, it can apply these for you. Running them again is harmless.
+3. **Authentication → URL Configuration:**
+   - set **Site URL** to your app, e.g. `https://zwei-herzen-until-berlin.vercel.app`
+   - add the same address under **Redirect URLs**
+
+   This makes confirmation and password-reset emails open your app.
+4. **Project Settings → API Keys:** copy the **Project URL** and the **publishable key** (`sb_publishable_…`, or the legacy `anon` key). **Never** use the secret/service_role key.
+5. In **Vercel → Settings → Environment Variables**, add both:
    | Name | Value |
    |---|---|
    | `EXPO_PUBLIC_RELAY_URL` | your Project URL, e.g. `https://abcd1234.supabase.co` |
-   | `EXPO_PUBLIC_RELAY_KEY` | the publishable/anon key |
-5. **Redeploy**. The Us tab now shows 🟢 live.
+   | `EXPO_PUBLIC_RELAY_KEY` | the publishable key |
+6. **Redeploy** in Vercel.
+7. **Once you've both signed up, lock the door:** in **Authentication → Sign In / Providers**, turn off **Allow new users to sign up**. Then nobody else can create an account on your app.
 
-Free Supabase projects pause after a week with no activity. If that happens, open the project and click **Restore**.
+**Good to know:**
+- **Email limits:** Supabase's built-in email sender only sends a few emails per hour, which is plenty for two people. If a confirmation email doesn't arrive, wait a bit or check spam.
+- **Skipping confirmation:** for just the two of you, you can instead turn off **Confirm email** (Authentication → Sign In / Providers → Email).
+- **Pausing:** free projects pause after a week with no activity. If that happens, open the project and click **Restore**.
 
 ## Deploy the web version (Vercel)
 `vercel.json` is already set up: Vercel runs `npm run build:web` (Expo web export) and serves `dist/`, sending every route to the single-page app.
@@ -102,7 +120,10 @@ src/lib/link.ts          Partner codes, message format and strict validation
 src/lib/relay.ts         Zero-knowledge relay client
 src/lib/game.ts          Hearts levels, daily goal, weekly battle, achievements
 src/state/couple.ts      Pairing, chat, shared words, remote duels (pure, tested)
-supabase/                Relay SQL + its security tests
+src/state/account.tsx    Accounts: sign up/in/out, password reset, encrypted backup
+src/lib/vault.ts         Password-derived backup encryption
+src/components/AuthScreen.tsx  Login / create account / reset screens
+supabase/                Relay + accounts SQL and their security tests
 src/lib/chat.ts          Chat engine (matching typed replies, coaching, stars)
 src/state/logic.ts       Pure progress rules (streak, unit scores, exams, placement)
 src/state/progress.tsx   React context + saving to AsyncStorage

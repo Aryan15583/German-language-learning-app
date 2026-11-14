@@ -16,9 +16,11 @@ export default function DuelHome() {
   );
   const level = LEVELS.find((l) => l.id === levelId)!;
   const recent = state.duels.slice(-3).reverse();
+  const { accountMode } = useProgress();
   const linked = couple.isLinked(state);
   const [mode, setMode] = useState<"remote" | "local">(linked ? "remote" : "local");
-  const remote = linked && mode === "remote";
+  // One person per phone: duels are always remote.
+  const remote = linked && (accountMode || mode === "remote");
   const start = (topicId: string) =>
     remote
       ? router.push({ pathname: "/remote-duel", params: { topic: topicId } })
@@ -28,7 +30,14 @@ export default function DuelHome() {
   return (
     <Screen>
       <H1>Quiz duel ⚔️</H1>
-      {linked ? (
+      {accountMode && !linked ? (
+        <Card style={{ marginTop: 8 }}>
+          <T style={{ fontWeight: "800" }}>🌍 Duel your partner from anywhere</T>
+          <T muted style={{ marginVertical: 6 }}>Link with your partner first: one of you gets a 6-character code in the Us tab, the other enters it.</T>
+          <Button title="💞 Go to Us" onPress={() => router.navigate("/us")} />
+        </Card>
+      ) : null}
+      {linked && !accountMode ? (
         <Row style={{ marginBottom: 8 }}>
           <Chip label="🌍 Remote" selected={remote} onPress={() => setMode("remote")} />
           <Chip label="📱 Same phone" selected={!remote} onPress={() => setMode("local")} />
@@ -70,6 +79,8 @@ export default function DuelHome() {
         </>
       ) : null}
 
+      {accountMode && !linked ? null : (
+        <>
       <LevelPicker value={levelId} unlocked={LEVELS.length} onChange={setLevelId} />
       <T muted style={{ fontSize: 13, marginBottom: 12 }}>
         {level.id} · {level.name}
@@ -81,8 +92,10 @@ export default function DuelHome() {
         )}
         <Tile emoji="🎲" title={`Mix of ${level.id}`} subtitle="All units" onPress={() => start(`mix-${level.id}`)} />
       </Grid>
+        </>
+      )}
 
-      {recent.length ? (
+      {recent.length && !accountMode ? (
         <>
           <H2>Recent duels</H2>
           {recent.map((d, k) => (

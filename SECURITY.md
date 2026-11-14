@@ -11,6 +11,12 @@ Zwei Herzen ♡ Until Berlin is a private, personal app. This page explains how 
   - Clients have **no table access at all**. They can only call two functions: drop a message, and read a mailbox by its exact name.
   - Inputs are validated, sending is rate-limited (30/min per mailbox), reads are paged, and messages are **deleted after 30 days**. The functions pin `search_path` so they can't be hijacked.
   - Security tests for all of this run on a real Postgres in CI. In an end-to-end test, the relay held 6 messages and none contained any readable word or name.
+- **Accounts (Supabase Auth).** Each person has their own email/password account. Passwords are handled by Supabase Auth and never stored by the app.
+- **Zero-knowledge account backup** (`supabase/migrations/0002_accounts.sql`, `src/lib/vault.ts`):
+  - Progress is encrypted on the phone with a key derived from the password (PBKDF2-SHA256, 200,000 rounds, random per-account salt) before upload. Supabase stores only ciphertext; in an end-to-end test, neither backup contained any readable word or name.
+  - Row level security lets a signed-in user read, write or delete **only their own row**. Logged-out visitors have no access, and rows can't be moved to another user. Only base64url ciphertext is accepted, and deleting an account deletes its data. These rules are tested on a real Postgres in CI.
+  - Signing out removes the person's data and key from that phone.
+  - A forgotten password can't unlock an old backup (by design). Setting a new password re-encrypts what's on the current phone.
 - **Strict validation of everything received.** Decrypted messages are checked for type, length, control characters, couple ID, timestamps, valid exam IDs and score ranges. Anything forged or tampered with is rejected with a friendly error.
 - **PIN lock.** PINs are stored only as salted PBKDF2-SHA256 hashes (120,000 rounds) and checked in constant time. A forgotten PIN can't be recovered; the only way out is to reset the device's data.
 - **Links fallback.** Without the relay, messages travel as links whose secret part sits after `#`, which browsers never send to any server. The app wipes it from the address bar and history after reading it.
@@ -34,7 +40,7 @@ Zwei Herzen ♡ Until Berlin is a private, personal app. This page explains how 
 The full app was tested end to end in a browser with these exact headers applied, with no blocked content.
 
 ## Automated checks (GitHub)
-- **CI** (`.github/workflows/ci.yml`): lint, typecheck, 183 tests, relay SQL security tests on Postgres 16, `npm audit` (fails on high/critical issues in shipped dependencies) and a production build on every push.
+- **CI** (`.github/workflows/ci.yml`): lint, typecheck, 193 tests, relay and account SQL security tests on Postgres 16, `npm audit` (fails on high/critical issues in shipped dependencies) and a production build on every push.
 - **CodeQL** (`.github/workflows/codeql.yml`): GitHub's code security scanner on every push to `main`, every PR and weekly.
 - **Dependabot** (`.github/dependabot.yml`): weekly pull requests for dependency updates.
 
@@ -42,6 +48,7 @@ The full app was tested end to end in a browser with these exact headers applied
 `npm audit` reports 3 moderate advisories in `minimatch` (a slow regular expression) inside `@expo/fingerprint`, a **build-time Expo tool**. It is not part of the app that ships to browsers. npm's suggested fix downgrades Expo to an older major version, which is worse, so this is tracked until Expo updates the dependency (Dependabot will propose it).
 
 ## Keeping it private
+- After you've both signed up, turn off **Allow new users to sign up** in Supabase (Authentication → Sign In / Providers).
 The headers stop search engines from indexing the site, but anyone with the link can still open it. For a truly private link, turn on **Vercel → Project → Settings → Deployment Protection** (Vercel Authentication, or Password Protection on paid plans).
 
 ## Reporting
