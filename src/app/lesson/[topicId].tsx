@@ -2,17 +2,32 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Button, Card, H1, PartnerName, ProgressBar, Row, Screen, SpeakButton, T } from "../../components/ui";
-import { findTopic, levelOfTopic, meaning, otherMeaning } from "../../content/levels";
+import { findTopic, LEVELS, levelOfTopic, meaning, otherMeaning, type Topic, type Word } from "../../content/levels";
+
 import { usePalette } from "../../lib/theme";
 import { shuffle } from "../../lib/util";
 import { useProgress, XP } from "../../state/progress";
 
+const oursTopic = (words: Word[]): Topic | undefined =>
+  words.length
+    ? {
+        id: "ours",
+        title: "Our words",
+        emoji: "💞",
+        tip: { title: "", body: "" },
+        compare: { en: "", mr: "" },
+        words,
+      }
+    : undefined;
+
 export default function Lesson() {
   const c = usePalette();
   const { topicId } = useLocalSearchParams<{ topicId: string }>();
-  const topic = findTopic(topicId);
-  const level = levelOfTopic(topicId);
   const { state, markKnown, practiced } = useProgress();
+  // "ours" = the couple's own shared words.
+  const ours = topicId === "ours";
+  const topic = ours ? oursTopic(state.customWords) : findTopic(topicId);
+  const level = ours ? LEVELS[0] : levelOfTopic(topicId);
   const learner = state.learner;
 
   // Unknown words first; if everything is known, review the whole deck.
@@ -45,7 +60,7 @@ export default function Lesson() {
     } else setPos(pos + 1);
   };
 
-  const title = `${level.id} · ${topic.title}`;
+  const title = ours ? "💞 Our words" : `${level.id} · ${topic.title}`;
 
   if (done) {
     return (
@@ -57,15 +72,19 @@ export default function Lesson() {
           <PartnerName i={learner} /> earned {gained} XP. Ready to test yourself?
         </T>
         <View style={{ gap: 10, marginTop: 16 }}>
-          <Button
-            title="📝 Take the unit test"
-            onPress={() => router.replace({ pathname: "/quiz/[topicId]", params: { topicId: topic.id } })}
-          />
-          <Button
-            title="⚔️ Duel your partner on this unit"
-            variant="secondary"
-            onPress={() => router.replace({ pathname: "/duel/[topicId]", params: { topicId: topic.id } })}
-          />
+          {!ours ? (
+            <>
+            <Button
+              title="📝 Take the unit test"
+              onPress={() => router.replace({ pathname: "/quiz/[topicId]", params: { topicId: topic.id } })}
+            />
+            <Button
+              title="⚔️ Duel your partner on this unit"
+              variant="secondary"
+              onPress={() => router.replace({ pathname: "/duel/[topicId]", params: { topicId: topic.id } })}
+            />
+            </>
+          ) : null}
           <Button title="Back to the unit" variant="secondary" onPress={() => router.back()} />
         </View>
       </Screen>

@@ -1,8 +1,12 @@
-// Serverless couple link. Everything travels inside URL fragments (#…), which
-// browsers never send to a server. Invites carry the couple key; every other
-// message is encrypted with it, and everything received is strictly validated.
+// Serverless couple link. Messages travel inside URL fragments (#…), which
+// browsers never send to a server. Pairing uses a 6-character code that both
+// partners know; the joiner's first message ("hello") carries a fresh random
+// 256-bit key, and every later message uses that key. Everything received is
+// strictly validated.
+import { pbkdf2 } from "@noble/hashes/pbkdf2.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { LEVEL_IDS, type Lang, type LevelId } from "../content/levels";
-import { fromBase64Url, newId, open, seal, toBase64Url } from "./crypto";
+import { fromBase64Url, newId, open, randomBytes, seal, toBase64Url } from "./crypto";
 
 export const LINK_VERSION = 1;
 export const LIMITS = { name: 20, text: 1000, word: 80, id: 32 };
@@ -11,7 +15,6 @@ export class LinkError extends Error {}
 
 export type PartnerInfo = { id: string; name: string; lang: Lang };
 
-export type Invite = { v: 1; t: "invite"; couple: string; key: string; from: PartnerInfo };
 
 /** A snapshot of the sender's progress, so each phone can show the other's score. */
 export type Stats = {
@@ -27,9 +30,13 @@ export type Stats = {
 
 export type SharedWord = { de: string; en: string; mr: string };
 
+/** One player's move in a remote duel: same seed → same questions on both phones. */
+export type DuelMove = { id: string; topic: string; seed: number; score: number };
+
 export type Payload =
-  | { kind: "hello" }
+  | { kind: "hello"; key: string }
   | { kind: "stats" }
+  | { kind: "duel"; duel: DuelMove }
   | { kind: "msg"; text: string }
   | { kind: "note"; text: string }
   | { kind: "secret"; text: string; unlockAt: number }
@@ -96,8 +103,15 @@ function stats(x: unknown): Stats {
 function payload(x: Record<string, unknown>): Payload {
   switch (x.kind) {
     case "hello":
+      return { kind: "hello", key: keyStr(x.key) };
     case "stats":
-      return { kind: x.kind };
+      return { kind: "stats" };
+    case "duel": {
+      const d = isObj(x.duel) ? x.duel : fail("duel missing");
+      const topic = str(d.topic, 40, "duel topic");
+      if (!/^[a-z0-9-]+$/i.test(topic)) fail("duel topic invalid");
+      return { kind: "duel", duel: { id: idStr(d.id, "duel id"), topic, seed: int(d.seed, 0, 2 ** 31 - 1, "seed"), score: int(d.score, 0, 50, "score") } };
+    }
     case "msg":
     case "note":
       return { kind: x.kind, text: str(x.text, LIMITS.text, "message") };
@@ -115,25 +129,50 @@ function payload(x: Record<string, unknown>): Payload {
   }
 }
 
-// ---- invites ----
-export function makeInvite(from: PartnerInfo, couple: string, key: string): Invite {
-  return { v: 1, t: "invite", couple, key, from };
+/** A 32-byte key is 43 base64url characters. */
+function keyStr(x: unknown): string {
+  const key = typeof x === "string" && /^[A-Za-z0-9_-]{43}$/.test(x) ? x : fail("key invalid");
+  if (fromBase64Url(key).length !== 32) fail("key invalid");
+  return key;
 }
 
-export const inviteFragment = (invite: Invite) => toBase64Url(new TextEncoder().encode(JSON.stringify(invite)));
+// ---- 6-character partner codes ----
+/** Letters and digits without look-alikes (no 0/O, 1/I/L). */
+export const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+export const CODE_LENGTH = 6;
+/** Codes are only accepted for a day after they're created. */
+export const CODE_TTL_MS = 24 * 3600 * 1000;
+/** Slow key derivation makes guessing codes expensive. */
+export const CODE_ITERATIONS = 200_000;
 
-export function parseInvite(fragment: string): Invite {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(fromBase64Url(fragment.replace(/^#/, ""))));
-  } catch {
-    return fail("This invite link is damaged. Ask your partner to send it again.");
+/** A fresh random code, without modulo bias. */
+export function newPairCode(): string {
+  let code = "";
+  const limit = 256 - (256 % CODE_ALPHABET.length);
+  while (code.length < CODE_LENGTH) {
+    for (const b of randomBytes(16)) {
+      if (b < limit && code.length < CODE_LENGTH) code += CODE_ALPHABET[b % CODE_ALPHABET.length];
+    }
   }
-  if (!isObj(raw) || raw.v !== LINK_VERSION || raw.t !== "invite") return fail("This isn't an invite link.");
-  // A 32-byte key is 43 base64url characters.
-  const key = typeof raw.key === "string" && /^[A-Za-z0-9_-]{43}$/.test(raw.key) ? raw.key : fail("invite key invalid");
-  if (fromBase64Url(key).length !== 32) fail("invite key invalid");
-  return { v: 1, t: "invite", couple: idStr(raw.couple, "couple"), key, from: partnerInfo(raw.from) };
+  return code;
+}
+
+/** Accept "k7m 2qx", "K7M-2QX", etc. Returns null if it can't be a valid code. */
+export function normalizeCode(input: string): string | null {
+  const code = input.toUpperCase().replace(/[\s-]/g, "");
+  if (code.length !== CODE_LENGTH) return null;
+  return [...code].every((c) => CODE_ALPHABET.includes(c)) ? code : null;
+}
+
+export const formatCode = (code: string) => `${code.slice(0, 3)}-${code.slice(3)}`;
+
+/** Both phones turn the same code into the same couple id and pairing key. */
+export function coupleFromCode(code: string, iterations = CODE_ITERATIONS): { id: string; key: string } {
+  const bytes = pbkdf2(sha256, new TextEncoder().encode(code), new TextEncoder().encode("zwei-herzen-pair-v1"), {
+    c: iterations,
+    dkLen: 44,
+  });
+  return { key: toBase64Url(bytes.slice(0, 32)), id: toBase64Url(bytes.slice(32, 44)) };
 }
 
 // ---- messages ----

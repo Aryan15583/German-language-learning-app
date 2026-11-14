@@ -1,12 +1,13 @@
 import { Stack, type ErrorBoundaryProps } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Lock } from "../components/Lock";
 import { usePalette } from "../lib/theme";
 import { ProgressProvider, useProgress } from "../state/progress";
 
 function RootStack() {
   const c = usePalette();
-  const { ready } = useProgress();
+  const { ready, locked } = useProgress();
 
   if (!ready) {
     return (
@@ -38,7 +39,18 @@ function RootStack() {
         <Stack.Screen name="duel/[topicId]" options={{ title: "Quiz duel" }} />
         <Stack.Screen name="dialogue/[id]" options={{ title: "Role-play" }} />
         <Stack.Screen name="chat/[id]" options={{ title: "Chat" }} />
+        <Stack.Screen name="inbox" options={{ title: "Message" }} />
+        <Stack.Screen name="remote-duel" options={{ title: "Remote duel" }} />
+        <Stack.Screen name="note" options={{ title: "Love note" }} />
+        <Stack.Screen name="words" options={{ title: "Our words" }} />
+        <Stack.Screen name="badges" options={{ title: "Achievements" }} />
+        <Stack.Screen name="baiko" options={{ headerShown: false, presentation: "transparentModal", animation: "fade" }} />
       </Stack>
+      {locked ? (
+        <View style={StyleSheet.absoluteFill}>
+          <Lock />
+        </View>
+      ) : null}
     </>
   );
 }

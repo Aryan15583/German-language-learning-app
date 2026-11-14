@@ -26,7 +26,7 @@ export const isMarathi = (lang: Lang) => lang !== "en";
 
 /** Text in the learner's language. Works for words and any { en, mr } pair. */
 export const meaning = (w: { en: string; mr: string }, lang: Lang) =>
-  lang === "mr" ? w.mr : lang === "mr-Latn" ? romanizeMarathi(w.mr) : w.en;
+  !w.mr || lang === "en" ? w.en : lang === "mr" ? w.mr : romanizeMarathi(w.mr);
 
 /** For the second line under a meaning: English for Marathi learners, Marathi for English learners. */
 export const otherMeaning = (w: { en: string; mr: string }, lang: Lang) => (lang === "en" ? w.mr : w.en);

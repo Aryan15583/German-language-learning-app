@@ -1,16 +1,19 @@
 import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
 import { Share, Text, View } from "react-native";
-import { Button, Card, Chip, H1, H2, PartnerName, Row, Screen, SpeakButton, T } from "../../components/ui";
-import { meaning, NOTE_PARTS } from "../../content/levels";
-import { usePalette } from "../../lib/theme";
-import { useProgress } from "../../state/progress";
+import { Button, Card, Chip, H1, H2, PartnerName, Row, Screen, SpeakButton, T } from "../components/ui";
+import { meaning, NOTE_PARTS } from "../content/levels";
+import { usePalette } from "../lib/theme";
+import { router } from "expo-router";
+import { shareText } from "../lib/share";
+import { couple, useProgress, XP } from "../state/progress";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export default function Notes() {
   const c = usePalette();
-  const { state, practiced } = useProgress();
+  const { state, practiced, send: sendToPartner } = useProgress();
+  const linked = couple.isLinked(state);
   const from = state.learner;
   const to = from === 0 ? 1 : 0;
   const [opener, setOpener] = useState(0);
@@ -34,6 +37,18 @@ export default function Notes() {
   };
 
   const send = async () => {
+    if (linked) {
+      const r = await sendToPartner({ kind: "note", text });
+      practiced(from, XP.note);
+      if (r.delivered) {
+        setStatus("Sent to your partner's app 💌");
+        setTimeout(() => router.back(), 900);
+      } else {
+        await shareText(`💌 Zwei Herzen ♡ — a love note for you:\n${r.link}`);
+        setStatus("Shared as a secure link 💌");
+      }
+      return;
+    }
     try {
       const res = await Share.share({ message: text });
       if (res.action === Share.sharedAction) {
@@ -81,7 +96,7 @@ export default function Notes() {
         <SpeakButton text={text} />
         <View style={{ flex: 1 }} />
         <Button title="Copy" variant="secondary" onPress={copy} />
-        <Button title="Send 💌" onPress={send} />
+        <Button title={linked ? `Send to ${state.partners[1].name || "partner"} 💌` : "Send 💌"} onPress={send} />
       </Row>
       {status ? <T muted style={{ marginTop: 10, textAlign: "center" }}>{status}</T> : null}
     </Screen>

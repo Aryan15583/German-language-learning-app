@@ -23,3 +23,22 @@ jobs:
       # Fail on serious vulnerabilities in anything that ships or builds the app.
       - run: npm audit --omit=dev --omit=optional --audit-level=high
       - run: npm run build:web
+
+  relay-sql:
+    # Security tests for the message relay, on a real Postgres.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - run: psql -v ON_ERROR_STOP=1 -f supabase/tests/setup_roles.sql -f supabase/migrations/0001_relay.sql -f supabase/tests/relay_test.sql

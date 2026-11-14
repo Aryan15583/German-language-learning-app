@@ -164,8 +164,9 @@ describe("language and chat", () => {
 
 describe("migrate", () => {
   it("returns a fresh state for missing or broken data", () => {
-    expect(migrate(null)).toEqual(freshState());
-    expect(migrate("nonsense")).toEqual(freshState());
+    const withoutIds = (x: ReturnType<typeof freshState>) => ({ ...x, partners: x.partners.map((p) => ({ ...p, id: "" })) });
+    expect(withoutIds(migrate(null))).toEqual(withoutIds(freshState()));
+    expect(withoutIds(migrate("nonsense"))).toEqual(withoutIds(freshState()));
   });
 
   it("upgrades data saved by the previous version", () => {

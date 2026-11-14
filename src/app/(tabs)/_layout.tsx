@@ -1,6 +1,7 @@
 import { Redirect } from "expo-router";
 import { Tabs } from "expo-router/js-tabs";
 import { Text, View } from "react-native";
+import { BrandTitle } from "../../components/BrandTitle";
 import { LearnerSwitch } from "../../components/ui";
 import { usePalette } from "../../lib/theme";
 import { useProgress } from "../../state/progress";
@@ -33,11 +34,14 @@ export default function TabsLayout() {
         sceneStyle: { backgroundColor: c.bg },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "Zwei Herzen ♡", tabBarLabel: "Home", tabBarIcon: icon("🏠") }} />
+      <Tabs.Screen
+        name="index"
+        options={{ title: "Zwei Herzen ♡", headerTitle: () => <BrandTitle />, tabBarLabel: "Home", tabBarIcon: icon("🏠") }}
+      />
       <Tabs.Screen name="learn" options={{ title: "Learn", tabBarIcon: icon("📚") }} />
       <Tabs.Screen name="duel" options={{ title: "Duel", tabBarIcon: icon("⚔️") }} />
       <Tabs.Screen name="talk" options={{ title: "Talk", tabBarIcon: icon("💬") }} />
-      <Tabs.Screen name="notes" options={{ title: "Notes", tabBarIcon: icon("💌") }} />
+      <Tabs.Screen name="us" options={{ title: "Us", tabBarIcon: icon("💞") }} />
     </Tabs>
   );
 }
