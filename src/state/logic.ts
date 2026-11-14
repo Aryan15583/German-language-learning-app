@@ -85,6 +85,8 @@ export type AppState = {
   seen: string[];
   customWords: SharedWord[];
   remoteDuels: RemoteDuel[];
+  /** Last message id read from each relay mailbox. */
+  relayCursor: Record<string, number>;
 };
 
 // ---- Rules ----
@@ -125,6 +127,7 @@ export const freshState = (): AppState => ({
   seen: [],
   customWords: [],
   remoteDuels: [],
+  relayCursor: {},
 });
 
 const clampLevel = (n: unknown) => (typeof n === "number" && n >= 0 ? Math.min(Math.floor(n), MAX_LEVEL) : 0);
@@ -160,6 +163,7 @@ export function migrate(raw: unknown): AppState {
     seen: Array.isArray(r.seen) ? r.seen : [],
     customWords: Array.isArray(r.customWords) ? r.customWords : [],
     remoteDuels: Array.isArray(r.remoteDuels) ? r.remoteDuels : [],
+    relayCursor: r.relayCursor && typeof r.relayCursor === "object" ? r.relayCursor : {},
   };
 }
 
