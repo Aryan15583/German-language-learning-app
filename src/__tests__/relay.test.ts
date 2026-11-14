@@ -1,6 +1,6 @@
 import { helloBox, inboxFor, otherRole, RelayError, relayConfig, relayFetch, relaySend } from "../lib/relay";
 
-const cfg = { url: "https://abc.supabase.co", key: "anon-key" };
+const cfg = { url: "https://abc.supabase.co", key: "aaa.bbb.ccc" };
 
 function fakeFetch(status: number, body: unknown) {
   return jest.fn(async () => ({ ok: status < 400, status, json: async () => body }) as Response);
@@ -33,6 +33,8 @@ describe("config", () => {
     expect(relayConfig("http://insecure.example.com", "k")).toBeNull();
     expect(relayConfig("https://evil.com/path?x=1", "k")).toBeNull();
     expect(relayConfig("https://abc.supabase.co/", "k")).toEqual({ url: "https://abc.supabase.co", key: "k" });
+    expect(relayConfig("http://localhost:8081", "k")).toEqual({ url: "http://localhost:8081", key: "k" });
+    expect(relayConfig("http://localhost.evil.com", "k")).toBeNull();
   });
 });
 
@@ -42,8 +44,16 @@ describe("relay calls", () => {
     await expect(relaySend(cfg, "box", "payload", f)).resolves.toBe(7);
     const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://abc.supabase.co/rest/v1/rpc/relay_send");
-    expect(init.headers).toMatchObject({ apikey: "anon-key", Authorization: "Bearer anon-key" });
+    expect(init.headers).toMatchObject({ apikey: "aaa.bbb.ccc", Authorization: "Bearer aaa.bbb.ccc" });
     expect(JSON.parse(init.body as string)).toEqual({ p_mailbox: "box", p_payload: "payload" });
+  });
+
+  it("sends new publishable keys only as apikey", async () => {
+    const f = fakeFetch(200, 1);
+    await relaySend({ ...cfg, key: "sb_publishable_abc123" }, "box", "payload", f);
+    const headers = (f.mock.calls[0] as unknown as [string, RequestInit])[1].headers as Record<string, string>;
+    expect(headers.apikey).toBe("sb_publishable_abc123");
+    expect(headers.Authorization).toBeUndefined();
   });
 
   it("fetches rows after a cursor and drops malformed ones", async () => {

@@ -204,3 +204,23 @@ export function duelStatus(d: RemoteDuel): DuelStatus {
 
 /** A secret from my partner opens once my streak reaches its target. My own secrets are always visible to me. */
 export const secretOpen = (item: ChatItem, myStreak: number) => item.from === 0 || myStreak >= (item.unlockAt ?? 0);
+
+// ---- achievements ----
+
+/** Everything the achievements need, for me (0) or my partner (1). On linked phones my partner's numbers come from their last message. */
+export function achievementContext(s: AppState, i: PartnerIndex, streak: number) {
+  const p = s.partners[i];
+  const remote = i === 1 && isLinked(s) ? p.remote : null;
+  const localWords = Object.values(p.known).reduce((n, a) => n + a.length, 0);
+  const localUnits = LEVELS.flatMap(levelUnits).filter((u) => unitPassed(p, u.id)).length;
+  return {
+    streak: remote ? remote.streak : streak,
+    wordsKnown: remote ? remote.wordsKnown : localWords,
+    unitsPassed: remote ? remote.unitsPassed : localUnits,
+    examsPassed: p.examsPassed.length,
+    chatStars: Object.values(p.chatStars).reduce((n, x) => n + x, 0),
+    messages: p.counts.messages,
+    duelsWon: p.counts.duelsWon,
+    linked: isLinked(s),
+  };
+}

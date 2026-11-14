@@ -17,8 +17,11 @@ export function relayConfig(
   url: string | undefined = process.env.EXPO_PUBLIC_RELAY_URL,
   key: string | undefined = process.env.EXPO_PUBLIC_RELAY_KEY,
 ): RelayConfig | null {
-  if (!url || !key || !/^https:\/\/[a-z0-9.-]+$/i.test(url.replace(/\/+$/, ""))) return null;
-  return { url: url.replace(/\/+$/, ""), key };
+  const clean = url?.replace(/\/+$/, "") ?? "";
+  // HTTPS only (plain http is allowed for localhost, for local testing).
+  const ok = /^https:\/\/[a-z0-9.-]+$/i.test(clean) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(clean);
+  if (!url || !key || !ok) return null;
+  return { url: clean, key };
 }
 
 const hash = (text: string) => toBase64Url(sha256(new TextEncoder().encode(text)));
@@ -39,7 +42,12 @@ async function call<T>(cfg: RelayConfig, fn: string, body: Record<string, unknow
   try {
     const res = await fetchImpl(`${cfg.url}/rest/v1/rpc/${fn}`, {
       method: "POST",
-      headers: { apikey: cfg.key, Authorization: `Bearer ${cfg.key}`, "Content-Type": "application/json" },
+      headers: {
+        apikey: cfg.key,
+        "Content-Type": "application/json",
+        // Legacy "anon" keys are JWTs and also go in Authorization; new publishable keys only use apikey.
+        ...(cfg.key.split(".").length === 3 ? { Authorization: `Bearer ${cfg.key}` } : {}),
+      },
       body: JSON.stringify(body),
       signal: ctrl.signal,
     });

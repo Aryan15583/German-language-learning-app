@@ -1,10 +1,11 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { Text } from "react-native";
-import { Card, Grid, H1, H2, LevelPicker, PartnerName, Row, Screen, T, Tile } from "../../components/ui";
+import { Button, Card, Chip, Grid, H1, H2, LevelPicker, PartnerName, Row, Screen, T, Tile } from "../../components/ui";
+import { resolveTopic } from "../../lib/topics";
 import { LEVELS, type LevelId } from "../../content/levels";
 import { usePalette } from "../../lib/theme";
-import { useProgress } from "../../state/progress";
+import { couple, partnerName, useProgress } from "../../state/progress";
 
 export default function DuelHome() {
   const c = usePalette();
@@ -15,14 +16,59 @@ export default function DuelHome() {
   );
   const level = LEVELS.find((l) => l.id === levelId)!;
   const recent = state.duels.slice(-3).reverse();
-  const start = (topicId: string) => router.push({ pathname: "/duel/[topicId]", params: { topicId } });
+  const linked = couple.isLinked(state);
+  const [mode, setMode] = useState<"remote" | "local">(linked ? "remote" : "local");
+  const remote = linked && mode === "remote";
+  const start = (topicId: string) =>
+    remote
+      ? router.push({ pathname: "/remote-duel", params: { topic: topicId } })
+      : router.push({ pathname: "/duel/[topicId]", params: { topicId } });
+  const remoteDuels = [...state.remoteDuels].reverse().slice(0, 8);
 
   return (
     <Screen>
       <H1>Quiz duel ⚔️</H1>
-      <T muted>
-        <PartnerName i={0} /> plays first, then hands the phone to <PartnerName i={1} />. Same questions — who knows more?
-      </T>
+      {linked ? (
+        <Row style={{ marginBottom: 8 }}>
+          <Chip label="🌍 Remote" selected={remote} onPress={() => setMode("remote")} />
+          <Chip label="📱 Same phone" selected={!remote} onPress={() => setMode("local")} />
+        </Row>
+      ) : null}
+      {remote ? (
+        <T muted>
+          Play a round here; {partnerName(state, 1)} gets the exact same questions on their phone, wherever they are. Highest score wins!
+        </T>
+      ) : (
+        <T muted>
+          <PartnerName i={0} /> plays first, then hands the phone to <PartnerName i={1} />. Same questions — who knows more?
+        </T>
+      )}
+
+      {remote && remoteDuels.length ? (
+        <>
+          <H2>🌍 Your remote duels</H2>
+          {remoteDuels.map((d) => {
+            const status = couple.duelStatus(d);
+            return (
+              <Card key={d.id}>
+                <Row>
+                  <T style={{ flex: 1, fontWeight: "700" }}>{resolveTopic(d.topic)?.title ?? d.topic}</T>
+                  <Text style={{ color: c.a, fontWeight: "800" }}>{d.scores[0] ?? "–"}</Text>
+                  <T muted>:</T>
+                  <Text style={{ color: c.b, fontWeight: "800" }}>{d.scores[1] ?? "–"}</Text>
+                </Row>
+                <T muted style={{ fontSize: 13 }}>
+                  {{ "your-turn": "Your turn!", "their-turn": `Waiting for ${partnerName(state, 1)}…`, won: "You won 🏆", lost: "They won 💪", tie: "Tie 🤝" }[status]}
+                </T>
+                {status === "your-turn" ? (
+                  <Button title="Play now" onPress={() => router.push({ pathname: "/remote-duel", params: { id: d.id } })} style={{ marginTop: 6 }} />
+                ) : null}
+              </Card>
+            );
+          })}
+          <H2>Start a new one</H2>
+        </>
+      ) : null}
 
       <LevelPicker value={levelId} unlocked={LEVELS.length} onChange={setLevelId} />
       <T muted style={{ fontSize: 13, marginBottom: 12 }}>

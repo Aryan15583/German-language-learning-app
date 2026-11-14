@@ -224,3 +224,14 @@ describe("migration", () => {
     expect(migrate({ partners: [{ id: "keep-me" }, {}] }).partners[0].id).toBe("keep-me");
   });
 });
+
+describe("achievement context", () => {
+  it("uses local progress on the same phone and my partner's reported numbers when linked", () => {
+    const { achievementContext } = jest.requireActual("../state/couple") as typeof import("../state/couple");
+    let s = named();
+    s = { ...s, partners: [{ ...s.partners[0], known: { essen: [0, 1, 2] }, unitScores: { essen: 1 } }, s.partners[1]] };
+    expect(achievementContext(s, 0, 2)).toMatchObject({ wordsKnown: 3, unitsPassed: 1, streak: 2, linked: false });
+    const linked = receive(joinWithCode(s, couple, now).state, fromMia({ kind: "stats" }), now).state;
+    expect(achievementContext(linked, 1, 0)).toMatchObject({ wordsKnown: 40, unitsPassed: 6, streak: 4, linked: true });
+  });
+});

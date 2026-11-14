@@ -157,6 +157,16 @@ export function PartnerName({ i, suffix = "" }: { i: PartnerIndex; suffix?: stri
 export function LearnerSwitch() {
   const c = usePalette();
   const { state, setLearner } = useProgress();
+  // Linked phones: each person has their own phone, so there's nothing to switch.
+  if (state.couple?.status === "linked") {
+    return (
+      <View style={[styles.switch, { backgroundColor: c.surface, borderColor: c.border }]}>
+        <View style={[styles.switchBtn, { backgroundColor: partnerColor(c, 0) }]}>
+          <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>{partnerName(state, 0)} 💞</Text>
+        </View>
+      </View>
+    );
+  }
   return (
     <View style={[styles.switch, { backgroundColor: c.surface, borderColor: c.border }]}>
       {([0, 1] as const).map((i) => {
@@ -266,7 +276,7 @@ export function Meaning({ w, lang, size = 15 }: { w: { en: string; mr: string };
   return (
     <View>
       <Text style={{ color: c.text, fontSize: size }}>{main}</Text>
-      <Text style={{ color: c.muted, fontSize: Math.round(size * 0.85) }}>{other}</Text>
+      {other ? <Text style={{ color: c.muted, fontSize: Math.round(size * 0.85) }}>{other}</Text> : null}
     </View>
   );
 }
