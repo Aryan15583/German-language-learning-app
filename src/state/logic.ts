@@ -1,10 +1,17 @@
 // Pure progress rules: no React, no storage. Everything here is unit-tested.
 import { isLang, LEVELS, levelIndex, levelUnits, type Lang, type Level, type LevelId, type SubLevel } from "../content/levels";
+import { newId, type PinHash } from "../lib/crypto";
+import { isoWeek } from "../lib/game";
+import type { SharedWord } from "../lib/link";
 
 export type PartnerIndex = 0 | 1;
 
 export type Partner = {
+  /** Random id; on linked phones it identifies who sent a message. */
+  id: string;
   name: string;
+  /** Optional PIN lock for this profile (stored only as a salted hash). */
+  pin: PinHash | null;
   /** Language this partner learns German through (meanings, quizzes, chat help). */
   lang: Lang;
   xp: number;
@@ -18,6 +25,51 @@ export type Partner = {
   examsPassed: LevelId[];
   /** Best chat result per scenario id: number of stars (1–3). */
   chatStars: Record<string, number>;
+  /** XP earned this ISO week and today, for the weekly battle and daily goal. */
+  week: { id: string; xp: number };
+  today: { date: string; xp: number };
+  counts: { messages: number; duelsWon: number };
+  /** For the partner on a linked phone: their own streak and totals, from their last message. */
+  remote: { streak: number; streakDay: string | null; wordsKnown: number; unitsPassed: number; at: number } | null;
+};
+
+export type Couple = {
+  id: string;
+  key: string;
+  /** "invited": invite sent, waiting for the partner's reply. "linked": both phones paired. */
+  status: "invited" | "linked";
+  since: number;
+  /** While invited: the 6-character code to show again. */
+  code?: string;
+  /** Who made the code ("creator") and who typed it in ("joiner"). */
+  role?: "creator" | "joiner";
+  /** The pairing (code) key, kept so the first "hello" link can still be opened or re-sent. */
+  previousKey?: string;
+};
+
+export type ChatKind = "msg" | "note" | "secret" | "word" | "duel" | "system";
+
+export type ChatItem = {
+  id: string;
+  from: PartnerIndex;
+  kind: ChatKind;
+  text: string;
+  at: number;
+  /** Secrets open when the reader's streak reaches this many days. */
+  unlockAt?: number;
+  duelId?: string;
+};
+
+/** A duel played on two phones: same questions (same seed), one after the other. */
+export type RemoteDuel = {
+  id: string;
+  topic: string;
+  seed: number;
+  startedBy: PartnerIndex;
+  /** [me, partner] — null until that person has played. */
+  scores: [number | null, number | null];
+  at: number;
+  settled: boolean;
 };
 
 export type DuelResult = { title: string; scores: [number, number]; date: string };
@@ -27,6 +79,12 @@ export type AppState = {
   learner: PartnerIndex;
   streak: { count: number; last: string | null };
   duels: DuelResult[];
+  couple: Couple | null;
+  chat: ChatItem[];
+  /** Ids of links already opened, so opening one twice does nothing. */
+  seen: string[];
+  customWords: SharedWord[];
+  remoteDuels: RemoteDuel[];
 };
 
 // ---- Rules ----
@@ -41,7 +99,9 @@ export const XP = { chatTurn: 5, chatDone: 15, flashcard: 5, correctAnswer: 2, u
 const MAX_LEVEL = LEVELS.length - 1;
 
 export const newPartner = (): Partner => ({
+  id: newId(),
   name: "",
+  pin: null,
   lang: "en",
   xp: 0,
   unlocked: 0,
@@ -49,6 +109,10 @@ export const newPartner = (): Partner => ({
   unitScores: {},
   examsPassed: [],
   chatStars: {},
+  week: { id: "", xp: 0 },
+  today: { date: "", xp: 0 },
+  counts: { messages: 0, duelsWon: 0 },
+  remote: null,
 });
 
 export const freshState = (): AppState => ({
@@ -56,6 +120,11 @@ export const freshState = (): AppState => ({
   learner: 0,
   streak: { count: 0, last: null },
   duels: [],
+  couple: null,
+  chat: [],
+  seen: [],
+  customWords: [],
+  remoteDuels: [],
 });
 
 const clampLevel = (n: unknown) => (typeof n === "number" && n >= 0 ? Math.min(Math.floor(n), MAX_LEVEL) : 0);
@@ -74,12 +143,23 @@ export function migrate(raw: unknown): AppState {
     examsPassed: p?.examsPassed ?? [],
     chatStars: p?.chatStars ?? {},
     lang: isLang(p?.lang) ? p.lang : "en",
+    id: typeof p?.id === "string" && p.id ? p.id : newId(),
+    pin: p?.pin && typeof p.pin === "object" ? p.pin : null,
+    week: p?.week ?? { id: "", xp: 0 },
+    today: p?.today ?? { date: "", xp: 0 },
+    counts: p?.counts ?? { messages: 0, duelsWon: 0 },
+    remote: p?.remote ?? null,
   });
   return {
     partners: [partner(r.partners?.[0]), partner(r.partners?.[1])],
     learner: r.learner === 1 ? 1 : 0,
     streak: r.streak ?? base.streak,
     duels: Array.isArray(r.duels) ? r.duels : [],
+    couple: r.couple && typeof r.couple === "object" ? r.couple : null,
+    chat: Array.isArray(r.chat) ? r.chat : [],
+    seen: Array.isArray(r.seen) ? r.seen : [],
+    customWords: Array.isArray(r.customWords) ? r.customWords : [],
+    remoteDuels: Array.isArray(r.remoteDuels) ? r.remoteDuels : [],
   };
 }
 
@@ -89,9 +169,21 @@ function withPartner(s: AppState, i: PartnerIndex, fn: (p: Partner) => Partner):
   return { ...s, partners };
 }
 
+/** Add XP to the total, this week and today (no streak change). */
+export function addXp(s: AppState, i: PartnerIndex, xp: number, today: string): AppState {
+  const gain = Math.max(0, xp);
+  const week = isoWeek(today);
+  return withPartner(s, i, (p) => ({
+    ...p,
+    xp: p.xp + gain,
+    week: { id: week, xp: (p.week.id === week ? p.week.xp : 0) + gain },
+    today: { date: today, xp: (p.today.date === today ? p.today.xp : 0) + gain },
+  }));
+}
+
 /** Award XP and keep the shared streak alive (one bump per calendar day). */
 export function applyPractice(s: AppState, i: PartnerIndex, xp: number, today: string, yesterday: string): AppState {
-  const next = withPartner(s, i, (p) => ({ ...p, xp: p.xp + Math.max(0, xp) }));
+  const next = addXp(s, i, xp, today);
   if (s.streak.last === today) return next;
   const count = s.streak.last === yesterday ? s.streak.count + 1 : 1;
   return { ...next, streak: { count, last: today } };
