@@ -1,11 +1,14 @@
 import { fromBase64Url, hashPin, isValidPin, newKey, open, seal, toBase64Url, verifyPin } from "../lib/crypto";
 import {
-  inviteFragment,
+  CODE_ALPHABET,
+  CODE_LENGTH,
+  coupleFromCode,
+  formatCode,
   LinkError,
   makeEnvelope,
-  makeInvite,
+  newPairCode,
+  normalizeCode,
   openEnvelope,
-  parseInvite,
   sealEnvelope,
   type Stats,
 } from "../lib/link";
@@ -81,16 +84,39 @@ describe("PIN", () => {
   });
 });
 
-describe("invites", () => {
-  it("round-trips", () => {
-    const invite = makeInvite(me, "couple1", newKey());
-    expect(parseInvite("#" + inviteFragment(invite))).toEqual(invite);
+describe("partner codes", () => {
+  it("are 6 characters without look-alikes", () => {
+    for (let i = 0; i < 200; i++) {
+      const code = newPairCode();
+      expect(code).toHaveLength(CODE_LENGTH);
+      for (const ch of code) expect(CODE_ALPHABET).toContain(ch);
+    }
+    expect(CODE_ALPHABET).not.toMatch(/[0O1IL]/);
   });
 
-  it("rejects damaged or fake invites with a friendly error", () => {
-    expect(() => parseInvite("not-base64!")).toThrow(LinkError);
-    const fake = toBase64Url(new TextEncoder().encode(JSON.stringify({ v: 1, t: "invite", couple: "c", key: "short", from: me })));
-    expect(() => parseInvite(fake)).toThrow(LinkError);
+  it("are random", () => {
+    expect(new Set(Array.from({ length: 50 }, newPairCode)).size).toBe(50);
+  });
+
+  it("accept friendly input", () => {
+    expect(normalizeCode("k7m-2qx")).toBe("K7M2QX");
+    expect(normalizeCode(" K7M 2QX ")).toBe("K7M2QX");
+    expect(formatCode("K7M2QX")).toBe("K7M-2QX");
+  });
+
+  it("reject wrong lengths and look-alike characters", () => {
+    expect(normalizeCode("K7M2Q")).toBeNull();
+    expect(normalizeCode("K7M2QXX")).toBeNull();
+    expect(normalizeCode("K0M2QX")).toBeNull();
+    expect(normalizeCode("K7M2Q!")).toBeNull();
+  });
+
+  it("give both phones the same couple id and key", () => {
+    const a = coupleFromCode("K7M2QX", 1000);
+    expect(coupleFromCode("K7M2QX", 1000)).toEqual(a);
+    expect(a.id).toMatch(/^[A-Za-z0-9_-]{16}$/);
+    expect(fromBase64Url(a.key)).toHaveLength(32);
+    expect(coupleFromCode("K7M2QY", 1000).key).not.toBe(a.key);
   });
 });
 
@@ -102,6 +128,21 @@ describe("messages", () => {
     const env = makeEnvelope("couple1", me, stats, { kind: "msg", text: "Guten Morgen, Schatz!" }, now);
     const back = openEnvelope(key, "couple1", "#" + sealEnvelope(key, env), now);
     expect(back).toEqual(env);
+  });
+
+  it("carries a fresh key in the hello message", () => {
+    const fresh = newKey();
+    const hello = makeEnvelope("couple1", me, stats, { kind: "hello", key: fresh }, now);
+    expect(openEnvelope(key, "couple1", sealEnvelope(key, hello), now)).toMatchObject({ kind: "hello", key: fresh });
+    const bad = { ...hello, key: "short" };
+    expect(() => openEnvelope(key, "couple1", sealEnvelope(key, bad), now)).toThrow(LinkError);
+  });
+
+  it("carries remote duel moves", () => {
+    const duel = makeEnvelope("couple1", me, stats, { kind: "duel", duel: { id: "d1", topic: "mix-A1", seed: 12345, score: 5 } }, now);
+    expect(openEnvelope(key, "couple1", sealEnvelope(key, duel), now)).toMatchObject({ kind: "duel", duel: { seed: 12345, score: 5 } });
+    const cheat = { ...duel, duel: { id: "d1", topic: "mix-A1", seed: 12345, score: 999 } };
+    expect(() => openEnvelope(key, "couple1", sealEnvelope(key, cheat), now)).toThrow(LinkError);
   });
 
   it("supports secrets and shared words", () => {

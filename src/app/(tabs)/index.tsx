@@ -1,11 +1,13 @@
 import { router } from "expo-router";
-import { Pressable, Text, View } from "react-native";
-import { Card, Grid, H1, H2, LangPicker, PartnerName, ProgressBar, Row, Screen, SpeakButton, T, Tile } from "../../components/ui";
+import { useState } from "react";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
+import { Button, Card, Chip, Grid, H1, H2, LangPicker, PartnerName, ProgressBar, Row, Screen, SpeakButton, T, Tile } from "../../components/ui";
 import { LEVELS, levelWords } from "../../content/levels";
 import { partnerColor, usePalette } from "../../lib/theme";
 import { romanizeMarathi } from "../../lib/romanize";
 import { dailyIndex } from "../../lib/util";
-import { currentStreak, currentSubLevel, levelProgress, partnerName, today, useProgress } from "../../state/progress";
+import { ACHIEVEMENTS, DAILY_GOAL, earnedAchievements, heartLevel, isoWeek, weeklyLeader } from "../../lib/game";
+import { couple, currentStreak, currentSubLevel, levelProgress, partnerName, today, useProgress, type PartnerIndex } from "../../state/progress";
 
 export default function Home() {
   const c = usePalette();
@@ -31,6 +33,8 @@ export default function Home() {
         <Stat value={String(pa.xp)} label={`${partnerName(state, 0)} XP`} color={c.a} />
         <Stat value={String(pb.xp)} label={`${partnerName(state, 1)} XP`} color={c.b} />
       </Card>
+
+      <Competition />
 
       <Card>
         <T muted style={{ fontSize: 13 }}>Satz des Tages · Phrase of the day · {shared.id}</T>
@@ -97,6 +101,8 @@ export default function Home() {
         </T>
       </Card>
 
+      <PinSettings />
+
       <Pressable
         accessibilityRole="button"
         onPress={() => {
@@ -120,5 +126,144 @@ function Stat({ value, label, color }: { value: string; label: string; color?: s
         {label}
       </Text>
     </View>
+  );
+}
+
+/** Hearts level, daily goal, weekly battle and badges. */
+function Competition() {
+  const c = usePalette();
+  const { state } = useProgress();
+  const me: PartnerIndex = couple.isLinked(state) ? 0 : state.learner;
+  const other: PartnerIndex = me === 0 ? 1 : 0;
+  const p = state.partners[me];
+  const hearts = heartLevel(p.xp);
+  const day = today();
+  const todayXp = p.today.date === day ? p.today.xp : 0;
+  const week = isoWeek(day);
+  const weekXp = (i: PartnerIndex) => (state.partners[i].week.id === week ? state.partners[i].week.xp : 0);
+  const leader = weeklyLeader(weekXp(me), weekXp(other));
+  const streak = currentStreak(state);
+  const earned = earnedAchievements(couple.achievementContext(state, me, streak));
+
+  return (
+    <Card>
+      <Row>
+        <Text style={{ fontSize: 26 }}>❤️</Text>
+        <View style={{ flex: 1 }}>
+          <T style={{ fontWeight: "800" }}>
+            Lv {hearts.level} · {hearts.title}
+          </T>
+          <ProgressBar value={hearts.progress} color={partnerColor(c, me)} />
+          <T muted style={{ fontSize: 12 }}>
+            {hearts.into} / {hearts.span} XP to the next heart
+          </T>
+        </View>
+      </Row>
+
+      <View style={{ marginTop: 12 }}>
+        <T style={{ fontWeight: "700" }}>
+          🎯 Daily goal {todayXp >= DAILY_GOAL ? "✓ geschafft!" : `${todayXp} / ${DAILY_GOAL} XP`}
+        </T>
+        <ProgressBar value={todayXp / DAILY_GOAL} color={todayXp >= DAILY_GOAL ? c.good : c.accent} />
+      </View>
+
+      <View style={{ marginTop: 10 }}>
+        <T style={{ fontWeight: "700" }}>⚔️ Weekly battle</T>
+        <Row style={{ marginTop: 4 }}>
+          <Text style={{ color: partnerColor(c, me), fontWeight: "900", fontSize: 20 }}>{weekXp(me)}</Text>
+          <T muted>vs</T>
+          <Text style={{ color: partnerColor(c, other), fontWeight: "900", fontSize: 20 }}>{weekXp(other)}</Text>
+          <View style={{ flex: 1 }} />
+          <T style={{ fontSize: 13 }}>
+            {leader === "tie" ? "Gleichstand 🤝" : leader === "me" ? `${partnerName(state, me)} leads 👑` : `${partnerName(state, other)} leads 🔥`}
+          </T>
+        </Row>
+      </View>
+
+      <Pressable accessibilityRole="button" onPress={() => router.push("/badges")} style={{ marginTop: 12 }}>
+        <Row>
+          <T style={{ fontWeight: "700" }}>🏅 Badges</T>
+          <Text style={{ fontSize: 18, flexShrink: 1 }}>{earned.length ? earned.map((a) => a.emoji).join(" ") : "—"}</Text>
+          <View style={{ flex: 1 }} />
+          <T muted style={{ fontSize: 13 }}>
+            {earned.length}/{ACHIEVEMENTS.length} ›
+          </T>
+        </Row>
+      </Pressable>
+    </Card>
+  );
+}
+
+/** Optional PIN for each profile on this phone. */
+function PinSettings() {
+  const c = usePalette();
+  const { state, setPin } = useProgress();
+  const people: PartnerIndex[] = couple.isLinked(state) ? [0] : [0, 1];
+  const [editing, setEditing] = useState<PartnerIndex | null>(null);
+  const [pin, setPinText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+
+  return (
+    <>
+      <H2>Privacy 🔐</H2>
+      <Card>
+        {people.map((i) => (
+          <Row key={i} style={{ marginVertical: 4 }}>
+            <View style={{ minWidth: 70 }}>
+              <PartnerName i={i} />
+            </View>
+            <T muted style={{ flex: 1, fontSize: 13 }}>{state.partners[i].pin ? "PIN on 🔒" : "No PIN"}</T>
+            <Chip label={state.partners[i].pin ? "Change" : "Set PIN"} onPress={() => setEditing(i)} />
+            {state.partners[i].pin ? (
+              <Chip
+                label="Remove"
+                onPress={async () => {
+                  await setPin(i, null);
+                  setNote("PIN removed.");
+                }}
+              />
+            ) : null}
+          </Row>
+        ))}
+        {editing !== null ? (
+          <View style={{ marginTop: 8 }}>
+            <TextInput
+              value={pin}
+              onChangeText={(t) => setPinText(t.replace(/\D/g, "").slice(0, 8))}
+              keyboardType="number-pad"
+              secureTextEntry
+              placeholder="New PIN (4–8 digits)"
+              placeholderTextColor={c.muted}
+              accessibilityLabel="New PIN"
+              style={{ borderWidth: 1, borderColor: c.border, borderRadius: 12, padding: 12, color: c.text, backgroundColor: c.bg, fontSize: 18, letterSpacing: 4 }}
+            />
+            <Row style={{ marginTop: 8 }}>
+              {busy ? (
+                <ActivityIndicator color={c.accent} />
+              ) : (
+                <Button
+                  title="Save PIN"
+                  disabled={pin.length < 4}
+                  onPress={async () => {
+                    setBusy(true);
+                    await setPin(editing, pin);
+                    setBusy(false);
+                    setEditing(null);
+                    setPinText("");
+                    setNote("PIN saved. The app asks for it next time it opens.");
+                  }}
+                />
+              )}
+              <Button title="Cancel" variant="secondary" onPress={() => setEditing(null)} />
+            </Row>
+          </View>
+        ) : null}
+        {note ? <T muted style={{ marginTop: 6, fontSize: 13 }}>{note}</T> : null}
+        <T muted style={{ fontSize: 12, marginTop: 6 }}>
+          The PIN is stored only as a salted, slow hash on this phone. It can’t be recovered — forgetting it means resetting the app.
+        </T>
+      </Card>
+    </>
   );
 }

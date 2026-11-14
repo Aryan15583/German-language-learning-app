@@ -42,6 +42,30 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck and tests on every push.
 
 Progress is saved on the device with AsyncStorage.
 
+## Together from anywhere 🌍
+Link your two phones with a **6-character partner code** (Us tab). Then:
+- **Chat** inside the app, including love notes, quick German phrases and **secrets** that unlock at a 7-day streak.
+- **Remote duels**: play a round in Mumbai, and your partner in the USA gets the exact same questions in their own language.
+- **Weekly XP battle, daily goal, hearts levels and achievements**, with each other's progress synced in every message.
+- **Our words**: phrases you add appear on both phones and can be practised with flashcards.
+- **PIN lock** per profile, and the app **installs to the home screen** and works offline.
+
+Everything is **end-to-end encrypted** (XChaCha20-Poly1305) with a key only your two phones know. Messages pass through a tiny **zero-knowledge relay** that only ever stores scrambled data. See [SECURITY.md](SECURITY.md).
+
+### Turn on in-app delivery (free Supabase relay, ~5 minutes)
+Without this, the app still works: messages travel as secure links you share yourself.
+1. Create a free project at **supabase.com**. A region near one of you works well (e.g. Mumbai).
+2. In the project, open **SQL Editor**, paste the contents of [`supabase/migrations/0001_relay.sql`](supabase/migrations/0001_relay.sql) and click **Run**.
+3. Go to **Project Settings → API** and copy the **Project URL** and the **publishable/anon key**. That key is public by design: it can only call the two relay functions.
+4. In **Vercel → Settings → Environment Variables**, add:
+   | Name | Value |
+   |---|---|
+   | `EXPO_PUBLIC_RELAY_URL` | your Project URL, e.g. `https://abcd1234.supabase.co` |
+   | `EXPO_PUBLIC_RELAY_KEY` | the publishable/anon key |
+5. **Redeploy**. The Us tab now shows 🟢 live.
+
+Free Supabase projects pause after a week with no activity. If that happens, open the project and click **Restore**.
+
 ## Deploy the web version (Vercel)
 `vercel.json` is already set up: Vercel runs `npm run build:web` (Expo web export) and serves `dist/`, sending every route to the single-page app.
 
@@ -52,7 +76,7 @@ Progress is saved on the device with AsyncStorage.
 Or from a terminal: `npx vercel` (preview) and `npx vercel --prod` (live).
 
 ## Security
-Static app with no server, accounts, keys or trackers. Strict browser security headers, CodeQL, Dependabot and a dependency audit in CI. See [SECURITY.md](SECURITY.md).
+End-to-end encrypted couple link, zero-knowledge relay, PIN lock, no accounts, AI or trackers. Strict browser security headers, CodeQL, Dependabot, a dependency audit and relay SQL security tests in CI. See [SECURITY.md](SECURITY.md).
 
 ## Project layout
 ```
@@ -66,9 +90,19 @@ src/app/                 Screens (Expo Router: every file is a route)
   duel/[topicId]         Pass-the-phone duel
   dialogue/[id]          Role-play scene
   chat/[id]              Guided chat
+  (tabs)/us.tsx          Couple link: code pairing, chat, secrets, weekly battle
+  remote-duel.tsx        Duel across two phones
+  words.tsx · badges.tsx Our words · achievements
+  baiko.tsx              🤫
   setup.tsx              Names + starting levels
 src/content/levels.ts    All course content: levels → sub-levels → units (German, English, Marathi)  ← add words here
 src/content/chats.ts     Chat scenarios
+src/lib/crypto.ts        Encryption, PIN hashing (audited @noble libraries)
+src/lib/link.ts          Partner codes, message format and strict validation
+src/lib/relay.ts         Zero-knowledge relay client
+src/lib/game.ts          Hearts levels, daily goal, weekly battle, achievements
+src/state/couple.ts      Pairing, chat, shared words, remote duels (pure, tested)
+supabase/                Relay SQL + its security tests
 src/lib/chat.ts          Chat engine (matching typed replies, coaching, stars)
 src/state/logic.ts       Pure progress rules (streak, unit scores, exams, placement)
 src/state/progress.tsx   React context + saving to AsyncStorage
