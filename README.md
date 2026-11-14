@@ -1,4 +1,6 @@
-# Zusammen 👉👈 — German for Couples
+# Zwei Herzen ♡ Until Berlin
+
+Two hearts learning German together, all the way to Berlin. 💞
 
 A mobile app for two people learning German together, built with **React Native + Expo** (Expo Router, TypeScript). It runs on iOS, Android and the web.
 

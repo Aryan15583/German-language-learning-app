@@ -33,7 +33,7 @@ export default function TabsLayout() {
         sceneStyle: { backgroundColor: c.bg },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "Zusammen 👉👈", tabBarLabel: "Home", tabBarIcon: icon("🏠") }} />
+      <Tabs.Screen name="index" options={{ title: "Zwei Herzen ♡", tabBarLabel: "Home", tabBarIcon: icon("🏠") }} />
       <Tabs.Screen name="learn" options={{ title: "Learn", tabBarIcon: icon("📚") }} />
       <Tabs.Screen name="duel" options={{ title: "Duel", tabBarIcon: icon("⚔️") }} />
       <Tabs.Screen name="talk" options={{ title: "Talk", tabBarIcon: icon("💬") }} />

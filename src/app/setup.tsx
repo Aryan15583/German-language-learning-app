@@ -52,6 +52,7 @@ export default function Setup() {
   return (
     <Screen>
       <H1>Willkommen! 👋</H1>
+      <T style={{ fontWeight: "800", color: "#E2557A", marginBottom: 4 }}>Zwei Herzen ♡ Until Berlin</T>
       <T muted>Learn German together — practise side by side, quiz each other, chat, and send sweet notes in German. मराठीतूनही शिका!</T>
 
       <H2>You</H2>

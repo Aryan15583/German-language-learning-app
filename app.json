@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Zusammen",
-    "slug": "zusammen",
+    "name": "Zwei Herzen ♡ Until Berlin",
+    "slug": "zwei-herzen-until-berlin",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,15 +20,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "name": "Zusammen — German for couples",
-      "shortName": "Zusammen",
-      "description": "Learn German together: levels A1–C2, chat practice, duels, and Marathi support.",
+      "name": "Zwei Herzen ♡ Until Berlin",
+      "shortName": "Zwei Herzen",
+      "description": "Two hearts learning German together, all the way to Berlin: levels A1–C2, chat practice, duels and Marathi support.",
       "themeColor": "#E2557A",
       "backgroundColor": "#FFF7F5"
     },
     "plugins": [
       "expo-router"
     ],
-    "scheme": "zusammen"
+    "scheme": "zweiherzen"
   }
 }

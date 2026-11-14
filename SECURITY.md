@@ -1,6 +1,6 @@
 # Security
 
-Zusammen is a private, personal app. This page explains how it is protected.
+Zwei Herzen ♡ Until Berlin is a private, personal app. This page explains how it is protected.
 
 ## How the app is built
 - **No server, no accounts, no API keys.** The web app is static files on Vercel. Nothing is sent anywhere: progress lives only in the browser's local storage on each device.
