@@ -5,6 +5,7 @@ import { AccessibilityInfo, Animated, Easing, Platform, Pressable, StyleSheet, T
 // 🤫 Hidden easter egg. Opened by tapping the ♡ in the title five times.
 
 const MESSAGE = "For my Baiko";
+const CARD_WHITE = "#FFF7F5";
 const HEARTS = ["💕", "💖", "💗", "❤️", "💞", "♡", "💓"];
 const native = Platform.OS !== "web";
 
@@ -148,7 +149,13 @@ export default function Baiko() {
           <Text style={{ opacity: typed.length < MESSAGE.length ? 1 : 0 }}>|</Text>
         </Text>
         <Animated.View style={{ opacity: after, transform: [{ translateY: after.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
-          <Text style={styles.marathi}>माझ्या बायकोसाठी 💞</Text>
+          <Text selectable style={styles.marathi}>
+            माझ्या बायकोसाठी 💞
+          </Text>
+          {/* Hidden in the card's own white: it only shows when she selects the text. */}
+          <Text selectable style={styles.hidden}>
+            Shreya, I love you ♡
+          </Text>
           <Text style={styles.german}>Mit all meiner Liebe — bis Berlin und weiter.</Text>
           <Text style={styles.small}>Zwei Herzen ♡ Until Berlin</Text>
         </Animated.View>
@@ -163,7 +170,7 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(43, 10, 24, 0.86)", alignItems: "center", justifyContent: "center", overflow: "hidden", padding: 24 },
   glow: { position: "absolute", width: 320, height: 320, borderRadius: 160, backgroundColor: "#FF7A9C" },
   card: {
-    backgroundColor: "#FFF7F5",
+    backgroundColor: CARD_WHITE,
     borderRadius: 28,
     paddingVertical: 32,
     paddingHorizontal: 28,
@@ -178,6 +185,7 @@ const styles = StyleSheet.create({
   heart: { fontSize: 64 },
   title: { fontSize: 34, fontWeight: "900", color: "#E2557A", marginTop: 8, textAlign: "center", fontFamily: Platform.select({ ios: "Georgia", default: "serif" }) },
   marathi: { fontSize: 20, color: "#2B1D22", textAlign: "center", marginTop: 12, fontWeight: "700" },
+  hidden: { fontSize: 16, color: CARD_WHITE, textAlign: "center", marginTop: 4, fontWeight: "700", userSelect: "text" },
   german: { fontSize: 15, color: "#7A6870", textAlign: "center", marginTop: 8, fontStyle: "italic" },
   small: { fontSize: 12, color: "#B8A6AD", textAlign: "center", marginTop: 16, letterSpacing: 1 },
   hint: { position: "absolute", bottom: 40, color: "#FBE1E8", fontSize: 12 },
