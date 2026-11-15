@@ -283,3 +283,26 @@ export function Meaning({ w, lang, size = 15 }: { w: { en: string; mr: string };
     </View>
   );
 }
+
+/** A big, friendly, full-width button. */
+export function BigButton({ title, onPress, color, large }: { title: string; onPress: () => void; color: string; large?: boolean }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title.replace(/[▶👍]/g, "").trim()}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        alignSelf: "stretch",
+        backgroundColor: color,
+        borderRadius: 18,
+        paddingVertical: large ? 20 : 14,
+        alignItems: "center",
+        marginTop: 14,
+        opacity: pressed ? 0.85 : 1,
+        transform: [{ scale: pressed ? 0.98 : 1 }],
+      })}
+    >
+      <Text style={{ color: "#fff", fontSize: large ? 24 : 18, fontWeight: "900" }}>{title}</Text>
+    </Pressable>
+  );
+}

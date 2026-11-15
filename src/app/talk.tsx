@@ -1,9 +1,9 @@
 import { router } from "expo-router";
 import { Fragment } from "react";
-import { Grid, H1, H2, PartnerName, Screen, T, Tile } from "../../components/ui";
-import { CHATS } from "../../content/chats";
-import { DIALOGUES, LANGS, LEVELS } from "../../content/levels";
-import { useProgress } from "../../state/progress";
+import { Grid, H1, H2, PartnerName, Screen, T, Tile } from "../components/ui";
+import { CHATS } from "../content/chats";
+import { DIALOGUES, LANGS, LEVELS } from "../content/levels";
+import { useProgress } from "../state/progress";
 
 export default function Talk() {
   const { state } = useProgress();

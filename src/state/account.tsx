@@ -5,7 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
 import { accountsEnabled, fetchAuthSettings, supabase, type AuthSettings } from "../lib/supabase";
-import { deriveVaultKey, newSalt, openBackup, sealBackup } from "../lib/vault";
+import { cloudIsNewer, deriveVaultKey, newSalt, openBackup, sealBackup } from "../lib/vault";
 
 export type Phase = "loading" | "off" | "signed-out" | "unlock" | "recovery" | "ready";
 export type Provider = "email" | "google";
@@ -118,6 +118,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         v = { salt: row.salt, key: deriveVaultKey(password, row.salt) };
         try {
           restored = openBackup(v.key, row.blob);
+          // Keep this phone's copy if it has newer, not-yet-uploaded changes.
+          const local = await AsyncStorage.getItem(stateKey(acct.id)).catch(() => null);
+          if (!cloudIsNewer(local ? JSON.parse(local) : null, restored)) restored = null;
         } catch {
           return {
             ok: false,
@@ -173,10 +176,15 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         return setPhase((p) => (p === "recovery" ? p : "unlock"));
       }
       vault.current = JSON.parse(saved) as Vault;
-      // Prefer the cloud copy (it may be newer, e.g. from another phone); fall back to this phone's copy offline.
+      // Use whichever copy is newer: the cloud's (e.g. changes from another phone) or this phone's
+      // (e.g. changes made just before the app was closed). Offline: this phone's copy.
       try {
         const row = await fetchRow(user.id);
-        if (row && row.salt === vault.current.salt) setInitialState(openBackup(vault.current.key, row.blob));
+        if (row && row.salt === vault.current.salt) {
+          const cloud = openBackup(vault.current.key, row.blob);
+          const local = await AsyncStorage.getItem(stateKey(user.id)).catch(() => null);
+          if (cloudIsNewer(local ? JSON.parse(local) : null, cloud)) setInitialState(cloud);
+        }
       } catch {
         // offline or not decryptable: use the local copy
       }
@@ -205,6 +213,20 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       setBackup("error");
     }
   }, [account, upload]);
+
+  // Leaving the page: try to save right away instead of waiting for the timer.
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const onHide = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  }, [flush]);
 
   const value = useMemo<Ctx>(
     () => ({

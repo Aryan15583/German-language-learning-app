@@ -1,11 +1,11 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { Text } from "react-native";
-import { Button, Card, Chip, Grid, H1, H2, LevelPicker, PartnerName, Row, Screen, T, Tile } from "../../components/ui";
-import { resolveTopic } from "../../lib/topics";
-import { LEVELS, type LevelId } from "../../content/levels";
-import { usePalette } from "../../lib/theme";
-import { couple, partnerName, useProgress } from "../../state/progress";
+import { Button, Card, Chip, Grid, H1, H2, LevelPicker, PartnerName, Row, Screen, T, Tile } from "../components/ui";
+import { resolveTopic } from "../lib/topics";
+import { LEVELS, type LevelId } from "../content/levels";
+import { usePalette } from "../lib/theme";
+import { couple, partnerName, useProgress } from "../state/progress";
 
 export default function DuelHome() {
   const c = usePalette();
@@ -34,7 +34,7 @@ export default function DuelHome() {
         <Card style={{ marginTop: 8 }}>
           <T style={{ fontWeight: "800" }}>🌍 Duel your partner from anywhere</T>
           <T muted style={{ marginVertical: 6 }}>Link with your partner first: one of you gets a 6-character code in the Us tab, the other enters it.</T>
-          <Button title="💞 Go to Us" onPress={() => router.navigate("/us")} />
+          <Button title="💞 Go to Us" onPress={() => router.replace("/us")} />
         </Card>
       ) : null}
       {linked && !accountMode ? (

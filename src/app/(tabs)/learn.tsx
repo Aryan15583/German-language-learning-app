@@ -1,137 +1,146 @@
 import { router } from "expo-router";
-import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
-import { Button, Card, Grid, H1, H2, LevelPicker, PartnerName, ProgressBar, Row, Screen, T, Tile } from "../../components/ui";
-import { LEVELS, levelIndex, type LevelId } from "../../content/levels";
-import { partnerColor, usePalette } from "../../lib/theme";
-import {
-  examReady,
-  EXAM_PASS,
-  isLocked,
-  knownInUnit,
-  levelProgress,
-  subLevelProgress,
-  unitPassed,
-  useProgress,
-} from "../../state/progress";
+import { useEffect, useState } from "react";
+import { Animated, Platform, Pressable, Text, View } from "react-native";
+import { Button, Card, LevelPicker, ProgressBar, Screen, T } from "../../components/ui";
+import { LEVELS, levelIndex, type LevelId, type Topic } from "../../content/levels";
+import { unitState, type UnitState } from "../../lib/path";
+import { usePalette } from "../../lib/theme";
+import { examReady, isLocked, levelProgress, useProgress } from "../../state/progress";
 
+const native = Platform.OS !== "web";
+// Bubbles zig-zag gently down the screen, like a game map.
+const OFFSETS = [0, 60, 0, -60];
+
+/** The learning path: big bubbles to tap, one after another. */
 export default function Learn() {
   const c = usePalette();
   const { state } = useProgress();
-  const i = state.learner;
-  const p = state.partners[i];
-  // Each partner keeps their own selected level; default is their current level.
-  const [selected, setSelected] = useState<[LevelId | null, LevelId | null]>([null, null]);
-  const levelId = selected[i] ?? LEVELS[p.unlocked].id;
-  const setLevelId = (id: LevelId) => setSelected((s) => (i === 0 ? [id, s[1]] : [s[0], id]));
-
-  const level = LEVELS[levelIndex(levelId)];
+  const p = state.partners[state.learner];
+  const [picked, setPicked] = useState<LevelId | null>(null);
+  const level = LEVELS[levelIndex(picked ?? LEVELS[p.unlocked].id)];
   const locked = isLocked(p, level);
   const prog = levelProgress(p, level);
-  const passedExam = p.examsPassed.includes(level.id);
+  const passed = p.examsPassed.includes(level.id);
   const ready = examReady(p, level);
-  const openExam = () => router.push({ pathname: "/exam/[levelId]", params: { levelId: level.id } });
+  const openTest = () => router.push({ pathname: "/exam/[levelId]", params: { levelId: level.id } });
+  let n = 0;
 
   return (
     <Screen>
-      <H1>Learn 📚</H1>
-      <T muted>
-        Studying as <PartnerName i={i} /> — switch at the top right.
-      </T>
-
-      <LevelPicker value={levelId} unlocked={p.unlocked} onChange={setLevelId} />
+      <Text style={{ color: c.text, fontSize: 26, fontWeight: "900" }}>Your path 🗺️</Text>
+      <LevelPicker value={level.id} unlocked={p.unlocked} onChange={setPicked} />
 
       <Card>
-        <Row>
-          <T style={{ fontWeight: "800", fontSize: 17 }}>
-            {level.id} · {level.name}
-          </T>
-          {passedExam ? <Text>🎓</Text> : null}
-        </Row>
-        <T muted>{level.blurb}</T>
-        <ProgressBar value={prog.share} color={partnerColor(c, i)} />
+        <Text style={{ color: c.text, fontSize: 18, fontWeight: "800" }}>
+          {level.id} · {level.name} {passed ? "🎓" : ""}
+        </Text>
+        <ProgressBar value={prog.share} />
         <T muted style={{ fontSize: 13 }}>
-          {prog.passed} of {prog.total} unit tests passed
+          {prog.passed} of {prog.total} done
         </T>
       </Card>
 
       {locked ? (
-        <Card>
-          <T style={{ fontWeight: "700" }}>🔒 {level.id} is locked</T>
-          <T muted style={{ marginVertical: 8 }}>
-            Pass the {LEVELS[levelIndex(level.id) - 1].id} exam to unlock it — or, if you already know this level, test out
-            by passing the {level.id} exam now.
+        <Card style={{ alignItems: "center" }}>
+          <Text style={{ fontSize: 40 }}>🔒</Text>
+          <T style={{ fontWeight: "800", textAlign: "center" }}>Not open yet</T>
+          <T muted style={{ textAlign: "center", marginVertical: 6 }}>
+            Finish {LEVELS[levelIndex(level.id) - 1].id} first. Already know {level.id}? You can skip ahead by passing its big test.
           </T>
-          <Button title={`Test out: take the ${level.id} exam`} variant="secondary" onPress={openExam} />
+          <Button title={`Try the ${level.id} big test`} variant="secondary" onPress={openTest} />
         </Card>
-      ) : null}
-
-      {level.subLevels.map((sub) => {
-        const sp = subLevelProgress(p, sub);
-        return (
-          <View key={sub.id}>
-            <H2>
-              {sub.id} · {sub.title} {sp.done ? "✓" : ""}
-            </H2>
-            <T muted style={{ fontSize: 13, marginTop: -4, marginBottom: 8 }}>
-              {sp.passed} / {sp.total} units passed
-            </T>
-            <Grid>
+      ) : (
+        <View style={{ alignItems: "center", paddingVertical: 8 }}>
+          {level.subLevels.map((sub, k) => (
+            <View key={sub.id} style={{ alignItems: "center", width: "100%" }}>
+              <T muted style={{ fontWeight: "800", marginTop: k ? 18 : 4, marginBottom: 6 }}>
+                Part {k + 1} · {sub.title}
+              </T>
               {sub.units.map((u) => (
-                <Tile
-                  key={u.id}
-                  emoji={unitPassed(p, u.id) ? "⭐" : u.emoji}
-                  title={u.title}
-                  locked={locked}
-                  subtitle={
-                    unitPassed(p, u.id)
-                      ? `Passed · best ${Math.round((p.unitScores[u.id] ?? 0) * 100)}%`
-                      : `${knownInUnit(p, u.id)} / ${u.words.length} words known`
-                  }
-                  onPress={() => {
-                    if (!locked) router.push({ pathname: "/unit/[topicId]", params: { topicId: u.id } });
-                  }}
-                />
+                <Bubble key={u.id} unit={u} state={unitState(p, u)} offset={OFFSETS[n++ % OFFSETS.length]} />
               ))}
-            </Grid>
-          </View>
-        );
-      })}
+            </View>
+          ))}
 
-      {!locked ? (
-        <>
-          <H2>🎓 {level.id} exam</H2>
-          <Card>
-            {passedExam ? (
-              <T>
-                Bestanden! You passed the {level.id} exam
-                {levelIndex(level.id) < LEVELS.length - 1 ? ` and unlocked ${LEVELS[levelIndex(level.id) + 1].id}.` : " — that's mastery!"}
-              </T>
-            ) : (
-              <T muted>
-                {ready
-                  ? `All units passed — you're ready! Score ${Math.round(EXAM_PASS * 100)}% to pass.`
-                  : `Pass all ${prog.total} unit tests to unlock the exam (${prog.passed}/${prog.total}).`}
-              </T>
-            )}
-            <Button
-              title={passedExam ? "Retake exam" : "Take the exam"}
-              variant={passedExam ? "secondary" : "primary"}
-              disabled={!ready && !passedExam}
-              onPress={openExam}
-              style={{ marginTop: 10 }}
-            />
-          </Card>
-        </>
-      ) : null}
-
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.push("/placement")}
-        style={{ alignSelf: "center", marginTop: 16, padding: 8 }}
-      >
-        <T muted style={{ fontSize: 13, textDecorationLine: "underline" }}>Not sure of your level? Take the placement test</T>
-      </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${level.id} big test`}
+            onPress={ready || passed ? openTest : undefined}
+            style={{ alignItems: "center", marginTop: 22, opacity: ready || passed ? 1 : 0.45 }}
+          >
+            <View
+              style={{
+                width: 104,
+                height: 104,
+                borderRadius: 52,
+                backgroundColor: passed ? "#F5C542" : ready ? c.accent : c.border,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ fontSize: 46 }}>{ready || passed ? "🎓" : "🔒"}</Text>
+            </View>
+            <Text style={{ color: c.text, fontWeight: "900", marginTop: 6 }}>Big test</Text>
+            <T muted style={{ fontSize: 12, textAlign: "center" }}>
+              {passed ? "Passed! 🎉" : ready ? "You’re ready — tap to start" : "Finish all bubbles first"}
+            </T>
+          </Pressable>
+        </View>
+      )}
     </Screen>
+  );
+}
+
+function Bubble({ unit, state, offset }: { unit: Topic; state: UnitState; offset: number }) {
+  const c = usePalette();
+  const [pulse] = useState(() => new Animated.Value(1));
+
+  useEffect(() => {
+    if (state !== "next") return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.08, duration: 700, useNativeDriver: native }),
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: native }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [state, pulse]);
+
+  const bg = state === "done" ? "#F5C542" : state === "next" ? c.accent : c.surface;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${unit.title}${state === "done" ? ", done" : state === "next" ? ", start here" : ""}`}
+      onPress={() => router.push({ pathname: "/unit/[topicId]", params: { topicId: unit.id } })}
+      style={{ alignItems: "center", marginVertical: 8, transform: [{ translateX: offset }] }}
+    >
+      <Animated.View
+        style={{
+          width: 88,
+          height: 88,
+          borderRadius: 44,
+          backgroundColor: bg,
+          borderWidth: state === "open" ? 3 : 0,
+          borderColor: c.border,
+          alignItems: "center",
+          justifyContent: "center",
+          transform: [{ scale: pulse }],
+          shadowColor: state === "next" ? c.accent : "transparent",
+          shadowOpacity: 0.5,
+          shadowRadius: 12,
+          elevation: state === "next" ? 6 : 0,
+        }}
+      >
+        <Text style={{ fontSize: 38 }}>{unit.emoji}</Text>
+        {state === "done" ? <Text style={{ position: "absolute", top: -4, right: -4, fontSize: 22 }}>⭐</Text> : null}
+      </Animated.View>
+      {state === "next" ? (
+        <View style={{ backgroundColor: c.accent, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2, marginTop: -10 }}>
+          <Text style={{ color: c.onAccent, fontWeight: "900", fontSize: 12 }}>START</Text>
+        </View>
+      ) : null}
+      <Text style={{ color: c.text, fontWeight: "800", marginTop: 4, maxWidth: 160, textAlign: "center" }}>{unit.title}</Text>
+    </Pressable>
   );
 }

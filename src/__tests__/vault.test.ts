@@ -1,4 +1,4 @@
-import { deriveVaultKey, emailProblem, newSalt, openBackup, passwordProblem, sealBackup } from "../lib/vault";
+import { cloudIsNewer, deriveVaultKey, emailProblem, newSalt, openBackup, passwordProblem, sealBackup } from "../lib/vault";
 
 describe("vault", () => {
   const salt = newSalt();
@@ -48,5 +48,20 @@ describe("account input checks", () => {
     expect(emailProblem(" shreya@example.com ")).toBeNull();
     expect(emailProblem("shreya@")).not.toBeNull();
     expect(emailProblem("no spaces@example.com")).not.toBeNull();
+  });
+});
+
+describe("choosing between this phone and the cloud", () => {
+  it("keeps this phone's newer, not-yet-uploaded changes", () => {
+    expect(cloudIsNewer({ updatedAt: 2000 }, { updatedAt: 1000 })).toBe(false);
+  });
+  it("takes the cloud copy when it's newer (e.g. from another phone) or equal", () => {
+    expect(cloudIsNewer({ updatedAt: 1000 }, { updatedAt: 2000 })).toBe(true);
+    expect(cloudIsNewer({ updatedAt: 1000 }, { updatedAt: 1000 })).toBe(true);
+  });
+  it("handles a missing copy on either side", () => {
+    expect(cloudIsNewer(null, { updatedAt: 1 })).toBe(true);
+    expect(cloudIsNewer({ updatedAt: 1 }, null)).toBe(false);
+    expect(cloudIsNewer({}, {})).toBe(true);
   });
 });

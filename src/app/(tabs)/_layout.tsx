@@ -8,7 +8,7 @@ import { useProgress } from "../../state/progress";
 
 const icon = (emoji: string) =>
   function TabIcon({ focused }: { focused: boolean }) {
-    return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.6 }}>{emoji}</Text>;
+    return <Text style={{ fontSize: focused ? 28 : 24, opacity: focused ? 1 : 0.55 }}>{emoji}</Text>;
   };
 
 export default function TabsLayout() {
@@ -31,18 +31,18 @@ export default function TabsLayout() {
         ),
         tabBarActiveTintColor: c.accent,
         tabBarInactiveTintColor: c.muted,
-        tabBarStyle: { backgroundColor: c.surface, borderTopColor: c.border },
+        tabBarStyle: { backgroundColor: c.surface, borderTopColor: c.border, height: 72, paddingTop: 6 },
+        tabBarLabelStyle: { fontSize: 13, fontWeight: "800" },
         sceneStyle: { backgroundColor: c.bg },
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: "Zwei Herzen ♡", headerTitle: () => <BrandTitle />, tabBarLabel: "Home", tabBarIcon: icon("🏠") }}
+        options={{ title: "Zwei Herzen ♡", headerTitle: () => <BrandTitle />, tabBarLabel: "Today", tabBarIcon: icon("🏠") }}
       />
-      <Tabs.Screen name="learn" options={{ title: "Learn", tabBarIcon: icon("📚") }} />
-      <Tabs.Screen name="duel" options={{ title: "Duel", tabBarIcon: icon("⚔️") }} />
-      <Tabs.Screen name="talk" options={{ title: "Talk", tabBarIcon: icon("💬") }} />
+      <Tabs.Screen name="learn" options={{ title: "Learn", tabBarIcon: icon("🗺️") }} />
       <Tabs.Screen name="us" options={{ title: "Us", tabBarIcon: icon("💞") }} />
+      <Tabs.Screen name="me" options={{ title: "Me", tabBarIcon: icon("👤") }} />
     </Tabs>
   );
 }

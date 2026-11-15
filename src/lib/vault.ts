@@ -35,3 +35,15 @@ export function passwordProblem(password: string): string | null {
 
 export const emailProblem = (email: string) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ? null : "That doesn't look like an email address.";
+
+/**
+ * Pick the newer of this phone's copy and the cloud copy (by their updatedAt).
+ * Returns the cloud copy only when it's at least as new, so unsaved changes on
+ * this phone are never thrown away.
+ */
+export function cloudIsNewer(local: unknown, cloud: unknown): boolean {
+  const at = (x: unknown) => (x && typeof x === "object" && typeof (x as { updatedAt?: unknown }).updatedAt === "number" ? (x as { updatedAt: number }).updatedAt : 0);
+  if (!cloud) return false;
+  if (!local) return true;
+  return at(cloud) >= at(local);
+}

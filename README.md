@@ -4,6 +4,14 @@ Two hearts learning German together, all the way to Berlin. 💞
 
 A mobile app for two people learning German together, built with **React Native + Expo** (Expo Router, TypeScript). It runs on iOS, Android and the web.
 
+## How to use it (it's simple!)
+- **🏠 Today:** tap the big **▶ Start** button. The app always picks your next step: learn the words → a short quiz → the next unit. Each level ends with a **🎓 big test**.
+- **🗺️ Learn:** your path of bubbles. ⭐ means done, and the glowing one is next.
+- **💞 Us:** link with your partner, chat, and see the weekly battle.
+- **👤 Me:** language, badges, the "find my level" test, PIN and account.
+
+Talk 💬 (chat practice), Play ⚔️ (duels) and Love note 💌 are the three big buttons on Today.
+
 ## Features
 - **CEFR levels A1 → C2, each split into two sub-levels** (A1.1, A1.2 … C2.2), with 24 units and 192 words in total.
   | Level | Sub-levels | Units |

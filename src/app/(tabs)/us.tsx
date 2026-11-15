@@ -302,7 +302,7 @@ function CoupleChat() {
         <Chip label="🔒 Secret" selected={secret} onPress={() => setSecret(!secret)} />
         <Chip label="💌 Love note" onPress={() => router.push("/note")} />
         <Chip label="📖 Our words" onPress={() => router.push("/words")} />
-        <Chip label="⚔️ Remote duel" onPress={() => router.navigate("/duel")} />
+        <Chip label="⚔️ Remote duel" onPress={() => router.push("/play")} />
       </Row>
 
       <Pressable accessibilityRole="button" onPress={() => setConfirmUnlink(true)} style={{ alignSelf: "center", marginTop: 28, padding: 8 }}>

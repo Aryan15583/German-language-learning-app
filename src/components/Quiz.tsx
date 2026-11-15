@@ -95,14 +95,14 @@ export function Quiz({ questions, label, color, onFinish }: Props) {
                 disabled={answered}
                 onPress={() => choose(o)}
                 style={{
-                  borderWidth: 1,
-                  borderRadius: 12,
-                  padding: 14,
+                  borderWidth: 2,
+                  borderRadius: 16,
+                  padding: 18,
                   borderColor: isAnswer ? c.good : isWrong ? c.bad : c.border,
                   backgroundColor: isAnswer ? c.goodSoft : isWrong ? c.badSoft : c.surface,
                 }}
               >
-                <Text style={{ color: c.text, fontSize: 16 }}>{o}</Text>
+                <Text style={{ color: c.text, fontSize: 18, fontWeight: "600" }}>{o}</Text>
               </Pressable>
             );
           })}
