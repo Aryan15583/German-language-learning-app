@@ -11,7 +11,7 @@ type Mode = "login" | "signup" | "forgot";
 export function AuthScreen() {
   const c = usePalette();
   const acct = useAccount();
-  const [mode, setMode] = useState<Mode>("signup");
+  const [chosenMode, setMode] = useState<Mode>("signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -46,6 +46,10 @@ export function AuthScreen() {
     return r;
   };
 
+  const signupOpen = acct.settings?.signupOpen !== false;
+  const mode: Mode = !signupOpen && chosenMode === "signup" ? "login" : chosenMode;
+  const [lastSignup, setLastSignup] = useState("");
+  const [resent, setResent] = useState("");
   const phase = acct.phase;
   const google = acct.account?.provider === "google";
   const choosing = phase === "unlock" && google && acct.hasBackup === false;
@@ -109,6 +113,8 @@ export function AuthScreen() {
       const p = passwordProblem(password);
       if (p) return setError(p);
       if (password !== confirm) return setError("The two passwords don’t match.");
+      setLastSignup(email);
+      setResent("");
       return run(() => acct.signUp(email, password));
     }
     return run(() => acct.signIn(email, password));
@@ -124,9 +130,12 @@ export function AuthScreen() {
         <Card style={{ width: "100%", maxWidth: 420 }}>
           <Text style={{ color: c.text, fontSize: 20, fontWeight: "800" }}>{heading}</Text>
 
+          {phase === "signed-out" && !signupOpen ? (
+            <T muted style={{ fontSize: 13, marginTop: 6 }}>🔒 This is a private app — new sign-ups are closed.</T>
+          ) : null}
           {phase === "signed-out" ? (
             <Row style={{ marginTop: 10 }}>
-              <Chip label="Create account" selected={mode === "signup"} onPress={() => setMode("signup")} />
+              {signupOpen ? <Chip label="Create account" selected={mode === "signup"} onPress={() => setMode("signup")} /> : null}
               <Chip label="Log in" selected={mode === "login"} onPress={() => setMode("login")} />
             </Row>
           ) : null}
@@ -232,7 +241,21 @@ export function AuthScreen() {
             </View>
           ) : null}
 
-          {phase === "signed-out" && mode !== "forgot" && Platform.OS === "web" ? (
+          {info && lastSignup && phase === "signed-out" ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={async () => {
+                const r = await acct.resendConfirmation(lastSignup);
+                setResent(r.ok ? "Sent again — check your inbox (and spam)." : r.error);
+              }}
+              style={{ marginTop: 8, alignSelf: "flex-start" }}
+            >
+              <T muted style={{ fontSize: 13, textDecorationLine: "underline" }}>Didn’t get it? Resend the email</T>
+            </Pressable>
+          ) : null}
+          {resent ? <T muted style={{ fontSize: 13, marginTop: 4 }}>{resent}</T> : null}
+
+          {phase === "signed-out" && mode !== "forgot" && Platform.OS === "web" && acct.settings?.google ? (
             <View style={{ marginTop: 14 }}>
               <Row style={{ justifyContent: "center", marginBottom: 10 }}>
                 <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />

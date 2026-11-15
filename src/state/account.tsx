@@ -4,7 +4,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
-import { accountsEnabled, supabase } from "../lib/supabase";
+import { accountsEnabled, fetchAuthSettings, supabase, type AuthSettings } from "../lib/supabase";
 import { deriveVaultKey, newSalt, openBackup, sealBackup } from "../lib/vault";
 
 export type Phase = "loading" | "off" | "signed-out" | "unlock" | "recovery" | "ready";
@@ -32,6 +32,8 @@ export function friendlyAuthError(message: string | undefined): string {
   if (m.includes("not confirmed")) return "Please confirm your email first — check your inbox (and spam).";
   if (m.includes("already registered") || m.includes("already been registered")) return "There’s already an account with this email — log in instead.";
   if (m.includes("rate limit") || m.includes("too many")) return "Too many tries. Please wait a minute and try again.";
+  if (m.includes("provider is not enabled") || m.includes("unsupported provider")) return "Google sign-in isn’t switched on yet.";
+  if (m.includes("signups not allowed") || m.includes("signup is disabled")) return "New sign-ups are closed for this app.";
   if (m.includes("weak") || m.includes("password should")) return "Please choose a stronger password.";
   if (m.includes("fetch") || m.includes("network")) return "Can’t reach the internet right now.";
   return message || "Something went wrong. Please try again.";
@@ -48,6 +50,9 @@ type Ctx = {
   hasBackup: boolean | null;
   /** Web only: continue with a Google account. */
   signInWithGoogle: () => Promise<Result>;
+  /** What the Supabase project allows (null until known). */
+  settings: AuthSettings | null;
+  resendConfirmation: (email: string) => Promise<Result>;
   signUp: (email: string, password: string) => Promise<Result>;
   signIn: (email: string, password: string) => Promise<Result>;
   /** Re-enter the password on a phone that has a session but no key (e.g. after confirming email). */
@@ -69,6 +74,16 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [initialState, setInitialState] = useState<unknown>(null);
   const [backup, setBackup] = useState<BackupStatus>("idle");
   const [hasBackup, setHasBackup] = useState<boolean | null>(null);
+  const [settings, setSettings] = useState<AuthSettings | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let alive = true;
+    fetchAuthSettings().then((s) => alive && setSettings(s));
+    return () => {
+      alive = false;
+    };
+  }, [enabled]);
   const vault = useRef<Vault | null>(null);
   const pending = useRef<{ state: unknown; timer: ReturnType<typeof setTimeout> } | null>(null);
 
@@ -199,6 +214,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       initialState,
       backup,
       hasBackup,
+      settings,
+      resendConfirmation: async (email) => {
+        const redirect = Platform.OS === "web" && typeof window !== "undefined" ? window.location.origin : undefined;
+        const { error } = await supabase()!.auth.resend({ type: "signup", email: email.trim(), options: { emailRedirectTo: redirect } });
+        return error ? { ok: false, error: friendlyAuthError(error.message) } : { ok: true };
+      },
       signInWithGoogle: async () => {
         if (Platform.OS !== "web" || typeof window === "undefined") return { ok: false, error: "Google sign-in works in the web app." };
         const { error } = await supabase()!.auth.signInWithOAuth({
@@ -276,7 +297,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         };
       },
     }),
-    [enabled, phase, account, initialState, backup, hasBackup, openVault, flush, upload],
+    [enabled, phase, account, initialState, backup, hasBackup, settings, openVault, flush, upload],
   );
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
