@@ -13,9 +13,10 @@ const icon = (emoji: string) =>
 
 export default function TabsLayout() {
   const c = usePalette();
-  const { state } = useProgress();
+  const { state, accountMode } = useProgress();
 
-  if (!state.partners[0].name || !state.partners[1].name) return <Redirect href="/setup" />;
+  const needsSetup = accountMode ? !state.partners[0].name : !state.partners[0].name || !state.partners[1].name;
+  if (needsSetup) return <Redirect href="/setup" />;
 
   return (
     <Tabs

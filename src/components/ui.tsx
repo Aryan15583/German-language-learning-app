@@ -156,13 +156,16 @@ export function PartnerName({ i, suffix = "" }: { i: PartnerIndex; suffix?: stri
 /** Header switch for who is currently studying. */
 export function LearnerSwitch() {
   const c = usePalette();
-  const { state, setLearner } = useProgress();
+  const { state, setLearner, accountMode } = useProgress();
   // Linked phones: each person has their own phone, so there's nothing to switch.
-  if (state.couple?.status === "linked") {
+  if (state.couple?.status === "linked" || accountMode) {
     return (
       <View style={[styles.switch, { backgroundColor: c.surface, borderColor: c.border }]}>
         <View style={[styles.switchBtn, { backgroundColor: partnerColor(c, 0) }]}>
-          <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>{partnerName(state, 0)} 💞</Text>
+          <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>
+            {partnerName(state, 0)}
+            {state.couple?.status === "linked" ? " 💞" : ""}
+          </Text>
         </View>
       </View>
     );

@@ -40,6 +40,8 @@ export type SyncStatus = "off" | "ok" | "offline";
 type Ctx = {
   state: AppState;
   ready: boolean;
+  /** Accounts on: this phone belongs to one person (partner 0); partner 1 is the linked partner. */
+  accountMode: boolean;
   setNames: (a: string, b: string, levels: [number, number], langs?: [Lang, Lang]) => void;
   setLearner: (i: PartnerIndex) => void;
   setLang: (i: PartnerIndex, lang: Lang) => void;
@@ -74,7 +76,19 @@ type Ctx = {
 
 const ProgressContext = createContext<Ctx | null>(null);
 
-export function ProgressProvider({ children }: { children: ReactNode }) {
+type ProviderProps = {
+  children: ReactNode;
+  /** Where this phone keeps the progress (one key per account in account mode). */
+  storageKey?: string;
+  /** Start from this (e.g. a decrypted cloud backup) instead of this phone's copy. */
+  initial?: unknown;
+  /** Called after every change, e.g. to update the encrypted cloud backup. */
+  onChange?: (state: AppState) => void;
+  /** Accounts on: one person per phone. */
+  accountMode?: boolean;
+};
+
+export function ProgressProvider({ children, storageKey = KEY, initial = null, onChange, accountMode = false }: ProviderProps) {
   const [state, setState] = useState<AppState>(L.freshState);
   const [ready, setReady] = useState(false);
   const [locked, setLocked] = useState(false);
@@ -90,10 +104,12 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    AsyncStorage.getItem(KEY)
+    const load = initial ? Promise.resolve(JSON.stringify(initial)) : AsyncStorage.getItem(storageKey);
+    load
       .then((raw) => {
         if (raw) {
-          const loaded = L.migrate(JSON.parse(raw));
+          let loaded = L.migrate(JSON.parse(raw));
+          if (accountMode) loaded = { ...loaded, learner: 0 };
           stateRef.current = loaded;
           setState(loaded);
           setLocked(!!loaded.partners[loaded.learner].pin);
@@ -101,11 +117,18 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {})
       .finally(() => setReady(true));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- load once per account
+
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
-    if (ready) AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
-  }, [state, ready]);
+    if (!ready) return;
+    AsyncStorage.setItem(storageKey, JSON.stringify(state)).catch(() => {});
+    onChangeRef.current?.(state);
+  }, [state, ready, storageKey]);
 
   // ---- couple helpers ----
   const envelopeFor = useCallback((payload: Payload): Envelope => {
@@ -216,6 +239,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     () => ({
       state,
       ready,
+      accountMode,
       setNames: (a, b, levels, langs) =>
         update((s) => {
           const named: AppState = {
@@ -306,7 +330,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       unlink: () => update((s) => C.unlinkCouple(s)),
       syncNow,
     }),
-    [state, ready, locked, relay, syncStatus, update, envelopeFor, deliver, send, openLink, syncNow],
+    [state, ready, accountMode, locked, relay, syncStatus, update, envelopeFor, deliver, send, openLink, syncNow],
   );
 
   return <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>;

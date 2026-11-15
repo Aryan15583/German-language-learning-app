@@ -7,12 +7,16 @@ import { partnerColor, usePalette } from "../../lib/theme";
 import { romanizeMarathi } from "../../lib/romanize";
 import { dailyIndex } from "../../lib/util";
 import { ACHIEVEMENTS, DAILY_GOAL, earnedAchievements, heartLevel, isoWeek, weeklyLeader } from "../../lib/game";
+import { useAccount } from "../../state/account";
 import { couple, currentStreak, currentSubLevel, levelProgress, partnerName, today, useProgress, type PartnerIndex } from "../../state/progress";
 
 export default function Home() {
   const c = usePalette();
-  const { state, reset } = useProgress();
+  const { state, reset, accountMode } = useProgress();
   const [pa, pb] = state.partners;
+  const linked = couple.isLinked(state);
+  // Account mode: your own progress, plus your partner's once linked.
+  const people: PartnerIndex[] = accountMode && !linked ? [0] : [0, 1];
 
   // Phrase of the day comes from the level you both can handle.
   const shared = LEVELS[Math.min(pa.unlocked, pb.unlocked)];
@@ -22,7 +26,8 @@ export default function Home() {
   return (
     <Screen>
       <H1>
-        Hallo {partnerName(state, 0)} & {partnerName(state, 1)} 💞
+        Hallo {partnerName(state, 0)}
+        {!accountMode || linked ? ` & ${partnerName(state, 1)}` : ""} 💞
       </H1>
       <T muted>
         {state.streak.last === today() ? "You've practised today — super!" : "Practise together today to keep your streak."}
@@ -31,7 +36,7 @@ export default function Home() {
       <Card style={{ marginTop: 12, flexDirection: "row", justifyContent: "space-around" }}>
         <Stat value={`🔥 ${currentStreak(state)}`} label="day streak" />
         <Stat value={String(pa.xp)} label={`${partnerName(state, 0)} XP`} color={c.a} />
-        <Stat value={String(pb.xp)} label={`${partnerName(state, 1)} XP`} color={c.b} />
+        {!accountMode || linked ? <Stat value={String(pb.xp)} label={`${partnerName(state, 1)} XP`} color={c.b} /> : null}
       </Card>
 
       <Competition />
@@ -51,7 +56,7 @@ export default function Home() {
 
       <Card>
         <T style={{ fontWeight: "700" }}>Where you are</T>
-        {([0, 1] as const).map((i) => {
+        {people.map((i) => {
           const p = state.partners[i];
           const level = LEVELS[p.unlocked];
           const prog = levelProgress(p, level);
@@ -83,12 +88,12 @@ export default function Home() {
         <Tile emoji="📚" title="Flashcards" subtitle="Learn by level" onPress={() => router.navigate("/learn")} />
         <Tile emoji="⚔️" title="Quiz duel" subtitle="Pass the phone" onPress={() => router.navigate("/duel")} />
         <Tile emoji="💬" title="Chat" subtitle="Learn to talk" onPress={() => router.navigate("/talk")} />
-        <Tile emoji="💌" title="Love note" subtitle="Write in German" onPress={() => router.navigate("/notes")} />
+        <Tile emoji="💌" title="Love note" subtitle="Write in German" onPress={() => router.push("/note")} />
       </Grid>
 
       <H2>Learn through · शिकण्याची भाषा</H2>
       <Card>
-        {([0, 1] as const).map((i) => (
+        {(accountMode || linked ? ([0] as const) : ([0, 1] as const)).map((i) => (
           <Row key={i} style={{ marginVertical: 4 }}>
             <View style={{ minWidth: 70 }}>
               <PartnerName i={i} />
@@ -101,6 +106,7 @@ export default function Home() {
         </T>
       </Card>
 
+      {accountMode ? <AccountCard /> : null}
       <PinSettings />
 
       <Pressable
@@ -198,7 +204,8 @@ function Competition() {
 function PinSettings() {
   const c = usePalette();
   const { state, setPin } = useProgress();
-  const people: PartnerIndex[] = couple.isLinked(state) ? [0] : [0, 1];
+  const { accountMode } = useProgress();
+  const people: PartnerIndex[] = couple.isLinked(state) || accountMode ? [0] : [0, 1];
   const [editing, setEditing] = useState<PartnerIndex | null>(null);
   const [pin, setPinText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -263,6 +270,36 @@ function PinSettings() {
         <T muted style={{ fontSize: 12, marginTop: 6 }}>
           The PIN is stored only as a salted, slow hash on this phone. It can’t be recovered — forgetting it means resetting the app.
         </T>
+      </Card>
+    </>
+  );
+}
+
+/** Signed-in account: email, backup status and sign out. */
+function AccountCard() {
+  const acct = useAccount();
+  const [confirm, setConfirm] = useState(false);
+  const backupText = { idle: "Backup ready", saving: "Saving…", saved: "Backed up ✓", error: "Backup failed — will retry" }[acct.backup];
+  return (
+    <>
+      <H2>Account 👤</H2>
+      <Card>
+        <T style={{ fontWeight: "700" }}>{acct.account?.email}</T>
+        {acct.account?.provider === "google" ? <T muted style={{ fontSize: 13 }}>Signed in with Google</T> : null}
+        <T muted style={{ fontSize: 13 }}>
+          🔒 {backupText} · encrypted with your {acct.account?.provider === "google" ? "backup passphrase" : "password"}
+        </T>
+        {confirm ? (
+          <View style={{ marginTop: 8 }}>
+            <T muted style={{ fontSize: 13 }}>Your progress is saved in your account. Signing out removes it from this phone until you log in again.</T>
+            <Row style={{ marginTop: 8 }}>
+              <Button title="Sign out" variant="secondary" onPress={acct.signOut} />
+              <Button title="Stay" onPress={() => setConfirm(false)} />
+            </Row>
+          </View>
+        ) : (
+          <Button title="Sign out" variant="secondary" onPress={() => setConfirm(true)} style={{ marginTop: 8 }} />
+        )}
       </Card>
     </>
   );
