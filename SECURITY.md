@@ -11,7 +11,7 @@ Zwei Herzen ♡ Until Berlin is a private, personal app. This page explains how 
   - Clients have **no table access at all**. They can only call two functions: drop a message, and read a mailbox by its exact name.
   - Inputs are validated, sending is rate-limited (30/min per mailbox), reads are paged, and messages are **deleted after 30 days**. The functions pin `search_path` so they can't be hijacked.
   - Security tests for all of this run on a real Postgres in CI. In an end-to-end test, the relay held 6 messages and none contained any readable word or name.
-- **Accounts (Supabase Auth).** Each person has their own email/password account. Passwords are handled by Supabase Auth and never stored by the app.
+- **Accounts (Supabase Auth).** Each person has their own account: email and password, or Google sign-in. Passwords are handled by Supabase Auth and never stored by the app. Google sign-in tokens are removed from the address bar right after login. Google accounts lock their backup with a separate **backup passphrase**, since Google gives the app no password.
 - **Zero-knowledge account backup** (`supabase/migrations/0002_accounts.sql`, `src/lib/vault.ts`):
   - Progress is encrypted on the phone with a key derived from the password (PBKDF2-SHA256, 200,000 rounds, random per-account salt) before upload. Supabase stores only ciphertext; in an end-to-end test, neither backup contained any readable word or name.
   - Row level security lets a signed-in user read, write or delete **only their own row**. Logged-out visitors have no access, and rows can't be moved to another user. Only base64url ciphertext is accepted, and deleting an account deletes its data. These rules are tested on a real Postgres in CI.

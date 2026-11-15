@@ -54,7 +54,7 @@ Everything is **end-to-end encrypted** (XChaCha20-Poly1305) with a key only your
 
 ### Accounts (like Flo) 👤
 With Supabase set up, the app has real accounts:
-- **Each person signs up** with email and password, **on their own phone**. Nobody else uses that phone's profile, so there's no profile switching.
+- **Each person signs up** with email and password (any address, Gmail included) or **Continue with Google**, **on their own phone**. Nobody else uses that phone's profile, so there's no profile switching.
 - **Link up with a 6-character code** in the Us tab. Either of you can create the code, and the other enters it.
 - **You see your side; your partner sees theirs.** Your own lessons, levels and settings stay yours. Your partner appears as a card (name, level, streak, weekly XP), in the chat and in duels.
 - **Log in on any phone** and everything comes back: progress, chat, and the link with your partner. Signing out removes your data from that phone.
@@ -77,7 +77,17 @@ Without Supabase, the app runs as before: one shared phone, no accounts.
    | `EXPO_PUBLIC_RELAY_URL` | your Project URL, e.g. `https://abcd1234.supabase.co` |
    | `EXPO_PUBLIC_RELAY_KEY` | the publishable key |
 6. **Redeploy** in Vercel.
-7. **Once you've both signed up, lock the door:** in **Authentication → Sign In / Providers**, turn off **Allow new users to sign up**. Then nobody else can create an account on your app.
+7. **Optional: "Continue with Google"** (works in the web app):
+   1. In **console.cloud.google.com**, create a project, e.g. "Zwei Herzen".
+   2. Go to **Google Auth Platform → Branding**, fill in the app name and your email. Under **Audience**, choose **External** and add both of your Gmail addresses as **test users**. (Or publish the app.)
+   3. Go to **Clients → Create client → Web application**:
+      - **Authorized JavaScript origins:** `https://zwei-herzen-until-berlin.vercel.app`
+      - **Authorized redirect URIs:** `https://<your-project-id>.supabase.co/auth/v1/callback`
+   4. Copy the **Client ID** and **Client secret**.
+   5. In Supabase → **Authentication → Sign In / Providers → Google**: turn it on, paste both, and **Save**.
+
+   Google accounts don't give the app a password, so after the first Google sign-in the app asks you to **choose a backup passphrase**. It locks your backup the same way a password does. You enter it once on each new phone, and it can't be recovered, so write it down.
+8. **Once you've both signed up, lock the door:** in **Authentication → Sign In / Providers**, turn off **Allow new users to sign up**. Then nobody else can create an account on your app.
 
 **Good to know:**
 - **Email limits:** Supabase's built-in email sender only sends a few emails per hour, which is plenty for two people. If a confirmation email doesn't arrive, wait a bit or check spam.

@@ -285,7 +285,10 @@ function AccountCard() {
       <H2>Account 👤</H2>
       <Card>
         <T style={{ fontWeight: "700" }}>{acct.account?.email}</T>
-        <T muted style={{ fontSize: 13 }}>🔒 {backupText} · encrypted with your password</T>
+        {acct.account?.provider === "google" ? <T muted style={{ fontSize: 13 }}>Signed in with Google</T> : null}
+        <T muted style={{ fontSize: 13 }}>
+          🔒 {backupText} · encrypted with your {acct.account?.provider === "google" ? "backup passphrase" : "password"}
+        </T>
         {confirm ? (
           <View style={{ marginTop: 8 }}>
             <T muted style={{ fontSize: 13 }}>Your progress is saved in your account. Signing out removes it from this phone until you log in again.</T>

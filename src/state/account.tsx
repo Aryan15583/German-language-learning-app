@@ -8,7 +8,15 @@ import { accountsEnabled, supabase } from "../lib/supabase";
 import { deriveVaultKey, newSalt, openBackup, sealBackup } from "../lib/vault";
 
 export type Phase = "loading" | "off" | "signed-out" | "unlock" | "recovery" | "ready";
-export type Account = { id: string; email: string };
+export type Provider = "email" | "google";
+export type Account = { id: string; email: string; provider: Provider };
+
+type AuthUser = { id: string; email?: string | null; app_metadata?: { provider?: string } };
+const toAccount = (u: AuthUser, fallbackEmail = ""): Account => ({
+  id: u.id,
+  email: u.email ?? fallbackEmail,
+  provider: u.app_metadata?.provider === "google" ? "google" : "email",
+});
 type Vault = { key: string; salt: string };
 export type BackupStatus = "idle" | "saving" | "saved" | "error";
 type Result = { ok: true } | { ok: false; error: string; code?: "password-mismatch" | "confirm-email" };
@@ -36,6 +44,10 @@ type Ctx = {
   /** Decrypted cloud progress to start from (null = use this phone's copy or start fresh). */
   initialState: unknown;
   backup: BackupStatus;
+  /** Google accounts: does a backup exist yet (enter passphrase) or not (choose one)? */
+  hasBackup: boolean | null;
+  /** Web only: continue with a Google account. */
+  signInWithGoogle: () => Promise<Result>;
   signUp: (email: string, password: string) => Promise<Result>;
   signIn: (email: string, password: string) => Promise<Result>;
   /** Re-enter the password on a phone that has a session but no key (e.g. after confirming email). */
@@ -56,6 +68,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<Account | null>(null);
   const [initialState, setInitialState] = useState<unknown>(null);
   const [backup, setBackup] = useState<BackupStatus>("idle");
+  const [hasBackup, setHasBackup] = useState<boolean | null>(null);
   const vault = useRef<Vault | null>(null);
   const pending = useRef<{ state: unknown; timer: ReturnType<typeof setTimeout> } | null>(null);
 
@@ -94,7 +107,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           return {
             ok: false,
             code: "password-mismatch",
-            error: "Your saved progress was locked with an older password, so it can’t be opened.",
+            error:
+              acct.provider === "google"
+                ? "That backup passphrase doesn’t match."
+                : "Your saved progress was locked with an older password, so it can’t be opened.",
           };
         }
       } else {
@@ -130,10 +146,17 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       const user = data.session?.user;
       if (!alive) return;
       if (!user) return setPhase((p) => (p === "recovery" ? p : "signed-out"));
-      const acct = { id: user.id, email: user.email ?? "" };
+      const acct = toAccount(user);
       setAccount(acct);
       const saved = await AsyncStorage.getItem(vaultKey(user.id)).catch(() => null);
-      if (!saved) return setPhase((p) => (p === "recovery" ? p : "unlock"));
+      if (!saved) {
+        // Google accounts unlock with a backup passphrase: choose one, or enter the existing one?
+        if (acct.provider === "google") {
+          const row = await fetchRow(user.id).catch(() => null);
+          if (alive) setHasBackup(!!row);
+        }
+        return setPhase((p) => (p === "recovery" ? p : "unlock"));
+      }
       vault.current = JSON.parse(saved) as Vault;
       // Prefer the cloud copy (it may be newer, e.g. from another phone); fall back to this phone's copy offline.
       try {
@@ -146,7 +169,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     })();
     const { data: sub } = sb.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
-        if (session?.user) setAccount({ id: session.user.id, email: session.user.email ?? "" });
+        if (session?.user) setAccount(toAccount(session.user));
         setPhase("recovery");
       }
     });
@@ -175,6 +198,16 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       account,
       initialState,
       backup,
+      hasBackup,
+      signInWithGoogle: async () => {
+        if (Platform.OS !== "web" || typeof window === "undefined") return { ok: false, error: "Google sign-in works in the web app." };
+        const { error } = await supabase()!.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: window.location.origin, queryParams: { prompt: "select_account" } },
+        });
+        // On success the browser leaves for Google and comes back signed in.
+        return error ? { ok: false, error: friendlyAuthError(error.message) } : { ok: true };
+      },
       signUp: async (email, password) => {
         const sb = supabase()!;
         const redirect = Platform.OS === "web" && typeof window !== "undefined" ? window.location.origin : undefined;
@@ -183,15 +216,17 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         if (!data.session || !data.user) {
           return { ok: false, code: "confirm-email", error: "Almost there! We sent you an email — tap the link in it, then log in here." };
         }
-        return openVault({ id: data.user.id, email: data.user.email ?? email.trim() }, password, true);
+        return openVault(toAccount(data.user, email.trim()), password, true);
       },
       signIn: async (email, password) => {
         const { data, error } = await supabase()!.auth.signInWithPassword({ email: email.trim(), password });
         if (error || !data.user) return { ok: false, error: friendlyAuthError(error?.message) };
-        return openVault({ id: data.user.id, email: data.user.email ?? email.trim() }, password);
+        return openVault(toAccount(data.user, email.trim()), password);
       },
       unlock: async (password) => {
         if (!account) return { ok: false, error: "Please log in again." };
+        // Google accounts: the backup passphrase itself is the check (it must open the existing backup).
+        if (account.provider === "google") return openVault(account, password, hasBackup === false);
         // Check the password with Supabase first, so a typo can't create a backup we can't open later.
         const { error } = await supabase()!.auth.signInWithPassword({ email: account.email, password });
         if (error) return { ok: false, error: friendlyAuthError(error.message) };
@@ -210,7 +245,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase()!.auth.updateUser({ password });
         if (error || !data.user) return { ok: false, error: friendlyAuthError(error?.message) };
         // The old backup was locked with the old password; re-lock what this phone has with the new one.
-        return openVault({ id: data.user.id, email: data.user.email ?? "" }, password, true);
+        return openVault(toAccount(data.user), password, true);
       },
       signOut: async () => {
         await flush();
@@ -224,6 +259,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         setAccount(null);
         setInitialState(null);
         setBackup("idle");
+        setHasBackup(null);
         setPhase("signed-out");
       },
       saveBackup: (state) => {
@@ -240,7 +276,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         };
       },
     }),
-    [enabled, phase, account, initialState, backup, openVault, flush, upload],
+    [enabled, phase, account, initialState, backup, hasBackup, openVault, flush, upload],
   );
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;

@@ -47,9 +47,15 @@ export function AuthScreen() {
   };
 
   const phase = acct.phase;
+  const google = acct.account?.provider === "google";
+  const choosing = phase === "unlock" && google && acct.hasBackup === false;
   const heading =
     phase === "unlock"
-      ? "Welcome back 💞"
+      ? google
+        ? choosing
+          ? "Choose a backup passphrase 🔐"
+          : "Your backup passphrase 🔐"
+        : "Welcome back 💞"
       : phase === "recovery"
         ? "Choose a new password"
         : mode === "signup"
@@ -78,7 +84,14 @@ export function AuthScreen() {
 
   const submit = async () => {
     if (busy) return;
-    if (phase === "unlock") return run(() => acct.unlock(password));
+    if (phase === "unlock") {
+      if (choosing) {
+        const p = passwordProblem(password);
+        if (p) return setError(p);
+        if (password !== confirm) return setError("The two passphrases don’t match.");
+      }
+      return run(() => acct.unlock(password));
+    }
     if (phase === "recovery") {
       const p = passwordProblem(password);
       if (p) return setError(p);
@@ -118,10 +131,22 @@ export function AuthScreen() {
             </Row>
           ) : null}
 
-          {phase === "unlock" ? (
+          {phase === "unlock" && !google ? (
             <T muted style={{ marginTop: 6 }}>
               Enter the password for <Text style={{ fontWeight: "700" }}>{acct.account?.email}</Text> to unlock your progress on this phone.
             </T>
+          ) : null}
+          {phase === "unlock" && google ? (
+            acct.hasBackup === null ? (
+              <T muted style={{ marginTop: 6 }}>Checking your backup…</T>
+            ) : (
+              <T muted style={{ marginTop: 6 }}>
+                Signed in with Google as <Text style={{ fontWeight: "700" }}>{acct.account?.email}</Text>.{" "}
+                {choosing
+                  ? "Choose a passphrase that locks your progress so only you can read it. You’ll type it once on each new phone. Write it down somewhere safe — it can’t be recovered."
+                  : "Enter the backup passphrase you chose, to unlock your progress on this phone."}
+              </T>
+            )
           ) : null}
           {phase === "recovery" ? (
             <T muted style={{ marginTop: 6 }}>Your progress on this phone is kept and locked with the new password.</T>
@@ -146,8 +171,15 @@ export function AuthScreen() {
             />
           ) : null}
 
-          {mode !== "forgot" || phase !== "signed-out" ? passwordField(password, setPassword, "Password", phase === "recovery" ? "New password" : "Password") : null}
-          {(phase === "signed-out" && mode === "signup") || phase === "recovery"
+          {mode !== "forgot" || phase !== "signed-out"
+            ? passwordField(
+                password,
+                setPassword,
+                google && phase === "unlock" ? "Backup passphrase" : "Password",
+                phase === "recovery" ? "New password" : google && phase === "unlock" ? "Backup passphrase" : "Password",
+              )
+            : null}
+          {(phase === "signed-out" && mode === "signup") || phase === "recovery" || choosing
             ? passwordField(confirm, setConfirm, "Confirm password", "Type it again")
             : null}
 
@@ -175,7 +207,9 @@ export function AuthScreen() {
               <Button
                 title={
                   phase === "unlock"
-                    ? "Unlock"
+                    ? choosing
+                      ? "Save passphrase 🔐"
+                      : "Unlock"
                     : phase === "recovery"
                       ? "Save new password"
                       : mode === "signup"
@@ -195,6 +229,36 @@ export function AuthScreen() {
                 You can start a new backup with your current password. Anything already on this phone is kept.
               </T>
               <Button title="Start a new backup" variant="secondary" onPress={() => run(() => acct.startFresh(password))} style={{ marginTop: 6 }} />
+            </View>
+          ) : null}
+
+          {phase === "signed-out" && mode !== "forgot" && Platform.OS === "web" ? (
+            <View style={{ marginTop: 14 }}>
+              <Row style={{ justifyContent: "center", marginBottom: 10 }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+                <T muted style={{ fontSize: 13 }}>or</T>
+                <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+              </Row>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Continue with Google"
+                disabled={busy}
+                onPress={() => run(() => acct.signInWithGoogle())}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  backgroundColor: pressed ? c.accentSoft : c.surface,
+                  borderRadius: 12,
+                  paddingVertical: 12,
+                })}
+              >
+                <Text style={{ fontSize: 18, fontWeight: "900", color: "#4285F4" }}>G</Text>
+                <Text style={{ color: c.text, fontWeight: "700", fontSize: 15 }}>Continue with Google</Text>
+              </Pressable>
             </View>
           ) : null}
 
