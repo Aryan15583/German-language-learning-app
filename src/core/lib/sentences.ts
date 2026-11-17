@@ -7,7 +7,8 @@ import { shuffle, type Rng } from "./util";
 
 export type Sentence = { de: string; en: string; mr: string; level: LevelId };
 
-const isSentence = (de: string) => /[.!?]$/.test(de.trim()) && de.trim().split(/\s+/).length >= 2;
+/** One sentence (no full stop in the middle), at least two words. */
+const isSentence = (de: string) => /[.!?]$/.test(de.trim()) && !/[.!?]\s/.test(de.trim()) && de.trim().split(/\s+/).length >= 2;
 
 let cache: Sentence[] | null = null;
 /** Every German sentence the app has, with its translation and level. Deduplicated. */
@@ -24,7 +25,8 @@ export function sentencePool(): Sentence[] {
       for (const rep of st.replies) if (rep.ok) add({ de: rep.de, en: rep.en, mr: rep.mr, level: c.level });
     }
   for (const s of JOURNEY) for (const w of s.words) add({ ...w, level: s.level });
-  for (const c of COMPARISONS) add({ de: c.de, en: c.en, mr: c.mr, level: "A2" });
+  // Short everyday comparisons ("Ich habe Hunger.") are A1 material; longer ones A2.
+  for (const c of COMPARISONS) add({ de: c.de, en: c.en, mr: c.mr, level: c.de.split(/\s+/).length <= 5 ? "A1" : "A2" });
   for (const p of PHRASEBOOK) add({ ...p, level: "A2" });
   cache = [...out.values()];
   return cache;

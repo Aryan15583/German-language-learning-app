@@ -30,7 +30,7 @@ export default function Journey() {
               <span className="text-plum">{Math.round(routeShare(points) * 100)}%</span>
               <span>Berlin 🇩🇪</span>
             </div>
-            <div className="relative mt-2">
+            <div className="relative mt-4">
               <ProgressBar value={routeShare(points)} />
               <Plane className="absolute -top-2 text-plum transition-all" size={22} style={{ left: `calc(${routeShare(points) * 100}% - 11px)` }} />
             </div>

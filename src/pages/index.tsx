@@ -357,7 +357,7 @@ function Tile({ href, icon, title, sub }: { href: string; icon: ReactNode; title
   );
 }
 
-function Activity({ href, icon, title, sub, art }: { href: string; icon: ReactNode; title: string; sub: string; art: string }) {
+function Activity({ href, icon, title, sub }: { href: string; icon: ReactNode; title: string; sub: string; art?: string }) {
   return (
     <Link href={href} className="group flex items-center gap-3 overflow-hidden rounded-3xl border border-line/70 bg-card/90 p-4 shadow-card transition hover:border-rose">
       <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-blush text-plum">{icon}</span>
@@ -365,8 +365,6 @@ function Activity({ href, icon, title, sub, art }: { href: string; icon: ReactNo
         <span className="block font-bold text-ink">{title}</span>
         <span className="block text-sm text-muted">{sub}</span>
       </span>
-      {/* eslint-disable-next-line @next/next/no-img-element -- static export */}
-      <img src={art} alt="" className="hidden h-14 w-16 rounded-xl object-cover opacity-90 xl:block" />
       <ChevronRight className="text-muted transition group-hover:translate-x-0.5" size={20} />
     </Link>
   );

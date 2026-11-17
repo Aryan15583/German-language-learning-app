@@ -25,6 +25,8 @@ Zwei Herzen ♡ Until Berlin is a private, personal app. This page explains how 
 - **Saved data is validated on load** (`migrate()` in `src/state/logic.ts`): unexpected or corrupted values fall back to safe defaults instead of crashing.
 - **Crash screen** (`src/components/ErrorBoundary.tsx`): unexpected errors show a friendly retry screen rather than a blank page.
 
+- **Microphone stays on the device.** "Record myself" uses the browser's recorder only after you allow it, keeps the recording in memory and plays it back locally. Nothing is uploaded and no speech service is used.
+
 ## Browser security headers (`vercel.json`)
 | Header | Protects against |
 |---|---|
@@ -33,14 +35,14 @@ Zwei Herzen ♡ Until Berlin is a private, personal app. This page explains how 
 | `X-Frame-Options: DENY`, `frame-ancestors 'none'` | Clickjacking (embedding the app in another site) |
 | `X-Content-Type-Options: nosniff` | MIME-type confusion |
 | `Referrer-Policy: no-referrer` | Leaking the app's URL to other sites |
-| `Permissions-Policy` (camera, mic, location, payment… all off) | Abuse of device features |
+| `Permissions-Policy` (camera, location, payment… all off; microphone only for this site) | Abuse of device features |
 | `Cross-Origin-Opener-Policy` / `Cross-Origin-Resource-Policy: same-origin` | Cross-origin attacks on the window and its files |
 | `X-Robots-Tag: noindex` + `robots.txt` | The private app showing up in search engines |
 
 The site is a static Next.js export built with webpack, which adds no inline scripts, so the policy needs no `unsafe-inline` for scripts. The full app was tested end to end in a browser with these exact headers applied, with no blocked content.
 
 ## Automated checks (GitHub)
-- **CI** (`.github/workflows/ci.yml`): lint, typecheck, 209 tests, relay and account SQL security tests on Postgres 16, `npm audit` (fails on high/critical issues in shipped dependencies) and a production build on every push.
+- **CI** (`.github/workflows/ci.yml`): lint, typecheck, 238 tests, relay and account SQL security tests on Postgres 16, `npm audit` (fails on high/critical issues in shipped dependencies) and a production build on every push.
 - **CodeQL** (`.github/workflows/codeql.yml`): GitHub's code security scanner on every push to `main`, every PR and weekly.
 - **Dependabot** (`.github/dependabot.yml`): weekly pull requests for dependency updates.
 
