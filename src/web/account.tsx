@@ -18,7 +18,7 @@ const toAccount = (u: AuthUser, fallbackEmail = ""): Account => ({
 });
 type Vault = { key: string; salt: string };
 export type BackupStatus = "idle" | "saving" | "saved" | "error";
-type Result = { ok: true } | { ok: false; error: string; code?: "password-mismatch" | "confirm-email" };
+type Result = { ok: true } | { ok: false; error: string; code?: "password-mismatch" | "confirm-email" | "not-confirmed" };
 
 const vaultKey = (uid: string) => `zh-vault:${uid}`;
 export const stateKey = (uid: string) => `zh-state:${uid}`;
@@ -28,7 +28,7 @@ const SAVE_DELAY_MS = 2500;
 export function friendlyAuthError(message: string | undefined): string {
   const m = (message ?? "").toLowerCase();
   if (m.includes("invalid login")) return "Wrong email or password.";
-  if (m.includes("not confirmed")) return "Please confirm your email first — check your inbox (and spam).";
+  if (m.includes("not confirmed")) return "This account isn’t confirmed yet.";
   if (m.includes("already registered") || m.includes("already been registered")) return "There’s already an account with this email — log in instead.";
   if (m.includes("rate limit") || m.includes("too many")) return "Too many tries. Please wait a minute and try again.";
   if (m.includes("provider is not enabled") || m.includes("unsupported provider")) return "Google sign-in isn’t switched on yet.";
@@ -256,12 +256,17 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         const { data, error } = await sb.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: redirect } });
         if (error) return { ok: false, error: friendlyAuthError(error.message) };
         if (!data.session || !data.user) {
-          return { ok: false, code: "confirm-email", error: "Almost there! We sent you an email — tap the link in it, then log in here." };
+          // Supabase still asks for an email confirmation. With the one-time "no email needed" fix,
+          // new accounts are confirmed automatically, so just log straight in.
+          const retry = await sb.auth.signInWithPassword({ email: email.trim(), password });
+          if (!retry.error && retry.data.user) return openVault(toAccount(retry.data.user, email.trim()), password, true);
+          return { ok: false, code: "confirm-email", error: "Account created! Your email needs confirming before you can log in." };
         }
         return openVault(toAccount(data.user, email.trim()), password, true);
       },
       signIn: async (email, password) => {
         const { data, error } = await supabase()!.auth.signInWithPassword({ email: email.trim(), password });
+        if (error && /not confirmed/i.test(error.message)) return { ok: false, code: "not-confirmed", error: friendlyAuthError(error.message) };
         if (error || !data.user) return { ok: false, error: friendlyAuthError(error?.message) };
         return openVault(toAccount(data.user, email.trim()), password);
       },

@@ -88,7 +88,7 @@ Without Supabase, the app runs as before: one shared phone, no accounts.
 
 ### Set up Supabase (free, ~10 minutes)
 1. Create a free project at **supabase.com**. A region near one of you works well (e.g. Mumbai).
-2. **SQL Editor:** run [`supabase/migrations/0001_relay.sql`](supabase/migrations/0001_relay.sql), then [`supabase/migrations/0002_accounts.sql`](supabase/migrations/0002_accounts.sql). If you connected the GitHub repo in Supabase with migrations enabled, it can apply these for you. Running them again is harmless.
+2. **SQL Editor:** run [`supabase/migrations/0001_relay.sql`](supabase/migrations/0001_relay.sql), then [`supabase/migrations/0002_accounts.sql`](supabase/migrations/0002_accounts.sql), then [`supabase/migrations/0003_no_email_needed.sql`](supabase/migrations/0003_no_email_needed.sql) (**no email needed**: confirms accounts automatically, because Supabase's built-in email only reaches your own Supabase team). If you connected the GitHub repo in Supabase with migrations enabled, it can apply these for you. Running them again is harmless.
 3. **Authentication → URL Configuration** (if confirmation emails open `localhost:3000`, this step is missing):
    - set **Site URL** to your app, e.g. `https://zwei-herzen-until-berlin.vercel.app`
    - add the same address under **Redirect URLs**
@@ -117,7 +117,8 @@ Without Supabase, the app runs as before: one shared phone, no accounts.
 
 **Good to know:**
 - **Email limits:** Supabase's built-in email sender only sends a few emails per hour, which is plenty for two people. If a confirmation email doesn't arrive, wait a bit or check spam.
-- **Skipping confirmation:** for just the two of you, you can instead turn off **Confirm email** (Authentication → Sign In / Providers → Email).
+- **"Email not confirmed" / emails never arrive:** run `0003_no_email_needed.sql` once (it also unsticks existing accounts). Turning off **Confirm email** (Authentication → Sign In / Providers → Email) helps too.
+- **Email links open `localhost:3000`:** set **Site URL** (Authentication → URL Configuration) to your app's address and add it under **Redirect URLs**.
 - **Pausing:** free projects pause after a week with no activity. If that happens, open the project and click **Restore**.
 
 ## Deploy the web version (Vercel)
