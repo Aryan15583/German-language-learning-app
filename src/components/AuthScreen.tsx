@@ -1,5 +1,5 @@
 import { Eye, EyeOff, Lock as LockIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { emailProblem, passwordProblem } from "../core/lib/vault";
 import { useAccount } from "../web/account";
 import { Button, Card, Chip, cx, fieldClass, HeartPlane, Spinner } from "./ui";
@@ -51,6 +51,13 @@ function AuthForm({ chosenMode, setMode }: { chosenMode: Mode; setMode: (m: Mode
   const [mismatch, setMismatch] = useState(false);
   const [lastSignup, setLastSignup] = useState("");
   const [resent, setResent] = useState("");
+  const [stuck, setStuck] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   const phase = acct.phase;
   const signupOpen = acct.settings?.signupOpen !== false;
@@ -83,6 +90,7 @@ function AuthForm({ chosenMode, setMode }: { chosenMode: Mode; setMode: (m: Mode
       if (r.code === "confirm-email") setInfo(r.error ?? "");
       else setError(r.error ?? "Something went wrong.");
       setMismatch(r.code === "password-mismatch");
+      setStuck(r.code === "not-confirmed" || r.code === "confirm-email");
     }
     return r;
   };
@@ -119,6 +127,7 @@ function AuthForm({ chosenMode, setMode }: { chosenMode: Mode; setMode: (m: Mode
       setResent("");
       return run(() => acct.signUp(email, password));
     }
+    setLastSignup(email);
     return run(() => acct.signIn(email, password));
   };
 
@@ -250,19 +259,28 @@ function AuthForm({ chosenMode, setMode }: { chosenMode: Mode; setMode: (m: Mode
           )}
         </form>
 
-        {info && lastSignup && phase === "signed-out" ? (
-          <button
-            type="button"
-            className="mt-3 text-sm text-muted underline"
-            onClick={async () => {
-              const r = await acct.resendConfirmation(lastSignup);
-              setResent(r.ok ? "Sent again — check your inbox (and spam)." : r.error);
-            }}
-          >
-            Didn’t get it? Resend the email
-          </button>
+        {stuck && lastSignup && phase === "signed-out" ? (
+          <div className="mt-4 rounded-2xl bg-blush/70 p-4 text-sm">
+            <p className="font-semibold text-ink">Waiting for a confirmation email?</p>
+            <p className="mt-1 text-muted">
+              Supabase’s free email sender often doesn’t deliver these. The app owner can switch confirmation emails off for good with a one-time
+              fix (“no email needed” in the setup guide) — then just log in.
+            </p>
+            <button
+              type="button"
+              disabled={cooldown > 0}
+              className="mt-3 rounded-full border border-line bg-surface px-4 py-2 font-semibold text-plum disabled:opacity-50"
+              onClick={async () => {
+                setCooldown(30);
+                const r = await acct.resendConfirmation(lastSignup);
+                setResent(r.ok ? "Sent again — check your inbox and spam." : r.error);
+              }}
+            >
+              {cooldown > 0 ? `Resend again in ${cooldown}s` : "Resend the email"}
+            </button>
+            {resent ? <p className="mt-2 text-muted">{resent}</p> : null}
+          </div>
         ) : null}
-        {resent ? <p className="mt-1 text-sm text-muted">{resent}</p> : null}
 
         {mismatch ? (
           <div className="mt-4">

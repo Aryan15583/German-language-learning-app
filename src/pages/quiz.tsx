@@ -25,7 +25,7 @@ function UnitQuiz({ unit, level, berlin }: { unit: Topic; level: Level; berlin: 
   const { state, recordUnitScore, practiced, log, remember, did } = useProgress();
   const learner = state.learner;
   const sub = subLevelOfTopic(unit.id);
-  const build = () => makeQuestions(unit.words, levelWords(level), { count: UNIT_TEST_QUESTIONS, typingShare: 0.25, lang: state.partners[learner].lang });
+  const build = () => makeQuestions(unit.words, levelWords(level), { count: UNIT_TEST_QUESTIONS, typingShare: 0.125, lang: state.partners[learner].lang });
   const [questions, setQuestions] = useState(build);
   const [result, setResult] = useState<{ correct: number; total: number } | null>(null);
   const [attempt, setAttempt] = useState(0);

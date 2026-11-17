@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
 import { Button, Card, cx, HeartPlane, Mascot, ProgressBar, Ring, Script, Speak } from "../components/ui";
-import { LEVELS, levelWords, meaning } from "../core/content/levels";
+import { allTopics, LEVELS, levelWords, meaning } from "../core/content/levels";
 import { DAILY_GOAL } from "../core/lib/game";
 import { nextStop, routeShare } from "../core/lib/journey";
 import { missionComplete, missionFor, missionTasks, MISSION_XP } from "../core/lib/missions";
@@ -90,28 +90,32 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Continue learning — the one big button */}
-        <Card className="flex flex-col p-0 lg:row-span-1">
-          <div className="relative h-32 overflow-hidden rounded-t-3xl bg-blush">
-            {/* eslint-disable-next-line @next/next/no-img-element -- static export */}
-            <img src="/art/gate.jpg" alt="" className="h-full w-full object-cover" />
-            <span className="absolute left-3 top-3 rounded-full bg-surface/90 px-3 py-1 text-xs font-bold text-plum">{step.level.id}</span>
-          </div>
-          <div className="flex flex-1 flex-col p-5">
-            <p className="text-sm font-semibold text-muted">{mine.todayXp >= DAILY_GOAL ? "Goal done! Want more? Next up" : "Continue learning"}</p>
-            <h2 className="mt-1 flex items-center gap-2 text-xl font-extrabold text-ink">
-              <span aria-hidden>{label.emoji}</span> {label.title}
-            </h2>
-            <p className="text-sm text-muted">{label.detail}</p>
-            <div className="mt-3 flex items-center gap-3">
-              <ProgressBar value={mine.levelShare} />
-              <span className="text-sm font-semibold text-plum">{Math.round(mine.levelShare * 100)}%</span>
+        {/* Continue learning — exactly like the design: the photo fills the card, its lower half frosted */}
+        <Link
+          href={hrefOf(step)}
+          aria-label={`Start: ${label.title}`}
+          className="group relative isolate block aspect-[1.35] overflow-hidden rounded-[26px] shadow-soft lg:aspect-auto lg:min-h-full"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- static export */}
+          <img src="/art/continue.jpg" alt="" className="absolute inset-0 -z-10 h-full w-full object-cover object-top transition duration-700 group-hover:scale-105" />
+          <div className="absolute inset-x-0 bottom-0 flex h-[45%] flex-col justify-center gap-2.5 rounded-t-[18px] border-t border-white/25 bg-gradient-to-b from-[#a85477]/30 to-[#6a1f40]/50 px-5 text-white backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-[22px] font-semibold leading-tight drop-shadow-sm">{mine.todayXp >= DAILY_GOAL ? "Keep Going" : "Continue Learning"}</h2>
+                <p className="mt-1 truncate text-[15px] text-white/90">{continueLine(step)}</p>
+              </div>
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#fdeef3] text-[#8b2f55] shadow-soft transition group-hover:scale-110 group-active:scale-95">
+                <Play size={24} fill="currentColor" className="ml-0.5" />
+              </span>
             </div>
-            <Button href={hrefOf(step)} size="lg" full className="mt-4">
-              <Play size={20} fill="currentColor" /> Start
-            </Button>
+            <div className="flex items-center gap-3 pr-1">
+              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#f3b6c8]/35" role="progressbar" aria-valuenow={Math.round(mine.levelShare * 100)} aria-valuemin={0} aria-valuemax={100}>
+                <div className="h-full rounded-full bg-[#f8c6d4]" style={{ width: `${Math.round(mine.levelShare * 100)}%` }} />
+              </div>
+              <span className="text-sm text-white/95">{Math.round(mine.levelShare * 100)}%</span>
+            </div>
           </div>
-        </Card>
+        </Link>
 
         {/* Today's mission */}
         <Card className="lg:col-span-2">
@@ -436,4 +440,13 @@ function Bar({ label, value, color }: { label: string; value: number; color: str
       <ProgressBar value={value} color={color} className="mt-1 h-2" />
     </div>
   );
+}
+
+/** "Unit 1 • Pet names & greetings", like the design. */
+function continueLine(step: ReturnType<typeof nextStep>): string {
+  if (step.kind === "test") return `${step.level.id} • Big test`;
+  if (step.kind === "smart") return `Smart review • ${step.count} words`;
+  const n = allTopics().findIndex((u) => u.id === step.unit.id) + 1;
+  const part = step.kind === "learn" && step.parts > 1 ? ` • Lesson ${step.part}/${step.parts}` : step.kind === "quiz" ? " • Quiz" : "";
+  return `Unit ${n} • ${step.unit.title}${part}`;
 }

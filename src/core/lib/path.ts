@@ -4,10 +4,11 @@
 // If many words are due for review, a short smart review comes first.
 import { LEVELS, levelUnits, type Level, type Topic } from "../content/levels";
 import { examReady, knownInUnit, unitPassed, type Partner } from "../state/logic";
+import { nextChunk } from "./duo";
 import { dueKeys } from "./srs";
 
 export type NextStep =
-  | { kind: "learn"; unit: Topic; level: Level }
+  | { kind: "learn"; unit: Topic; level: Level; part: number; parts: number; count: number }
   | { kind: "practice"; unit: Topic; level: Level }
   | { kind: "quiz"; unit: Topic; level: Level }
   | { kind: "test"; level: Level }
@@ -29,7 +30,10 @@ export function nextStep(p: Partner, day = 0, today?: string): NextStep {
   const units = levelUnits(level);
   for (const unit of units) {
     if (unitPassed(p, unit.id)) continue;
-    if (knownInUnit(p, unit.id) < unit.words.length) return { kind: "learn", unit, level };
+    if (knownInUnit(p, unit.id) < unit.words.length) {
+      const c = nextChunk(unit.words.length, p.known[unit.id] ?? []) ?? { part: 1, parts: 1, indexes: [] };
+      return { kind: "learn", unit, level, part: c.part, parts: c.parts, count: c.indexes.length };
+    }
     if (!p.practised.includes(unit.id)) return { kind: "practice", unit, level };
     return { kind: "quiz", unit, level };
   }
@@ -48,7 +52,11 @@ export function unitState(p: Partner, unit: Topic): UnitState {
 export function stepLabel(step: NextStep): { title: string; detail: string; emoji: string } {
   switch (step.kind) {
     case "learn":
-      return { title: step.unit.title, detail: `Learn ${step.unit.words.length} words · about 3 min`, emoji: step.unit.emoji };
+      return {
+        title: step.unit.title,
+        detail: `${step.parts > 1 ? `Lesson ${step.part} of ${step.parts} · ` : ""}${step.count} new words · about 3 min`,
+        emoji: step.unit.emoji,
+      };
     case "practice":
       return { title: `Practise: ${step.unit.title}`, detail: "Hear it, say it, type it, use it · about 3 min", emoji: "🗣️" };
     case "quiz":

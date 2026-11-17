@@ -28,7 +28,10 @@ export default function Learn() {
     <AppShell>
       <div className="mx-auto max-w-3xl">
         <Script className="text-4xl">Learn Together 🗺️</Script>
-        <p className="mb-4 text-muted">Tap the glowing bubble. Each one is a few words and a quiz.</p>
+        <p className="mb-3 text-muted">Tap the glowing bubble. Each one is a few words and a quiz.</p>
+        <Button href="/vocab" variant="soft" size="sm" className="mb-4">
+          📖 My words — and how they change
+        </Button>
         <LevelPicker value={level.id} unlocked={p.unlocked} onChange={setPicked} />
 
         <Card className="mt-4">

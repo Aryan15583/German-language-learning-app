@@ -35,7 +35,8 @@ Couple Quizzes ⚔️ (duels), Talk 💬 (chat practice and role-play) and Love 
 
 ## Learning together, all the way to Berlin
 - **🗺️ Mumbai → Berlin map:** every lesson you pass moves you along the route (as a couple, the average of you two). Each stop — airport, café, apartment, train station, shopping, meeting locals, date night, Berlin — has its own words, and passing its quiz gives you a **Berlin postcard** (Fernsehturm, Brandenburger Tor, …).
-- **A stronger lesson flow:** 👀 see → 🔊 hear (flashcards) → 🗣️ say → ✍️ type → 🧩 use it in a real sentence (the practice step) → ✏️ quiz → 🎓 big test.
+- **Super-easy, Duolingo-style lessons:** each unit is split into small lessons of 3–4 new words. Meet each word (audio, meaning, Marathi) → a 2-choice check → match the pairs → tap what you hear → build the phrase from word tiles or type with a first-letter hint → say it out loud. A big Check button, friendly feedback, soft sounds, a 🔥 streak counter, and anything you miss comes back at the end. Then the ✏️ quiz and, per level, the 🎓 big test. (Flashcards and the separate practice page are still there.)
+- **📖 My words:** every word you've learned — and how it changes, like मी जातो / तू जातोस / ते जातात: verb endings for every person plus the past (*ich trinke, du trinkst … ich habe getrunken*), noun articles and plurals (*der Schlüssel → die Schlüssel*), and adjectives (*gut → besser → am besten*). Works for phrases too (*Ich habe Hunger* → haben, der Hunger). Search, filter by verbs / nouns / adjectives, and tap any form to hear it.
 - **🧠 Smart review with spaced repetition:** every word has a relationship with you (🌱 Seed → 🌿 Growing → 🌳 Strong → ❤️ Mastered). Right answers come back after 1, 3, 7, 14 and 30 days; mistakes and slow answers come back sooner. When many words are due, ▶ Start suggests a 3-minute review, often as a gap-fill in a real sentence.
 - **💞 Couple learning mode:** puzzles that need both of you — each phone shows only its half: complete my sentence, arrange together, say it together, role swap, translate for me, guess what I'd say. Two phones build the same round from the same date and round number, so nothing needs to be sent.
 - **🧩 Word builder** (German word order), **🎧 listening** (easy → expert), **🤔 grammar bites** (word-by-word), **🇮🇳 मराठी ↔ Deutsch** comparisons, **👫 Teach your partner** (explain it, they guess).
@@ -87,7 +88,7 @@ Without Supabase, the app runs as before: one shared phone, no accounts.
 
 ### Set up Supabase (free, ~10 minutes)
 1. Create a free project at **supabase.com**. A region near one of you works well (e.g. Mumbai).
-2. **SQL Editor:** run [`supabase/migrations/0001_relay.sql`](supabase/migrations/0001_relay.sql), then [`supabase/migrations/0002_accounts.sql`](supabase/migrations/0002_accounts.sql). If you connected the GitHub repo in Supabase with migrations enabled, it can apply these for you. Running them again is harmless.
+2. **SQL Editor:** run [`supabase/migrations/0001_relay.sql`](supabase/migrations/0001_relay.sql), then [`supabase/migrations/0002_accounts.sql`](supabase/migrations/0002_accounts.sql), then [`supabase/migrations/0003_no_email_needed.sql`](supabase/migrations/0003_no_email_needed.sql) (**no email needed**: confirms accounts automatically, because Supabase's built-in email only reaches your own Supabase team). If you connected the GitHub repo in Supabase with migrations enabled, it can apply these for you. Running them again is harmless.
 3. **Authentication → URL Configuration** (if confirmation emails open `localhost:3000`, this step is missing):
    - set **Site URL** to your app, e.g. `https://zwei-herzen-until-berlin.vercel.app`
    - add the same address under **Redirect URLs**
@@ -116,8 +117,28 @@ Without Supabase, the app runs as before: one shared phone, no accounts.
 
 **Good to know:**
 - **Email limits:** Supabase's built-in email sender only sends a few emails per hour, which is plenty for two people. If a confirmation email doesn't arrive, wait a bit or check spam.
-- **Skipping confirmation:** for just the two of you, you can instead turn off **Confirm email** (Authentication → Sign In / Providers → Email).
+- **"Email not confirmed" / emails never arrive:** run `0003_no_email_needed.sql` once (it also unsticks existing accounts). Turning off **Confirm email** (Authentication → Sign In / Providers → Email) helps too.
+- **Email links open `localhost:3000`:** set **Site URL** (Authentication → URL Configuration) to your app's address and add it under **Redirect URLs**.
 - **Pausing:** free projects pause after a week with no activity. If that happens, open the project and click **Restore**.
+
+## Send emails from your own Gmail (not Supabase)
+Supabase's built-in sender only reaches your own Supabase team. To send confirmation and password emails yourself, from your Gmail as **"Zwei Herzen ♡"**:
+
+1. **Make a Gmail app password** (needs 2-Step Verification on the Google account): go to **myaccount.google.com/apppasswords**, name it `Zwei Herzen`, and copy the 16-letter password. Keep it private — never paste it into a chat.
+2. **Supabase → Authentication → Emails → SMTP Settings** → turn on **Enable custom SMTP** and fill in:
+   | Field | Value |
+   |---|---|
+   | Sender email | your Gmail address |
+   | Sender name | `Zwei Herzen ♡` |
+   | Host | `smtp.gmail.com` |
+   | Port | `465` |
+   | Username | your Gmail address |
+   | Password | the 16-letter app password |
+   Then **Save**.
+3. **Make the emails pretty (optional):** in **Authentication → Emails → Templates**, paste the designs from [`supabase/email-templates/`](supabase/email-templates/README.md).
+4. **Check the link address:** **Authentication → URL Configuration** → **Site URL** = `https://zwei-herzen-until-berlin.vercel.app`, and add `https://zwei-herzen-until-berlin.vercel.app/**` under **Redirect URLs**. (Otherwise links open `localhost:3000`.)
+
+Gmail can send up to 500 emails a day — plenty for two. Prefer not to use Gmail? Any email service with SMTP (for example Brevo's free plan) works the same way.
 
 ## Deploy the web version (Vercel)
 `vercel.json` is already set up: Vercel runs `npm run build` (a static Next.js export, no server code) and serves `out/`. The Vercel settings `EXPO_PUBLIC_RELAY_URL` and `EXPO_PUBLIC_RELAY_KEY` keep their names.

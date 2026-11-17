@@ -16,7 +16,7 @@ describe("auth settings", () => {
 describe("friendly auth errors", () => {
   it.each([
     ["Invalid login credentials", "Wrong email or password."],
-    ["Email not confirmed", "Please confirm your email first — check your inbox (and spam)."],
+    ["Email not confirmed", "This account isn’t confirmed yet."],
     ["Unsupported provider: provider is not enabled", "Google sign-in isn’t switched on yet."],
     ["Signups not allowed for this instance", "New sign-ups are closed for this app."],
   ])("%s", (raw, nice) => expect(friendlyAuthError(raw)).toBe(nice));
