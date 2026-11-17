@@ -1,306 +1,135 @@
 import { router } from "expo-router";
-import { useState } from "react";
-import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
-import { Button, Card, Chip, Grid, H1, H2, LangPicker, PartnerName, ProgressBar, Row, Screen, SpeakButton, T, Tile } from "../../components/ui";
-import { LEVELS, levelWords } from "../../content/levels";
+import { Pressable, Text, View } from "react-native";
+import { BigButton, Card, ProgressBar, Row, Screen, SpeakButton, T } from "../../components/ui";
+import { LEVELS, levelWords, meaning } from "../../content/levels";
+import { DAILY_GOAL, isoWeek } from "../../lib/game";
+import { nextStep, stepHref, stepLabel } from "../../lib/path";
 import { partnerColor, usePalette } from "../../lib/theme";
-import { romanizeMarathi } from "../../lib/romanize";
 import { dailyIndex } from "../../lib/util";
-import { ACHIEVEMENTS, DAILY_GOAL, earnedAchievements, heartLevel, isoWeek, weeklyLeader } from "../../lib/game";
-import { useAccount } from "../../state/account";
-import { couple, currentStreak, currentSubLevel, levelProgress, partnerName, today, useProgress, type PartnerIndex } from "../../state/progress";
+import { couple, currentStreak, partnerName, today, useProgress } from "../../state/progress";
 
-export default function Home() {
+/** Today: one big button that always knows what to do next. */
+export default function Today() {
   const c = usePalette();
-  const { state, reset, accountMode } = useProgress();
-  const [pa, pb] = state.partners;
+  const { state, dismissWelcome, accountMode } = useProgress();
+  // Whoever is selected (on a shared phone) — always partner 0 with accounts.
+  const who = state.learner;
+  const me = state.partners[who];
+  const step = nextStep(me, dailyIndex(1000));
+  const label = stepLabel(step);
+  const streak = currentStreak(state);
+  const day = today();
+  const todayXp = me.today.date === day ? me.today.xp : 0;
+  const goalDone = todayXp >= DAILY_GOAL;
   const linked = couple.isLinked(state);
-  // Account mode: your own progress, plus your partner's once linked.
-  const people: PartnerIndex[] = accountMode && !linked ? [0] : [0, 1];
-
-  // Phrase of the day comes from the level you both can handle.
-  const shared = LEVELS[Math.min(pa.unlocked, pb.unlocked)];
-  const words = levelWords(shared);
-  const phrase = words[dailyIndex(words.length)];
+  const words = levelWords(LEVELS[me.unlocked]);
+  const word = words[dailyIndex(words.length)];
 
   return (
     <Screen>
-      <H1>
-        Hallo {partnerName(state, 0)}
-        {!accountMode || linked ? ` & ${partnerName(state, 1)}` : ""} 💞
-      </H1>
-      <T muted>
-        {state.streak.last === today() ? "You've practised today — super!" : "Practise together today to keep your streak."}
-      </T>
+      {!state.welcomeDone ? (
+        <Card style={{ backgroundColor: c.accentSoft, borderColor: c.accentSoft }}>
+          <Text style={{ color: c.text, fontSize: 20, fontWeight: "900" }}>How it works 👋</Text>
+          <Step n="1" text="Tap the big ▶ Start button. That’s it — the app picks what’s next." />
+          <Step n="2" text="Learn a few words 📚, then a short quiz ✏️. Every level ends with a big test 🎓." />
+          <Step n="3" text={linked || !accountMode ? "Chat and play with your partner in 💞 Us." : "Link with your partner in 💞 Us to chat and play together."} />
+          <BigButton title="Got it! 👍" onPress={dismissWelcome} color={c.accent} />
+        </Card>
+      ) : null}
 
-      <Card style={{ marginTop: 12, flexDirection: "row", justifyContent: "space-around" }}>
-        <Stat value={`🔥 ${currentStreak(state)}`} label="day streak" />
-        <Stat value={String(pa.xp)} label={`${partnerName(state, 0)} XP`} color={c.a} />
-        {!accountMode || linked ? <Stat value={String(pb.xp)} label={`${partnerName(state, 1)} XP`} color={c.b} /> : null}
+      <Text style={{ color: c.text, fontSize: 30, fontWeight: "900", marginTop: 4 }}>Hallo {partnerName(state, who)}! 👋</Text>
+
+      <Row style={{ marginTop: 6, marginBottom: 4 }}>
+        <Text style={{ fontSize: 18, fontWeight: "800", color: c.text }}>🔥 {streak}</Text>
+        <T muted>{streak === 1 ? "day" : "days"}</T>
+        <View style={{ flex: 1 }} />
+        <T muted style={{ fontSize: 14 }}>{goalDone ? "🎯 Goal done! 🎉" : `🎯 ${todayXp} / ${DAILY_GOAL} XP today`}</T>
+      </Row>
+      <ProgressBar value={todayXp / DAILY_GOAL} color={goalDone ? c.good : c.accent} />
+
+      {/* The one big button */}
+      <Card style={{ marginTop: 12, alignItems: "center", paddingVertical: 24, borderWidth: 2, borderColor: c.accent }}>
+        <T muted style={{ fontSize: 14, fontWeight: "700" }}>{goalDone ? "Want more? Next up:" : "Next up"}</T>
+        <Text style={{ fontSize: 64, marginVertical: 4 }}>{label.emoji}</Text>
+        <Text style={{ color: c.text, fontSize: 24, fontWeight: "900", textAlign: "center" }}>{label.title}</Text>
+        <T muted style={{ textAlign: "center", marginBottom: 14 }}>{label.detail}</T>
+        <BigButton title="▶  Start" onPress={() => router.push(stepHref(step))} color={c.good} large />
       </Card>
 
-      <Competition />
-
       <Card>
-        <T muted style={{ fontSize: 13 }}>Satz des Tages · Phrase of the day · {shared.id}</T>
-        <Row style={{ marginVertical: 4 }}>
-          <Text style={{ color: c.text, fontSize: 21, fontWeight: "800", flexShrink: 1 }}>{phrase.de}</Text>
-          <SpeakButton text={phrase.de} />
+        <T muted style={{ fontSize: 13, fontWeight: "700" }}>⭐ Word of the day</T>
+        <Row style={{ marginTop: 4, flexWrap: "nowrap" }}>
+          <Text style={{ color: c.text, fontSize: 22, fontWeight: "800", flexShrink: 1 }}>{word.de}</Text>
+          <SpeakButton text={word.de} />
         </Row>
-        <T muted>{phrase.en}</T>
-        <T muted>
-          {phrase.mr} · {romanizeMarathi(phrase.mr)}
-        </T>
-        <T muted style={{ marginTop: 8 }}>💡 Use it on each other at least once today!</T>
+        <T muted>{meaning(word, me.lang)}</T>
       </Card>
 
-      <Card>
-        <T style={{ fontWeight: "700" }}>Where you are</T>
-        {people.map((i) => {
-          const p = state.partners[i];
-          const level = LEVELS[p.unlocked];
-          const prog = levelProgress(p, level);
-          const sub = currentSubLevel(p);
-          return (
-            <View key={i} style={{ marginTop: 10 }}>
-              <Row>
-                <PartnerName i={i} />
-                <View style={{ backgroundColor: partnerColor(c, i), borderRadius: 6, paddingHorizontal: 6 }}>
-                  <Text style={{ color: "#fff", fontWeight: "800", fontSize: 12 }}>{level.id}</Text>
-                </View>
-                <T muted style={{ fontSize: 13 }}>
-                  {sub.id} · {sub.title}
-                </T>
-                <View style={{ flex: 1 }} />
-                <T muted style={{ fontSize: 13 }}>
-                  {p.examsPassed.length ? "🎓".repeat(p.examsPassed.length) + " " : ""}
-                  {prog.passed}/{prog.total} units
-                </T>
-              </Row>
-              <ProgressBar value={prog.share} color={partnerColor(c, i)} />
-            </View>
-          );
-        })}
-      </Card>
+      <Row style={{ flexWrap: "nowrap", gap: 10 }}>
+        <FunTile emoji="💬" title="Talk" onPress={() => router.push("/talk")} />
+        <FunTile emoji="⚔️" title="Play" onPress={() => router.push("/play")} />
+        <FunTile emoji="💌" title="Love note" onPress={() => router.push("/note")} />
+      </Row>
 
-      <H2>What shall we do?</H2>
-      <Grid>
-        <Tile emoji="📚" title="Flashcards" subtitle="Learn by level" onPress={() => router.navigate("/learn")} />
-        <Tile emoji="⚔️" title="Quiz duel" subtitle="Pass the phone" onPress={() => router.navigate("/duel")} />
-        <Tile emoji="💬" title="Chat" subtitle="Learn to talk" onPress={() => router.navigate("/talk")} />
-        <Tile emoji="💌" title="Love note" subtitle="Write in German" onPress={() => router.push("/note")} />
-      </Grid>
-
-      <H2>Learn through · शिकण्याची भाषा</H2>
-      <Card>
-        {(accountMode || linked ? ([0] as const) : ([0, 1] as const)).map((i) => (
-          <Row key={i} style={{ marginVertical: 4 }}>
-            <View style={{ minWidth: 70 }}>
-              <PartnerName i={i} />
-            </View>
-            <LangPicker i={i} />
-          </Row>
-        ))}
-        <T muted style={{ fontSize: 13, marginTop: 6 }}>
-          Meanings, quizzes and chat help appear in this language. Flashcards always show both, so you can compare.
-        </T>
-      </Card>
-
-      {accountMode ? <AccountCard /> : null}
-      <PinSettings />
-
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => {
-          reset();
-          router.replace("/setup");
-        }}
-        style={{ alignSelf: "center", marginTop: 28, padding: 8 }}
-      >
-        <T muted style={{ fontSize: 13, textDecorationLine: "underline" }}>Start over (reset names & progress)</T>
-      </Pressable>
+      {linked ? <PartnerStrip /> : null}
     </Screen>
   );
 }
 
-function Stat({ value, label, color }: { value: string; label: string; color?: string }) {
+function Step({ n, text }: { n: string; text: string }) {
   const c = usePalette();
   return (
-    <View style={{ alignItems: "center", flex: 1 }}>
-      <Text style={{ fontSize: 22, fontWeight: "800", color: color ?? c.text }}>{value}</Text>
-      <Text style={{ fontSize: 12, color: c.muted }} numberOfLines={1}>
-        {label}
-      </Text>
-    </View>
+    <Row style={{ marginTop: 10, flexWrap: "nowrap", alignItems: "flex-start" }}>
+      <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.accent, alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ color: c.onAccent, fontWeight: "900" }}>{n}</Text>
+      </View>
+      <T style={{ flex: 1, fontSize: 16 }}>{text}</T>
+    </Row>
   );
 }
 
-/** Hearts level, daily goal, weekly battle and badges. */
-function Competition() {
+function FunTile({ emoji, title, onPress }: { emoji: string; title: string; onPress: () => void }) {
+  const c = usePalette();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flex: 1,
+        alignItems: "center",
+        paddingVertical: 18,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: pressed ? c.accent : c.border,
+        backgroundColor: c.surface,
+      })}
+    >
+      <Text style={{ fontSize: 34 }}>{emoji}</Text>
+      <Text style={{ color: c.text, fontWeight: "800", marginTop: 4 }}>{title}</Text>
+    </Pressable>
+  );
+}
+
+/** Your partner at a glance (tap to open Us). */
+function PartnerStrip() {
   const c = usePalette();
   const { state } = useProgress();
-  const me: PartnerIndex = couple.isLinked(state) ? 0 : state.learner;
-  const other: PartnerIndex = me === 0 ? 1 : 0;
-  const p = state.partners[me];
-  const hearts = heartLevel(p.xp);
-  const day = today();
-  const todayXp = p.today.date === day ? p.today.xp : 0;
-  const week = isoWeek(day);
-  const weekXp = (i: PartnerIndex) => (state.partners[i].week.id === week ? state.partners[i].week.xp : 0);
-  const leader = weeklyLeader(weekXp(me), weekXp(other));
-  const streak = currentStreak(state);
-  const earned = earnedAchievements(couple.achievementContext(state, me, streak));
-
+  const week = isoWeek(today());
+  const mine = state.partners[0].week.id === week ? state.partners[0].week.xp : 0;
+  const theirs = state.partners[1].week.id === week ? state.partners[1].week.xp : 0;
   return (
-    <Card>
-      <Row>
-        <Text style={{ fontSize: 26 }}>❤️</Text>
+    <Pressable accessibilityRole="button" onPress={() => router.navigate("/us")} style={{ marginTop: 12 }}>
+      <Card style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <Text style={{ fontSize: 28 }}>💞</Text>
         <View style={{ flex: 1 }}>
-          <T style={{ fontWeight: "800" }}>
-            Lv {hearts.level} · {hearts.title}
-          </T>
-          <ProgressBar value={hearts.progress} color={partnerColor(c, me)} />
-          <T muted style={{ fontSize: 12 }}>
-            {hearts.into} / {hearts.span} XP to the next heart
+          <Text style={{ color: partnerColor(c, 1), fontWeight: "900", fontSize: 16 }}>{partnerName(state, 1)}</Text>
+          <T muted style={{ fontSize: 13 }}>
+            🔥 {state.partners[1].remote?.streak ?? 0} · this week {mine} vs {theirs} XP
           </T>
         </View>
-      </Row>
-
-      <View style={{ marginTop: 12 }}>
-        <T style={{ fontWeight: "700" }}>
-          🎯 Daily goal {todayXp >= DAILY_GOAL ? "✓ geschafft!" : `${todayXp} / ${DAILY_GOAL} XP`}
-        </T>
-        <ProgressBar value={todayXp / DAILY_GOAL} color={todayXp >= DAILY_GOAL ? c.good : c.accent} />
-      </View>
-
-      <View style={{ marginTop: 10 }}>
-        <T style={{ fontWeight: "700" }}>⚔️ Weekly battle</T>
-        <Row style={{ marginTop: 4 }}>
-          <Text style={{ color: partnerColor(c, me), fontWeight: "900", fontSize: 20 }}>{weekXp(me)}</Text>
-          <T muted>vs</T>
-          <Text style={{ color: partnerColor(c, other), fontWeight: "900", fontSize: 20 }}>{weekXp(other)}</Text>
-          <View style={{ flex: 1 }} />
-          <T style={{ fontSize: 13 }}>
-            {leader === "tie" ? "Gleichstand 🤝" : leader === "me" ? `${partnerName(state, me)} leads 👑` : `${partnerName(state, other)} leads 🔥`}
-          </T>
-        </Row>
-      </View>
-
-      <Pressable accessibilityRole="button" onPress={() => router.push("/badges")} style={{ marginTop: 12 }}>
-        <Row>
-          <T style={{ fontWeight: "700" }}>🏅 Badges</T>
-          <Text style={{ fontSize: 18, flexShrink: 1 }}>{earned.length ? earned.map((a) => a.emoji).join(" ") : "—"}</Text>
-          <View style={{ flex: 1 }} />
-          <T muted style={{ fontSize: 13 }}>
-            {earned.length}/{ACHIEVEMENTS.length} ›
-          </T>
-        </Row>
-      </Pressable>
-    </Card>
-  );
-}
-
-/** Optional PIN for each profile on this phone. */
-function PinSettings() {
-  const c = usePalette();
-  const { state, setPin } = useProgress();
-  const { accountMode } = useProgress();
-  const people: PartnerIndex[] = couple.isLinked(state) || accountMode ? [0] : [0, 1];
-  const [editing, setEditing] = useState<PartnerIndex | null>(null);
-  const [pin, setPinText] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState("");
-
-  return (
-    <>
-      <H2>Privacy 🔐</H2>
-      <Card>
-        {people.map((i) => (
-          <Row key={i} style={{ marginVertical: 4 }}>
-            <View style={{ minWidth: 70 }}>
-              <PartnerName i={i} />
-            </View>
-            <T muted style={{ flex: 1, fontSize: 13 }}>{state.partners[i].pin ? "PIN on 🔒" : "No PIN"}</T>
-            <Chip label={state.partners[i].pin ? "Change" : "Set PIN"} onPress={() => setEditing(i)} />
-            {state.partners[i].pin ? (
-              <Chip
-                label="Remove"
-                onPress={async () => {
-                  await setPin(i, null);
-                  setNote("PIN removed.");
-                }}
-              />
-            ) : null}
-          </Row>
-        ))}
-        {editing !== null ? (
-          <View style={{ marginTop: 8 }}>
-            <TextInput
-              value={pin}
-              onChangeText={(t) => setPinText(t.replace(/\D/g, "").slice(0, 8))}
-              keyboardType="number-pad"
-              secureTextEntry
-              placeholder="New PIN (4–8 digits)"
-              placeholderTextColor={c.muted}
-              accessibilityLabel="New PIN"
-              style={{ borderWidth: 1, borderColor: c.border, borderRadius: 12, padding: 12, color: c.text, backgroundColor: c.bg, fontSize: 18, letterSpacing: 4 }}
-            />
-            <Row style={{ marginTop: 8 }}>
-              {busy ? (
-                <ActivityIndicator color={c.accent} />
-              ) : (
-                <Button
-                  title="Save PIN"
-                  disabled={pin.length < 4}
-                  onPress={async () => {
-                    setBusy(true);
-                    await setPin(editing, pin);
-                    setBusy(false);
-                    setEditing(null);
-                    setPinText("");
-                    setNote("PIN saved. The app asks for it next time it opens.");
-                  }}
-                />
-              )}
-              <Button title="Cancel" variant="secondary" onPress={() => setEditing(null)} />
-            </Row>
-          </View>
-        ) : null}
-        {note ? <T muted style={{ marginTop: 6, fontSize: 13 }}>{note}</T> : null}
-        <T muted style={{ fontSize: 12, marginTop: 6 }}>
-          The PIN is stored only as a salted, slow hash on this phone. It can’t be recovered — forgetting it means resetting the app.
-        </T>
+        <Text style={{ color: c.muted, fontSize: 22 }}>›</Text>
       </Card>
-    </>
-  );
-}
-
-/** Signed-in account: email, backup status and sign out. */
-function AccountCard() {
-  const acct = useAccount();
-  const [confirm, setConfirm] = useState(false);
-  const backupText = { idle: "Backup ready", saving: "Saving…", saved: "Backed up ✓", error: "Backup failed — will retry" }[acct.backup];
-  return (
-    <>
-      <H2>Account 👤</H2>
-      <Card>
-        <T style={{ fontWeight: "700" }}>{acct.account?.email}</T>
-        {acct.account?.provider === "google" ? <T muted style={{ fontSize: 13 }}>Signed in with Google</T> : null}
-        <T muted style={{ fontSize: 13 }}>
-          🔒 {backupText} · encrypted with your {acct.account?.provider === "google" ? "backup passphrase" : "password"}
-        </T>
-        {confirm ? (
-          <View style={{ marginTop: 8 }}>
-            <T muted style={{ fontSize: 13 }}>Your progress is saved in your account. Signing out removes it from this phone until you log in again.</T>
-            <Row style={{ marginTop: 8 }}>
-              <Button title="Sign out" variant="secondary" onPress={acct.signOut} />
-              <Button title="Stay" onPress={() => setConfirm(false)} />
-            </Row>
-          </View>
-        ) : (
-          <Button title="Sign out" variant="secondary" onPress={() => setConfirm(true)} style={{ marginTop: 8 }} />
-        )}
-      </Card>
-    </>
+    </Pressable>
   );
 }

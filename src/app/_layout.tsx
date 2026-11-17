@@ -35,12 +35,14 @@ function RootStack() {
         <Stack.Screen name="setup" options={{ headerShown: false }} />
         <Stack.Screen name="unit/[topicId]" options={{ title: "Unit" }} />
         <Stack.Screen name="lesson/[topicId]" options={{ title: "Flashcards" }} />
-        <Stack.Screen name="quiz/[topicId]" options={{ title: "Unit test" }} />
-        <Stack.Screen name="exam/[levelId]" options={{ title: "Exam" }} />
+        <Stack.Screen name="quiz/[topicId]" options={{ title: "Quiz ✏️" }} />
+        <Stack.Screen name="exam/[levelId]" options={{ title: "Big test 🎓" }} />
         <Stack.Screen name="placement" options={{ title: "Placement test" }} />
         <Stack.Screen name="duel/[topicId]" options={{ title: "Quiz duel" }} />
         <Stack.Screen name="dialogue/[id]" options={{ title: "Role-play" }} />
         <Stack.Screen name="chat/[id]" options={{ title: "Chat" }} />
+        <Stack.Screen name="play" options={{ title: "Play ⚔️" }} />
+        <Stack.Screen name="talk" options={{ title: "Talk 💬" }} />
         <Stack.Screen name="inbox" options={{ title: "Message" }} />
         <Stack.Screen name="remote-duel" options={{ title: "Remote duel" }} />
         <Stack.Screen name="note" options={{ title: "Love note" }} />

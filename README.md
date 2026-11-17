@@ -4,6 +4,14 @@ Two hearts learning German together, all the way to Berlin. 💞
 
 A mobile app for two people learning German together, built with **React Native + Expo** (Expo Router, TypeScript). It runs on iOS, Android and the web.
 
+## How to use it (it's simple!)
+- **🏠 Today:** tap the big **▶ Start** button. The app always picks your next step: learn the words → a short quiz → the next unit. Each level ends with a **🎓 big test**.
+- **🗺️ Learn:** your path of bubbles. ⭐ means done, and the glowing one is next.
+- **💞 Us:** link with your partner, chat, and see the weekly battle.
+- **👤 Me:** language, badges, the "find my level" test, PIN and account.
+
+Talk 💬 (chat practice), Play ⚔️ (duels) and Love note 💌 are the three big buttons on Today.
+
 ## Features
 - **CEFR levels A1 → C2, each split into two sub-levels** (A1.1, A1.2 … C2.2), with 24 units and 192 words in total.
   | Level | Sub-levels | Units |
@@ -65,7 +73,7 @@ Without Supabase, the app runs as before: one shared phone, no accounts.
 ### Set up Supabase (free, ~10 minutes)
 1. Create a free project at **supabase.com**. A region near one of you works well (e.g. Mumbai).
 2. **SQL Editor:** run [`supabase/migrations/0001_relay.sql`](supabase/migrations/0001_relay.sql), then [`supabase/migrations/0002_accounts.sql`](supabase/migrations/0002_accounts.sql). If you connected the GitHub repo in Supabase with migrations enabled, it can apply these for you. Running them again is harmless.
-3. **Authentication → URL Configuration:**
+3. **Authentication → URL Configuration** (if confirmation emails open `localhost:3000`, this step is missing):
    - set **Site URL** to your app, e.g. `https://zwei-herzen-until-berlin.vercel.app`
    - add the same address under **Redirect URLs**
 
@@ -85,6 +93,8 @@ Without Supabase, the app runs as before: one shared phone, no accounts.
       - **Authorized redirect URIs:** `https://<your-project-id>.supabase.co/auth/v1/callback`
    4. Copy the **Client ID** and **Client secret**.
    5. In Supabase → **Authentication → Sign In / Providers → Google**: turn it on, paste both, and **Save**.
+
+   The app only shows the Google button once Google is switched on in Supabase.
 
    Google accounts don't give the app a password, so after the first Google sign-in the app asks you to **choose a backup passphrase**. It locks your backup the same way a password does. You enter it once on each new phone, and it can't be recovered, so write it down.
 8. **Once you've both signed up, lock the door:** in **Authentication → Sign In / Providers**, turn off **Allow new users to sign up**. Then nobody else can create an account on your app.

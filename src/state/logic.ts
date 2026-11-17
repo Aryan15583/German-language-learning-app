@@ -87,6 +87,10 @@ export type AppState = {
   remoteDuels: RemoteDuel[];
   /** Last message id read from each relay mailbox. */
   relayCursor: Record<string, number>;
+  /** The first-time "how it works" card was dismissed. */
+  welcomeDone: boolean;
+  /** When this state last changed (ms) — decides which copy wins: this phone's or the cloud's. */
+  updatedAt: number;
 };
 
 // ---- Rules ----
@@ -128,6 +132,8 @@ export const freshState = (): AppState => ({
   customWords: [],
   remoteDuels: [],
   relayCursor: {},
+  welcomeDone: false,
+  updatedAt: 0,
 });
 
 const clampLevel = (n: unknown) => (typeof n === "number" && n >= 0 ? Math.min(Math.floor(n), MAX_LEVEL) : 0);
@@ -164,6 +170,8 @@ export function migrate(raw: unknown): AppState {
     customWords: Array.isArray(r.customWords) ? r.customWords : [],
     remoteDuels: Array.isArray(r.remoteDuels) ? r.remoteDuels : [],
     relayCursor: r.relayCursor && typeof r.relayCursor === "object" ? r.relayCursor : {},
+    welcomeDone: r.welcomeDone === true,
+    updatedAt: typeof r.updatedAt === "number" && r.updatedAt > 0 ? r.updatedAt : 0,
   };
 }
 

@@ -1,5 +1,6 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
+import { KeepGoing } from "../../components/KeepGoing";
 import { Quiz } from "../../components/Quiz";
 import { Results } from "../../components/Results";
 import { Button, Card, H1, PartnerName, Screen, T } from "../../components/ui";
@@ -32,13 +33,13 @@ export default function Exam() {
 
   const idx = levelIndex(level.id);
   const next = LEVELS[idx + 1];
-  const header = <Stack.Screen options={{ title: `${level.id} exam` }} />;
+  const header = <Stack.Screen options={{ title: `${level.id} big test` }} />;
 
   if (phase === "intro") {
     return (
       <Screen>
         {header}
-        <H1>🎓 {level.id} Prüfung</H1>
+        <H1>🎓 {level.id} big test</H1>
         <T muted>
           {level.name} exam for <PartnerName i={learner} />.
         </T>
@@ -49,7 +50,7 @@ export default function Exam() {
           <T>• {next ? `Passing unlocks ${next.id} · ${next.name}` : "Passing earns your C2 mastery badge"}</T>
         </Card>
         <T muted style={{ marginBottom: 16 }}>No help from your partner this time! 😉</T>
-        <Button title="Start exam" onPress={() => setPhase("exam")} />
+        <Button title="▶ Start the big test" onPress={() => setPhase("exam")} />
       </Screen>
     );
   }
@@ -73,7 +74,7 @@ export default function Exam() {
           }
         >
           {passed ? (
-            <Button title="Continue learning" onPress={() => router.back()} />
+            <KeepGoing />
           ) : (
             <>
               <Button

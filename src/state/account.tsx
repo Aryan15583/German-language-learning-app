@@ -4,8 +4,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
-import { accountsEnabled, supabase } from "../lib/supabase";
-import { deriveVaultKey, newSalt, openBackup, sealBackup } from "../lib/vault";
+import { accountsEnabled, fetchAuthSettings, supabase, type AuthSettings } from "../lib/supabase";
+import { cloudIsNewer, deriveVaultKey, newSalt, openBackup, sealBackup } from "../lib/vault";
 
 export type Phase = "loading" | "off" | "signed-out" | "unlock" | "recovery" | "ready";
 export type Provider = "email" | "google";
@@ -32,6 +32,8 @@ export function friendlyAuthError(message: string | undefined): string {
   if (m.includes("not confirmed")) return "Please confirm your email first — check your inbox (and spam).";
   if (m.includes("already registered") || m.includes("already been registered")) return "There’s already an account with this email — log in instead.";
   if (m.includes("rate limit") || m.includes("too many")) return "Too many tries. Please wait a minute and try again.";
+  if (m.includes("provider is not enabled") || m.includes("unsupported provider")) return "Google sign-in isn’t switched on yet.";
+  if (m.includes("signups not allowed") || m.includes("signup is disabled")) return "New sign-ups are closed for this app.";
   if (m.includes("weak") || m.includes("password should")) return "Please choose a stronger password.";
   if (m.includes("fetch") || m.includes("network")) return "Can’t reach the internet right now.";
   return message || "Something went wrong. Please try again.";
@@ -48,6 +50,9 @@ type Ctx = {
   hasBackup: boolean | null;
   /** Web only: continue with a Google account. */
   signInWithGoogle: () => Promise<Result>;
+  /** What the Supabase project allows (null until known). */
+  settings: AuthSettings | null;
+  resendConfirmation: (email: string) => Promise<Result>;
   signUp: (email: string, password: string) => Promise<Result>;
   signIn: (email: string, password: string) => Promise<Result>;
   /** Re-enter the password on a phone that has a session but no key (e.g. after confirming email). */
@@ -69,6 +74,16 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [initialState, setInitialState] = useState<unknown>(null);
   const [backup, setBackup] = useState<BackupStatus>("idle");
   const [hasBackup, setHasBackup] = useState<boolean | null>(null);
+  const [settings, setSettings] = useState<AuthSettings | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let alive = true;
+    fetchAuthSettings().then((s) => alive && setSettings(s));
+    return () => {
+      alive = false;
+    };
+  }, [enabled]);
   const vault = useRef<Vault | null>(null);
   const pending = useRef<{ state: unknown; timer: ReturnType<typeof setTimeout> } | null>(null);
 
@@ -103,6 +118,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         v = { salt: row.salt, key: deriveVaultKey(password, row.salt) };
         try {
           restored = openBackup(v.key, row.blob);
+          // Keep this phone's copy if it has newer, not-yet-uploaded changes.
+          const local = await AsyncStorage.getItem(stateKey(acct.id)).catch(() => null);
+          if (!cloudIsNewer(local ? JSON.parse(local) : null, restored)) restored = null;
         } catch {
           return {
             ok: false,
@@ -158,10 +176,15 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         return setPhase((p) => (p === "recovery" ? p : "unlock"));
       }
       vault.current = JSON.parse(saved) as Vault;
-      // Prefer the cloud copy (it may be newer, e.g. from another phone); fall back to this phone's copy offline.
+      // Use whichever copy is newer: the cloud's (e.g. changes from another phone) or this phone's
+      // (e.g. changes made just before the app was closed). Offline: this phone's copy.
       try {
         const row = await fetchRow(user.id);
-        if (row && row.salt === vault.current.salt) setInitialState(openBackup(vault.current.key, row.blob));
+        if (row && row.salt === vault.current.salt) {
+          const cloud = openBackup(vault.current.key, row.blob);
+          const local = await AsyncStorage.getItem(stateKey(user.id)).catch(() => null);
+          if (cloudIsNewer(local ? JSON.parse(local) : null, cloud)) setInitialState(cloud);
+        }
       } catch {
         // offline or not decryptable: use the local copy
       }
@@ -191,6 +214,20 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     }
   }, [account, upload]);
 
+  // Leaving the page: try to save right away instead of waiting for the timer.
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const onHide = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  }, [flush]);
+
   const value = useMemo<Ctx>(
     () => ({
       enabled,
@@ -199,6 +236,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       initialState,
       backup,
       hasBackup,
+      settings,
+      resendConfirmation: async (email) => {
+        const redirect = Platform.OS === "web" && typeof window !== "undefined" ? window.location.origin : undefined;
+        const { error } = await supabase()!.auth.resend({ type: "signup", email: email.trim(), options: { emailRedirectTo: redirect } });
+        return error ? { ok: false, error: friendlyAuthError(error.message) } : { ok: true };
+      },
       signInWithGoogle: async () => {
         if (Platform.OS !== "web" || typeof window === "undefined") return { ok: false, error: "Google sign-in works in the web app." };
         const { error } = await supabase()!.auth.signInWithOAuth({
@@ -276,7 +319,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         };
       },
     }),
-    [enabled, phase, account, initialState, backup, hasBackup, openVault, flush, upload],
+    [enabled, phase, account, initialState, backup, hasBackup, settings, openVault, flush, upload],
   );
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;

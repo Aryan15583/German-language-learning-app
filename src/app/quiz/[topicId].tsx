@@ -1,5 +1,6 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
+import { KeepGoing } from "../../components/KeepGoing";
 import { Quiz } from "../../components/Quiz";
 import { Results } from "../../components/Results";
 import { Button, PartnerName, Screen, T } from "../../components/ui";
@@ -31,7 +32,7 @@ export default function UnitTest() {
     );
   }
 
-  const header = <Stack.Screen options={{ title: `Test · ${unit.title}` }} />;
+  const header = <Stack.Screen options={{ title: `Quiz · ${unit.title}` }} />;
 
   if (result) {
     const score = result.correct / result.total;
@@ -43,7 +44,7 @@ export default function UnitTest() {
           passed={passed}
           correct={result.correct}
           total={result.total}
-          title={passed ? "Bestanden! Unit passed ⭐" : "Fast geschafft!"}
+          title={passed ? "Bestanden! You passed ⭐" : "Almost! Fast geschafft!"}
           message={
             passed
               ? `${unit.title} is done. Keep going with ${sub.id}!`
@@ -51,7 +52,7 @@ export default function UnitTest() {
           }
         >
           {passed ? (
-            <Button title="Back to the unit" onPress={() => router.back()} />
+            <KeepGoing />
           ) : (
             <>
               <Button

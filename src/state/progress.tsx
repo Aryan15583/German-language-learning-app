@@ -72,6 +72,7 @@ type Ctx = {
   addOurWord: (word: SharedWord) => Promise<SendResult | null>;
   unlink: () => void;
   syncNow: () => Promise<void>;
+  dismissWelcome: () => void;
 };
 
 const ProgressContext = createContext<Ctx | null>(null);
@@ -99,7 +100,9 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
 
   /** Update state and keep the ref in step, so async code always sees the latest. */
   const update = useCallback((fn: (s: AppState) => AppState) => {
-    stateRef.current = fn(stateRef.current);
+    const next = fn(stateRef.current);
+    if (next === stateRef.current) return;
+    stateRef.current = { ...next, updatedAt: Date.now() };
     setState(stateRef.current);
   }, []);
 
@@ -328,6 +331,7 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
         return C.isLinked(stateRef.current) ? send({ kind: "word", word }) : null;
       },
       unlink: () => update((s) => C.unlinkCouple(s)),
+      dismissWelcome: () => update((s) => ({ ...s, welcomeDone: true })),
       syncNow,
     }),
     [state, ready, accountMode, locked, relay, syncStatus, update, envelopeFor, deliver, send, openLink, syncNow],
