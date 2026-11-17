@@ -111,7 +111,7 @@ function GuidedChat({ chat }: { chat: Chat }) {
             ) : null}
             <div className="flex flex-col gap-2">
               {(showOptions ? step.replies : []).map((r, k) => (
-                <button key={r.de} type="button" aria-label={`Reply: ${r.de}`} onClick={() => send({ reply: k })} className="rounded-2xl border border-line bg-white px-4 py-2.5 text-left hover:border-rose">
+                <button key={r.de} type="button" aria-label={`Reply: ${r.de}`} onClick={() => send({ reply: k })} className="rounded-2xl border border-line bg-surface px-4 py-2.5 text-left hover:border-rose">
                   <span className="block text-ink">{r.de}</span>
                   {help ? <span className="block text-xs text-muted">{meaning(r, lang)}</span> : null}
                 </button>
@@ -156,7 +156,7 @@ function Message({ m, bot, help, lang }: { m: ChatMessage; bot: { name: string; 
     return (
       <div className="flex items-end gap-2">
         <span className="text-2xl">{bot.avatar}</span>
-        <div className="max-w-[85%] rounded-3xl rounded-bl-md border border-line bg-white px-4 py-3">
+        <div className="max-w-[85%] rounded-3xl rounded-bl-md border border-line bg-surface px-4 py-3">
           <p className="text-xs font-bold text-plum">{bot.name}</p>
           <div className="flex items-center gap-2">
             <p className="flex-1 text-ink">{m.line.de}</p>

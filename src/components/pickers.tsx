@@ -19,7 +19,7 @@ export function LevelPicker({ value, unlocked = LEVELS.length, onChange }: { val
             onClick={() => onChange(l.id)}
             className={cx(
               "flex flex-col items-center rounded-2xl border py-2 text-sm font-extrabold transition",
-              on ? "border-plum bg-plum text-white shadow-soft" : "border-line bg-white/70 text-ink hover:border-rose",
+              on ? "border-plum bg-plum text-white shadow-soft" : "border-line bg-surface/70 text-ink hover:border-rose",
             )}
           >
             {l.id}
@@ -43,7 +43,7 @@ export function LangPicker({ value, onChange }: { value: Lang; onChange: (l: Lan
           onClick={() => onChange(l.id)}
           className={cx(
             "rounded-full border px-4 py-2 text-sm font-medium transition",
-            value === l.id ? "border-plum bg-plum text-white" : "border-line bg-white/70 text-ink hover:border-rose",
+            value === l.id ? "border-plum bg-plum text-white" : "border-line bg-surface/70 text-ink hover:border-rose",
           )}
         >
           {l.label}

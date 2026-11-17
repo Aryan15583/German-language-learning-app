@@ -98,7 +98,7 @@ export default function Note() {
                   {suggestions.map((w) => {
                     const inNote = extras.some((e) => e.de === w.de);
                     return (
-                      <div key={w.de} className="rounded-2xl border border-line bg-white p-3">
+                      <div key={w.de} className="rounded-2xl border border-line bg-surface p-3">
                         <div className="flex items-center gap-2">
                           <p className="flex-1 font-bold text-plum">🇩🇪 {w.de}</p>
                           <Speak text={w.de} />

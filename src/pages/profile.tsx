@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { useState, type ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
 import { InstallCard } from "../components/InstallCard";
+import { useTheme, type ThemePref } from "../web/theme";
 import { LangPicker } from "../components/pickers";
 import { Button, Card, Chip, fieldClass, Script, Spinner } from "../components/ui";
 import { LEVELS } from "../core/content/levels";
@@ -43,6 +44,7 @@ export default function Profile() {
         </div>
 
         <InstallCard />
+        <Appearance />
 
         <Section title="My language 🌐">
           {people.map((i) => (
@@ -213,6 +215,35 @@ function AccountCard() {
           <LogOut size={18} /> Sign out
         </Button>
       )}
+    </Section>
+  );
+}
+
+const THEMES: { id: ThemePref; label: string; hint: string }[] = [
+  { id: "system", label: "📱 Like my phone", hint: "Light by day, dark at night — follows your phone's setting." },
+  { id: "light", label: "☀️ Light", hint: "Rose and cream, always." },
+  { id: "dark", label: "🌙 Dark", hint: "Berlin at night: easy on the eyes." },
+];
+
+function Appearance() {
+  const { pref, setPref } = useTheme();
+  return (
+    <Section title="Appearance ✨">
+      <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Appearance">
+        {THEMES.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="radio"
+            aria-checked={pref === t.id}
+            onClick={() => setPref(t.id)}
+            className={`rounded-2xl border-2 p-3 text-left transition ${pref === t.id ? "border-plum bg-blush" : "border-line bg-surface hover:border-rose"}`}
+          >
+            <span className="block font-semibold">{t.label}</span>
+            <span className="block text-xs text-muted">{t.hint}</span>
+          </button>
+        ))}
+      </div>
     </Section>
   );
 }

@@ -90,7 +90,7 @@ export default function Quizzes() {
                 type="button"
                 aria-pressed={duelMode === m.id}
                 onClick={() => setDuelMode(m.id)}
-                className={`rounded-2xl border-2 p-3 text-left transition ${duelMode === m.id ? "border-plum bg-blush" : "border-line bg-white hover:border-rose"}`}
+                className={`rounded-2xl border-2 p-3 text-left transition ${duelMode === m.id ? "border-plum bg-blush" : "border-line bg-surface hover:border-rose"}`}
               >
                 <span className="block font-bold">
                   {m.emoji} {m.title}

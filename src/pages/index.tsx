@@ -61,7 +61,7 @@ export default function Home() {
 
       {!state.welcomeDone ? <HowItWorks linked={linked || !accountMode} onDone={dismissWelcome} /> : null}
       {due > 0 && step.kind !== "smart" ? (
-        <Link href="/review" className="mb-4 flex items-center gap-3 rounded-3xl border border-gold/50 bg-[#fff6dc] px-5 py-3 shadow-card hover:border-gold">
+        <Link href="/review" className="mb-4 flex items-center gap-3 rounded-3xl border border-gold/50 bg-gold-soft px-5 py-3 shadow-card hover:border-gold">
           <Lightbulb className="text-gold" />
           <span className="flex-1 font-semibold text-ink">
             {due} {due === 1 ? "word needs" : "words need"} your attention
@@ -72,7 +72,7 @@ export default function Home() {
 
       <div className="grid gap-5 lg:grid-cols-3">
         {/* Hero (computers) */}
-        <section className="relative hidden overflow-hidden rounded-[28px] bg-gradient-to-r from-blush via-[#fbdde6] to-[#f6cbd8] shadow-card lg:col-span-2 lg:block">
+        <section className="gold-ring relative hidden overflow-hidden rounded-[28px] bg-gradient-to-r from-blush via-blush to-rose-soft lg:col-span-2 lg:block">
           {/* eslint-disable-next-line @next/next/no-img-element -- static export */}
           <img src="/art/hero.jpg" alt="" className="absolute inset-y-0 right-0 h-full w-[58%] object-cover [mask-image:linear-gradient(to_right,transparent,black_30%)]" />
           <div className="relative max-w-[52%] p-8">
@@ -84,7 +84,7 @@ export default function Home() {
             </Script>
             <p className="mt-3 text-ink/80">Grow closer, one word at a time.</p>
             <HeartPlane className="mt-2 h-8 w-24 text-plum" />
-            <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/85 px-4 py-2 text-sm font-semibold text-plum shadow-card">
+            <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-surface/85 px-4 py-2 text-sm font-semibold text-plum shadow-card">
               <Heart size={16} fill="currentColor" /> Day {journeyDay} of your journey
             </span>
           </div>
@@ -95,7 +95,7 @@ export default function Home() {
           <div className="relative h-32 overflow-hidden rounded-t-3xl bg-blush">
             {/* eslint-disable-next-line @next/next/no-img-element -- static export */}
             <img src="/art/gate.jpg" alt="" className="h-full w-full object-cover" />
-            <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-plum">{step.level.id}</span>
+            <span className="absolute left-3 top-3 rounded-full bg-surface/90 px-3 py-1 text-xs font-bold text-plum">{step.level.id}</span>
           </div>
           <div className="flex flex-1 flex-col p-5">
             <p className="text-sm font-semibold text-muted">{mine.todayXp >= DAILY_GOAL ? "Goal done! Want more? Next up" : "Continue learning"}</p>
@@ -122,7 +122,7 @@ export default function Home() {
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {missionTasks(mission).map((t) => (
               <li key={t.id} className={cx("flex items-center gap-3 rounded-2xl px-3 py-2.5", t.done ? "bg-good/10" : "bg-blush/60")}>
-                <span className={cx("grid h-6 w-6 shrink-0 place-items-center rounded-md border-2 text-sm font-bold", t.done ? "border-good bg-good text-white" : "border-rose-soft bg-white")}>{t.done ? "✓" : ""}</span>
+                <span className={cx("grid h-6 w-6 shrink-0 place-items-center rounded-md border-2 text-sm font-bold", t.done ? "border-good bg-good text-white" : "border-rose-soft bg-surface")}>{t.done ? "✓" : ""}</span>
                 <span className="flex-1 text-ink">{t.label}</span>
                 {t.need > 1 ? (
                   <span className="text-xs text-muted">
@@ -184,11 +184,11 @@ export default function Home() {
             </Link>
           </div>
           <div className="mt-4 flex items-center justify-around gap-2">
-            <Person stats={mine} color="#8b2f55" />
+            <Person stats={mine} color="var(--color-plum)" />
             {theirs ? (
               <>
                 <Heart className="text-rose" fill="currentColor" size={22} />
-                <Person stats={theirs} color="#5a7fc4" />
+                <Person stats={theirs} color="var(--color-partner)" />
               </>
             ) : (
               <Link href="/us" className="flex flex-col items-center gap-2 text-center text-sm text-muted hover:text-plum">
@@ -236,7 +236,7 @@ export default function Home() {
         <Card>
           <h2 className="text-lg font-bold text-ink">Today’s goal</h2>
           <div className="mt-3 flex items-center gap-4">
-            <Ring value={goalShare(mine.todayXp)} size={86} stroke={9} color={mine.todayXp >= DAILY_GOAL ? "#3f9b6e" : "#e0718f"}>
+            <Ring value={goalShare(mine.todayXp)} size={86} stroke={9} color={mine.todayXp >= DAILY_GOAL ? "var(--color-good)" : "var(--color-rose)"}>
               <Target size={26} className="text-plum" />
             </Ring>
             <div>

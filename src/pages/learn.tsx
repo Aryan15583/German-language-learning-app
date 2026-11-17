@@ -102,7 +102,7 @@ function Bubble({ unit, state, offset }: { unit: Topic; state: UnitState; offset
           "relative grid h-[88px] w-[88px] place-items-center rounded-full text-4xl transition hover:scale-105",
           state === "done" && "bg-gold shadow-soft",
           state === "next" && "bg-plum shadow-soft anim-pulse-ring",
-          state === "open" && "border-[3px] border-line bg-white",
+          state === "open" && "border-[3px] border-line bg-surface",
         )}
       >
         <span aria-hidden>{unit.emoji}</span>

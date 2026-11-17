@@ -30,9 +30,9 @@ export default function Progress() {
         <Card className="lg:col-span-2">
           <h2 className="text-lg font-bold">{theirs ? "Side by side" : "You"}</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <PersonCard s={mine} color="#8b2f55" />
+            <PersonCard s={mine} color="var(--color-plum)" />
             {theirs ? (
-              <PersonCard s={theirs} color="#5a7fc4" />
+              <PersonCard s={theirs} color="var(--color-partner)" />
             ) : (
               <Link href="/us" className="grid place-items-center rounded-3xl border-2 border-dashed border-rose-soft p-6 text-center text-muted hover:text-plum">
                 💞 Link your partner to see them here
@@ -81,7 +81,7 @@ export default function Progress() {
               const locked = isLocked(me, l);
               const passed = me.examsPassed.includes(l.id);
               return (
-                <Link key={l.id} href="/learn" className={cx("rounded-2xl border border-line/70 bg-white/70 p-4 hover:border-rose", locked && "opacity-60")}>
+                <Link key={l.id} href="/learn" className={cx("rounded-2xl border border-line/70 bg-surface/70 p-4 hover:border-rose", locked && "opacity-60")}>
                   <div className="flex items-center gap-2">
                     <span className="rounded-full bg-blush px-2.5 py-0.5 text-sm font-extrabold text-plum">{l.id}</span>
                     <span className="flex-1 font-semibold">{l.name}</span>
