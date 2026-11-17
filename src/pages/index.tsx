@@ -1,10 +1,14 @@
-import { BookOpen, ChevronRight, Flame, Gamepad2, Heart, Mail, MessageCircle, Play, Swords, Target, Trophy } from "lucide-react";
+import { BookOpen, ChevronRight, Dumbbell, Flame, Gamepad2, Heart, Lightbulb, Mail, Map, MessageCircle, Play, Swords, Target, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
 import { Button, Card, cx, HeartPlane, Mascot, ProgressBar, Ring, Script, Speak } from "../components/ui";
 import { LEVELS, levelWords, meaning } from "../core/content/levels";
 import { DAILY_GOAL } from "../core/lib/game";
+import { nextStop, routeShare } from "../core/lib/journey";
+import { missionComplete, missionFor, missionTasks, MISSION_XP } from "../core/lib/missions";
+import { dueKeys } from "../core/lib/srs";
+import { couplePoints } from "../web/journey";
 import { nextStep, stepLabel } from "../core/lib/path";
 import { dailyIndex } from "../core/lib/util";
 import { hrefOf } from "../web/nav";
@@ -21,7 +25,7 @@ const QUOTES = [
 
 /** The home dashboard: one clear next step, then everything else at a glance. */
 export default function Home() {
-  const { state, accountMode, dismissWelcome } = useProgress();
+  const { state, accountMode, dismissWelcome, claimMission } = useProgress();
   // Pages only render in the browser (the app gate shows a spinner while exporting), so dates are safe here.
   const [day] = useState(() => dailyIndex(1000));
   const who = state.learner;
@@ -31,7 +35,13 @@ export default function Home() {
   const both = hasPartner(state, accountMode);
   const other = who === 0 ? 1 : 0;
   const theirs = both ? personStats(state, accountMode ? 1 : other, today(), streak) : null;
-  const step = nextStep(me, day);
+  const step = nextStep(me, day, today());
+  const due = dueKeys(me.memory, today()).length;
+  const mission = missionFor(me.mission, today());
+  const trip = couplePoints(state, accountMode);
+  const togetherLevel = theirs && LEVELS.findIndex((l) => l.id === theirs.levelId) < LEVELS.findIndex((l) => l.id === mine.levelId) ? theirs.levelId : mine.levelId;
+  const togetherShare = theirs ? (mine.levelShare + theirs.levelShare) / 2 : mine.levelShare;
+  const nextLevel = LEVELS[Math.min(LEVELS.findIndex((l) => l.id === togetherLevel) + 1, LEVELS.length - 1)].id;
   const label = stepLabel(step);
   const words = levelWords(LEVELS[me.unlocked]);
   const word = words[day % words.length];
@@ -50,6 +60,15 @@ export default function Home() {
       </div>
 
       {!state.welcomeDone ? <HowItWorks linked={linked || !accountMode} onDone={dismissWelcome} /> : null}
+      {due > 0 && step.kind !== "smart" ? (
+        <Link href="/review" className="mb-4 flex items-center gap-3 rounded-3xl border border-gold/50 bg-[#fff6dc] px-5 py-3 shadow-card hover:border-gold">
+          <Lightbulb className="text-gold" />
+          <span className="flex-1 font-semibold text-ink">
+            {due} {due === 1 ? "word needs" : "words need"} your attention
+          </span>
+          <span className="text-sm font-semibold text-plum">3-min review →</span>
+        </Link>
+      ) : null}
 
       <div className="grid gap-5 lg:grid-cols-3">
         {/* Hero (computers) */}
@@ -94,11 +113,65 @@ export default function Home() {
           </div>
         </Card>
 
+        {/* Today's mission */}
+        <Card className="lg:col-span-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-ink">❤️ Today’s mission</h2>
+            <span className="text-sm text-muted">❤️ {me.counts.hearts} couple {me.counts.hearts === 1 ? "heart" : "hearts"}</span>
+          </div>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {missionTasks(mission).map((t) => (
+              <li key={t.id} className={cx("flex items-center gap-3 rounded-2xl px-3 py-2.5", t.done ? "bg-good/10" : "bg-blush/60")}>
+                <span className={cx("grid h-6 w-6 shrink-0 place-items-center rounded-md border-2 text-sm font-bold", t.done ? "border-good bg-good text-white" : "border-rose-soft bg-white")}>{t.done ? "✓" : ""}</span>
+                <span className="flex-1 text-ink">{t.label}</span>
+                {t.need > 1 ? (
+                  <span className="text-xs text-muted">
+                    {t.have}/{t.need}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {mission.claimed ? (
+              <p className="font-semibold text-good">Mission complete! +{MISSION_XP} XP · ❤️ +1 🎉</p>
+            ) : (
+              <Button variant="good" disabled={!missionComplete(mission)} onClick={() => claimMission(state.learner)}>
+                Claim +{MISSION_XP} XP · ❤️ +1
+              </Button>
+            )}
+            <span className="text-xs text-muted">A new mission every day.</span>
+          </div>
+        </Card>
+
+        {/* Journey */}
+        <Link href="/journey" className="block">
+          <Card className="h-full transition hover:border-rose">
+            <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
+              <Map size={18} className="text-plum" /> Mumbai → Berlin
+            </h2>
+            <div className="mt-3 flex items-center justify-between text-xs font-semibold text-muted">
+              <span>🇮🇳</span>
+              <span>{Math.round(routeShare(trip.points) * 100)}%</span>
+              <span>🇩🇪</span>
+            </div>
+            <ProgressBar value={routeShare(trip.points)} className="mt-1" />
+            <p className="mt-3 text-sm text-muted">
+              {(() => {
+                const n = nextStop(trip.points);
+                return n ? `Next stop: ${n.stop.emoji} ${n.stop.title} — ${n.toGo} more ${n.toGo === 1 ? "lesson" : "lessons"}${trip.together ? " (together)" : ""}.` : "You made it to Berlin! 🇩🇪❤️";
+              })()}
+            </p>
+          </Card>
+        </Link>
+
         {/* Phone tiles */}
         <div className="grid grid-cols-2 gap-3 lg:hidden">
           <Tile href="/learn" icon={<BookOpen />} title="Lessons" sub="Your path" />
-          <Tile href="/quizzes" icon={<Gamepad2 />} title="Couple Quizzes" sub="Play together" />
-          <Tile href="/progress" icon={<Target />} title="Progress" sub="Your stats" />
+          <Tile href="/journey" icon={<Map />} title="Berlin Map" sub="Mumbai → Berlin" />
+          <Tile href="/train" icon={<Dumbbell />} title="Practice" sub={due ? `${due} words to review` : "Review, listen, build"} />
+          <Tile href="/quizzes" icon={<Gamepad2 />} title="Couple Quizzes" sub="Duel each other" />
+          <Tile href="/together" icon={<Users />} title="Learn Together" sub="Puzzles for two" />
           <Tile href="/talk" icon={<MessageCircle />} title="Challenges" sub="Chat & role-play" />
         </div>
 
@@ -123,6 +196,11 @@ export default function Home() {
                 Link your partner
               </Link>
             )}
+          </div>
+          <div className="mt-4 space-y-2 text-sm">
+            <Bar label={`${mine.name} · ${mine.levelId}`} value={mine.levelShare} color="bg-plum" />
+            {theirs ? <Bar label={`${theirs.name} · ${theirs.levelId}`} value={theirs.levelShare} color="bg-partner" /> : null}
+            {theirs ? <Bar label={`❤️ Together · ${togetherLevel} → ${nextLevel}`} value={togetherShare} color="bg-rose" /> : null}
           </div>
         </Card>
 
@@ -225,8 +303,9 @@ export default function Home() {
               View all
             </Link>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Activity href="/quizzes" icon={<Swords />} title="Couple Quizzes" sub="Duel each other — who knows more?" art="/art/couple.jpg" />
+            <Activity href="/together" icon={<Users />} title="Learn Together" sub="Puzzles that need both of you." art="/art/heart.jpg" />
             <Activity href="/talk" icon={<MessageCircle />} title="Interactive Lessons" sub="Chat in German and act out scenes." art="/art/tower.jpg" />
             <Activity href="/note" icon={<Mail />} title="Love notes" sub="Write a little German note for your partner." art="/art/skyline.jpg" />
           </div>
@@ -346,5 +425,17 @@ function HowItWorks({ linked, onDone }: { linked: boolean; onDone: () => void })
         Got it! 👍
       </Button>
     </Card>
+  );
+}
+
+function Bar({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div>
+      <div className="flex justify-between text-xs font-semibold text-muted">
+        <span className="truncate">{label}</span>
+        <span>{Math.round(value * 100)}%</span>
+      </div>
+      <ProgressBar value={value} color={color} className="mt-1 h-2" />
+    </div>
   );
 }

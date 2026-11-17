@@ -1,6 +1,8 @@
 import { AppShell } from "../components/AppShell";
 import { Card, ProgressBar, Script } from "../components/ui";
-import { LEVELS } from "../core/content/levels";
+import { SECRET_PHRASES } from "../core/content/berlin";
+import { LEVELS, meaning } from "../core/content/levels";
+import { Speak } from "../components/ui";
 import { DAILY_GOAL } from "../core/lib/game";
 import { currentStreak, today, useProgress } from "../web/progress";
 import { hasPartner, personStats } from "../web/stats";
@@ -50,6 +52,30 @@ export default function Goals() {
                 </div>
                 <ProgressBar value={g.value} className="mt-3" color={done ? "bg-good" : "bg-plum"} />
                 <p className="mt-1 text-xs font-semibold text-muted">{done ? "Done! 🎉" : g.label}</p>
+              </Card>
+            );
+          })}
+        </div>
+
+        <h2 className="mb-1 mt-8 text-lg font-bold">🔐 Secret phrases</h2>
+        <p className="mb-3 text-sm text-muted">Keep your shared streak alive to unlock them. Unlocked phrases appear in Love notes.</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {SECRET_PHRASES.map((ph) => {
+            const open = streak >= ph.day;
+            return (
+              <Card key={ph.day} className={open ? "bg-gradient-to-br from-card to-blush" : "opacity-70"}>
+                <p className="text-xs font-bold uppercase tracking-wider text-rose">{open ? `🔓 Day ${ph.day}` : `🔒 Day ${ph.day} · ${ph.day - streak} to go`}</p>
+                {open ? (
+                  <>
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className="flex-1 font-script text-3xl text-plum">{ph.de}</p>
+                      <Speak text={ph.de} />
+                    </div>
+                    <p className="text-sm text-muted">{meaning(ph, me.lang)}</p>
+                  </>
+                ) : (
+                  <p className="mt-1 text-2xl tracking-widest text-muted">• • • • •</p>
+                )}
               </Card>
             );
           })}

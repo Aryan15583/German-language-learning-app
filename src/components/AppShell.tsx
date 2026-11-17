@@ -1,4 +1,4 @@
-import { BarChart3, Bell, BookOpen, Gamepad2, Heart, Home, Search, Settings, Trophy, User } from "lucide-react";
+import { BarChart3, Bell, BookOpen, Dumbbell, Gamepad2, Heart, Home, Map, Search, Settings, Trophy, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useMemo, useState, type ReactNode } from "react";
@@ -10,6 +10,8 @@ import { cx, HeartPlane } from "./ui";
 const SIDEBAR = [
   { href: "/", label: "Dashboard", icon: Home },
   { href: "/learn", label: "Learn Together", icon: BookOpen },
+  { href: "/journey", label: "Berlin Map", icon: Map },
+  { href: "/train", label: "Practice", icon: Dumbbell },
   { href: "/quizzes", label: "Couple Quizzes", icon: Gamepad2 },
   { href: "/progress", label: "Progress", icon: BarChart3 },
   { href: "/achievements", label: "Achievements", icon: Trophy },
