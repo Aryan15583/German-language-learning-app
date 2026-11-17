@@ -33,11 +33,17 @@ export type SharedWord = { de: string; en: string; mr: string };
 /** One player's move in a remote duel: same seed → same questions on both phones. */
 export type DuelMove = { id: string; topic: string; seed: number; score: number };
 
+/** Disappearing messages: gone after it's been seen, after 1 day, or after 30 days. */
+export type Vanish = "seen" | "1d" | "30d";
+export const VANISH_MODES: readonly Vanish[] = ["seen", "1d", "30d"];
+
 export type Payload =
   | { kind: "hello"; key: string }
   | { kind: "stats" }
   | { kind: "duel"; duel: DuelMove }
-  | { kind: "msg"; text: string }
+  | { kind: "msg"; text: string; vanish?: Vanish }
+  /** "I've seen these disappearing messages" — the sender deletes its copy too. */
+  | { kind: "viewed"; ids: string[] }
   | { kind: "note"; text: string }
   | { kind: "secret"; text: string; unlockAt: number }
   | { kind: "word"; word: SharedWord };
@@ -112,7 +118,16 @@ function payload(x: Record<string, unknown>): Payload {
       if (!/^[a-z0-9-]+$/i.test(topic)) fail("duel topic invalid");
       return { kind: "duel", duel: { id: idStr(d.id, "duel id"), topic, seed: int(d.seed, 0, 2 ** 31 - 1, "seed"), score: int(d.score, 0, 50, "score") } };
     }
-    case "msg":
+    case "msg": {
+      const text = str(x.text, LIMITS.text, "message");
+      if (x.vanish === undefined) return { kind: "msg", text };
+      const vanish = VANISH_MODES.includes(x.vanish as Vanish) ? (x.vanish as Vanish) : fail("timer invalid");
+      return { kind: "msg", text, vanish };
+    }
+    case "viewed": {
+      const ids = Array.isArray(x.ids) && x.ids.length >= 1 && x.ids.length <= 50 ? x.ids : fail("ids invalid");
+      return { kind: "viewed", ids: [...new Set(ids.map((id) => idStr(id, "message id")))] };
+    }
     case "note":
       return { kind: x.kind, text: str(x.text, LIMITS.text, "message") };
     case "secret":

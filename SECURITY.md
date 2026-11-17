@@ -25,6 +25,7 @@ Zwei Herzen ♡ Until Berlin is a private, personal app. This page explains how 
 - **Saved data is validated on load** (`migrate()` in `src/state/logic.ts`): unexpected or corrupted values fall back to safe defaults instead of crashing.
 - **Crash screen** (`src/components/ErrorBoundary.tsx`): unexpected errors show a friendly retry screen rather than a blank page.
 
+- **Disappearing messages** are deleted from both phones (and from the encrypted backup at its next save) when their timer ends. The relay only ever held a scrambled copy, which it deletes automatically after 30 days.
 - **Microphone stays on the device.** "Record myself" uses the browser's recorder only after you allow it, keeps the recording in memory and plays it back locally. Nothing is uploaded and no speech service is used.
 
 ## Browser security headers (`vercel.json`)

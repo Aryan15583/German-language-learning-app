@@ -61,6 +61,12 @@ type Ctx = {
   /** Count something for today's mission and the couple achievements. */
   did: (i: PartnerIndex, what: "talk" | "duel" | "perfect" | "note") => void;
   claimMission: (i: PartnerIndex) => void;
+  /** Timer for new chat messages. */
+  setVanish: (v: AppState["vanish"]) => void;
+  /** I'm reading the chat: start "after seen" countdowns and tell my partner. */
+  viewMessages: () => void;
+  /** I left the chat: "after seen" messages I've read disappear now. */
+  leaveChat: () => void;
   finishReadyDay: (i: PartnerIndex, day: number) => void;
   reset: () => void;
 
@@ -122,6 +128,8 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
         if (raw) {
           let loaded = L.migrate(JSON.parse(raw));
           if (accountMode) loaded = { ...loaded, learner: 0 };
+          // "After seen" messages read during an earlier visit are gone now.
+          loaded = C.purgeExpired(C.leaveChat(loaded), Date.now());
           stateRef.current = loaded;
           setState(loaded);
           setLocked(!!loaded.partners[loaded.learner].pin);
@@ -250,6 +258,15 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
     return () => clearInterval(id);
   }, [ready, relay, coupleKey, syncNow]);
 
+  // Disappearing messages: clear out anything whose time is up (now, and every 30 s).
+  useEffect(() => {
+    if (!ready) return;
+    const purge = () => update((s) => C.purgeExpired(s, Date.now()));
+    purge();
+    const id = setInterval(purge, 30_000);
+    return () => clearInterval(id);
+  }, [ready, update]);
+
   const value = useMemo<Ctx>(
     () => ({
       state,
@@ -298,6 +315,15 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
                 : L.countUp(s, i, "perfect"),
         ),
       claimMission: (i) => update((s) => L.claimMission(s, i, today())),
+      setVanish: (v) => update((s) => (s.vanish === v ? s : { ...s, vanish: v })),
+      viewMessages: () => {
+        const { state: next, ids } = C.markViewed(stateRef.current, Date.now());
+        if (!ids.length) return;
+        update(() => next);
+        // Let my partner's phone delete its copy too (only when it can arrive in-app).
+        if (relay && C.isLinked(stateRef.current)) send({ kind: "viewed", ids: ids.slice(0, 50) }).catch(() => {});
+      },
+      leaveChat: () => update((s) => C.leaveChat(s)),
       finishReadyDay: (i, day) => update((s) => L.finishReadyDay(s, i, day)),
       reset: () => {
         setLocked(false);

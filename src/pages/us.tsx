@@ -1,4 +1,4 @@
-import { BookHeart, Crown, Lock, Mail, RefreshCw, Send, Sparkles, Swords } from "lucide-react";
+import { BookHeart, Crown, Lock, Mail, RefreshCw, Send, Sparkles, Swords, Timer } from "lucide-react";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 import { AppShell, markChatSeen } from "../components/AppShell";
@@ -9,6 +9,13 @@ import { heartLevel, isoWeek, weeklyLeader } from "../core/lib/game";
 import { CODE_TTL_MS, formatCode } from "../core/lib/link";
 import { couple, currentStreak, partnerName, today, useProgress, type ChatItem } from "../web/progress";
 import { appBaseUrl, shareText } from "../web/share";
+
+const VANISH_OPTIONS: { id: "off" | "seen" | "1d" | "30d"; label: string; hint: string }[] = [
+  { id: "off", label: "Off", hint: "" },
+  { id: "seen", label: "👁 After seen", hint: "Deleted on both phones as soon as your partner has read it and leaves the chat." },
+  { id: "1d", label: "1 day", hint: "Deleted on both phones 24 hours after sending." },
+  { id: "30d", label: "30 days", hint: "Deleted on both phones 30 days after sending." },
+];
 
 const QUICK = ["Guten Morgen, Schatz! ☀️", "Ich vermisse dich 💞", "Ich liebe dich", "Schlaf gut! 🌙", "Ich bin stolz auf dich", "Du fehlst mir"];
 
@@ -157,13 +164,19 @@ function WaitingForPartner() {
 
 function CoupleChat() {
   const router = useRouter();
-  const { state, send, resendHello, relayOn, syncStatus, syncNow, unlink } = useProgress();
+  const { state, send, resendHello, relayOn, syncStatus, syncNow, unlink, setVanish, viewMessages, leaveChat } = useProgress();
   const [text, setText] = useState("");
   const [secret, setSecret] = useState(false);
   const [sending, setSending] = useState(false);
   const [confirmUnlink, setConfirmUnlink] = useState(false);
   const fallback = useFallback();
   const endRef = useRef<HTMLDivElement>(null);
+  // A clock for the "23 h left" labels (ticks every minute).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
   const me = state.partners[0];
   const them = state.partners[1];
   const myStreak = currentStreak(state);
@@ -177,14 +190,28 @@ function CoupleChat() {
   useEffect(() => {
     markChatSeen();
     endRef.current?.scrollIntoView({ block: "end" });
-  }, [state.chat.length]);
+    // Reading the chat starts the "after seen" countdown (and tells my partner's phone).
+    if (document.visibilityState === "visible") viewMessages();
+  }, [state.chat.length]); // eslint-disable-line react-hooks/exhaustive-deps -- run when messages change
+
+  // Leaving the chat (or hiding the app): "after seen" messages I've read are gone.
+  useEffect(() => {
+    const onHide = () => (document.visibilityState === "hidden" ? leaveChat() : viewMessages());
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", leaveChat);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", leaveChat);
+      leaveChat();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- once per visit
 
   const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     const t = text.trim();
     if (!t || sending) return;
     setSending(true);
-    const r = await send(secret ? { kind: "secret", text: t, unlockAt: 7 } : { kind: "msg", text: t });
+    const r = await send(secret ? { kind: "secret", text: t, unlockAt: 7 } : state.vanish === "off" ? { kind: "msg", text: t } : { kind: "msg", text: t, vanish: state.vanish });
     setSending(false);
     setText("");
     setSecret(false);
@@ -192,8 +219,8 @@ function CoupleChat() {
   };
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-      <div className="order-2 lg:order-1">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="order-2 min-w-0 lg:order-1">
         <Card className="flex min-h-[60vh] flex-col p-0">
           <div className="flex items-center gap-3 border-b border-line/60 px-5 py-4">
             <span className="grid h-11 w-11 place-items-center rounded-full bg-partner text-lg font-bold text-white">{partnerName(state, 1).slice(0, 1)}</span>
@@ -211,7 +238,7 @@ function CoupleChat() {
           <div className="flex-1 space-y-2 overflow-y-auto px-4 py-4" aria-live="polite">
             {state.chat.length === 0 ? <p className="py-8 text-center text-muted">Say hallo! Every message also shares your progress for the weekly battle.</p> : null}
             {state.chat.map((m) => (
-              <ChatRow key={m.id + m.from} m={m} myStreak={myStreak} />
+              <ChatRow key={m.id + m.from} m={m} myStreak={myStreak} now={now} />
             ))}
             <div ref={endRef} />
           </div>
@@ -238,7 +265,7 @@ function CoupleChat() {
                 rows={1}
                 maxLength={1000}
                 aria-label="Message"
-                placeholder={secret ? "🔒 A secret (opens at their 7-day streak)…" : "Auf Deutsch, bitte… 💬"}
+                placeholder={secret ? "🔒 A secret (opens at their 7-day streak)…" : state.vanish !== "off" ? "⏱ Disappearing…" : "Auf Deutsch, bitte… 💬"}
                 className={cx(fieldClass, "max-h-32 resize-none", secret && "border-rose")}
               />
               {sending ? (
@@ -249,6 +276,24 @@ function CoupleChat() {
                 </button>
               )}
             </form>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-2xl bg-blush/60 px-2.5 py-2" role="radiogroup" aria-label="Disappearing messages">
+              <span className="mr-1 flex items-center gap-1 text-xs font-semibold text-plum">
+                <Timer size={14} /> Disappearing:
+              </span>
+              {VANISH_OPTIONS.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={state.vanish === o.id}
+                  onClick={() => setVanish(o.id)}
+                  className={cx("rounded-full px-2.5 py-1 text-xs font-semibold transition", state.vanish === o.id ? "btn-primary text-white" : "text-ink hover:bg-surface")}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            {state.vanish !== "off" && !secret ? <p className="mt-1 text-xs text-muted">{VANISH_OPTIONS.find((o) => o.id === state.vanish)!.hint}</p> : null}
             <div className="mt-2 flex flex-wrap gap-2">
               <Chip selected={secret} onClick={() => setSecret(!secret)}>
                 🔒 Secret
@@ -337,7 +382,7 @@ function QuickLink({ href, icon, label }: { href: string; icon: React.ReactNode;
   );
 }
 
-function ChatRow({ m, myStreak }: { m: ChatItem; myStreak: number }) {
+function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; now: number }) {
   const { state } = useProgress();
   if (m.kind === "system") return <p className="py-1 text-center text-xs text-muted">{m.text}</p>;
   const mine = m.from === 0;
@@ -393,7 +438,10 @@ function ChatRow({ m, myStreak }: { m: ChatItem; myStreak: number }) {
         <p className={cx("flex-1 whitespace-pre-wrap break-words text-ink", m.kind === "note" && "font-script text-2xl")}>{m.text}</p>
         {m.kind !== "word" ? <Speak text={m.text} /> : null}
       </div>
-      <p className={cx("mt-0.5 text-[11px] text-muted", mine && "text-right")}>{time}</p>
+      <p className={cx("mt-0.5 text-[11px] text-muted", mine && "text-right")}>
+        {time}
+        {m.vanish ? <span className="ml-2 font-semibold text-plum">{couple.vanishLabel(m, now)}</span> : null}
+      </p>
     </div>
   );
 }
