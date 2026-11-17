@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState, type ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
+import { InstallCard } from "../components/InstallCard";
 import { LangPicker } from "../components/pickers";
 import { Button, Card, Chip, fieldClass, Script, Spinner } from "../components/ui";
 import { LEVELS } from "../core/content/levels";
@@ -40,6 +41,8 @@ export default function Profile() {
           <Row href="/setup" emoji="✏️" title="Change name or level" detail="Back to the start form" />
           <Row href="/goals" emoji="🎯" title="Couple goals" detail="Targets to chase together" />
         </div>
+
+        <InstallCard />
 
         <Section title="My language 🌐">
           {people.map((i) => (

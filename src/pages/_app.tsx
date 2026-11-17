@@ -1,6 +1,8 @@
 import "@fontsource-variable/inter";
 import "@fontsource/dancing-script/700.css";
 import "../styles/globals.css";
+// Listen for the browser's "install app" offer from the very first moment.
+import "../web/install";
 import type { AppProps } from "next/app";
 import Head from "next/head";
 import { AuthScreen } from "../components/AuthScreen";
