@@ -1,17 +1,17 @@
-import { router } from "expo-router";
+import { useRouter } from "next/router";
 import { useRef } from "react";
-import { Text } from "react-native";
-import { usePalette } from "../lib/theme";
 
 const TAPS = 5;
 const WINDOW_MS = 2500;
 
-/** The app title. (Psst: the heart is a door.) */
-export function BrandTitle() {
-  const c = usePalette();
+/** Psst: the heart is a door. Five quick taps open a little surprise. */
+export function SecretHeart({ className }: { className?: string }) {
+  const router = useRouter();
   const taps = useRef<number[]>([]);
-
-  const onHeart = () => {
+  const onHeart = (e: React.MouseEvent) => {
+    // Inside the logo link: don't also go home.
+    e.preventDefault();
+    e.stopPropagation();
     const now = Date.now();
     taps.current = [...taps.current.filter((t) => now - t < WINDOW_MS), now];
     if (taps.current.length >= TAPS) {
@@ -19,13 +19,19 @@ export function BrandTitle() {
       router.push("/baiko");
     }
   };
-
+  // No label or hint on purpose: it's a secret.
   return (
-    <Text style={{ color: c.accent, fontWeight: "800", fontSize: 18 }}>
-      Zwei Herzen{" "}
-      <Text onPress={onHeart} suppressHighlighting accessibilityElementsHidden importantForAccessibility="no">
-        ♡
-      </Text>
-    </Text>
+    <span onClick={onHeart} data-heart className={`cursor-default select-none ${className ?? ""}`} aria-hidden>
+      ♡
+    </span>
+  );
+}
+
+/** The app title for phones. */
+export function BrandTitle() {
+  return (
+    <span className="font-script text-[26px] font-bold leading-none text-plum">
+      Zwei Herzen <SecretHeart />
+    </span>
   );
 }

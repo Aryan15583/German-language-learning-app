@@ -1,40 +1,23 @@
 import type { ReactNode } from "react";
-import { Text, View } from "react-native";
-import { usePalette } from "../lib/theme";
-import { Card, H1, T } from "./ui";
+import { Card, cx, Ring } from "./ui";
 
-/** Score summary shown at the end of a test. */
-export function Results({
-  passed,
-  correct,
-  total,
-  title,
-  message,
-  children,
-}: {
-  passed: boolean;
-  correct: number;
-  total: number;
-  title: string;
-  message: ReactNode;
-  children?: ReactNode;
-}) {
-  const c = usePalette();
-  const pct = total ? Math.round((correct / total) * 100) : 0;
+/** Score summary at the end of a quiz or test. */
+export function Results({ passed, correct, total, title, message, children }: { passed: boolean; correct: number; total: number; title: string; message: ReactNode; children?: ReactNode }) {
+  const pct = total ? correct / total : 0;
   return (
-    <View>
-      <Text style={{ fontSize: 52, textAlign: "center", marginTop: 16 }}>{passed ? "🎉" : "💪"}</Text>
-      <H1>{title}</H1>
-      <Card style={{ alignItems: "center", marginTop: 8 }}>
-        <Text style={{ fontSize: 40, fontWeight: "800", color: passed ? c.good : c.bad }}>{pct}%</Text>
-        <T muted>
+    <div className="mx-auto max-w-md text-center anim-fade-up">
+      <p className="mt-4 text-6xl">{passed ? "🎉" : "💪"}</p>
+      <h1 className="mt-2 font-script text-4xl font-bold text-plum">{title}</h1>
+      <Card className="mt-5 flex flex-col items-center">
+        <Ring value={pct} size={130} color={passed ? "#3f9b6e" : "#c84a5a"}>
+          <span className={cx("text-3xl font-extrabold", passed ? "text-good" : "text-bad")}>{Math.round(pct * 100)}%</span>
+        </Ring>
+        <p className="mt-2 text-muted">
           {correct} of {total} correct
-        </T>
+        </p>
       </Card>
-      <T muted style={{ textAlign: "center", marginBottom: 16 }}>
-        {message}
-      </T>
-      <View style={{ gap: 10 }}>{children}</View>
-    </View>
+      <p className="my-5 text-muted">{message}</p>
+      <div className="flex flex-col gap-3">{children}</div>
+    </div>
   );
 }

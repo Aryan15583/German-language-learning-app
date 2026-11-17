@@ -1,308 +1,195 @@
-import type { ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LANGS, LEVELS, meaning, otherMeaning, type Lang, type LevelId } from "../content/levels";
-import { speakGerman } from "../lib/speech";
-import { partnerColor, usePalette } from "../lib/theme";
-import { partnerName, useProgress, type PartnerIndex } from "../state/progress";
+import { ChevronLeft, Volume2 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { meaning, otherMeaning, type Lang } from "../core/content/levels";
+import { speakGerman } from "../web/speech";
 
-export function Screen({ children, scroll = true }: { children: ReactNode; scroll?: boolean }) {
-  const c = usePalette();
-  const insets = useSafeAreaInsets();
-  const inner = <View style={styles.inner}>{children}</View>;
-  return (
-    <View style={{ flex: 1, backgroundColor: c.bg }}>
-      {scroll ? (
-        <ScrollView contentContainerStyle={{ paddingBottom: 32 + insets.bottom }}>{inner}</ScrollView>
-      ) : (
-        inner
-      )}
-    </View>
-  );
+export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
+
+export function Card({ className, children }: { className?: string; children: ReactNode }) {
+  return <div className={cx("rounded-3xl border border-line/70 bg-card/90 p-5 shadow-card backdrop-blur", className)}>{children}</div>;
 }
 
-export function H1({ children }: { children: ReactNode }) {
-  const c = usePalette();
-  return <Text style={[styles.h1, { color: c.text }]}>{children}</Text>;
-}
-
-export function H2({ children }: { children: ReactNode }) {
-  const c = usePalette();
-  return <Text style={[styles.h2, { color: c.text }]}>{children}</Text>;
-}
-
-export function T({ children, muted, style }: { children: ReactNode; muted?: boolean; style?: StyleProp<TextStyle> }) {
-  const c = usePalette();
-  return <Text style={[{ color: muted ? c.muted : c.text, fontSize: 15, lineHeight: 21 }, style]}>{children}</Text>;
-}
-
-export function Card({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
-  const c = usePalette();
-  return <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }, style]}>{children}</View>;
-}
+type Variant = "primary" | "soft" | "ghost" | "good" | "partner";
+const variants: Record<Variant, string> = {
+  primary: "bg-plum text-white hover:bg-plum-dark shadow-soft",
+  soft: "bg-blush text-plum hover:bg-rose-soft",
+  ghost: "bg-transparent text-plum hover:bg-blush",
+  good: "bg-good text-white hover:brightness-95 shadow-soft",
+  partner: "bg-partner text-white hover:brightness-95 shadow-soft",
+};
 
 export function Button({
-  title,
-  onPress,
   variant = "primary",
-  style,
-  disabled,
-}: {
-  title: string;
-  onPress: () => void;
-  variant?: "primary" | "secondary";
-  style?: StyleProp<ViewStyle>;
-  disabled?: boolean;
-}) {
-  const c = usePalette();
-  const primary = variant === "primary";
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => [
-        styles.button,
-        { backgroundColor: primary ? c.accent : c.accentSoft, opacity: disabled ? 0.5 : pressed ? 0.85 : 1 },
-        style,
-      ]}
-    >
-      <Text style={[styles.buttonText, { color: primary ? c.onAccent : c.text }]}>{title}</Text>
-    </Pressable>
+  size = "md",
+  full,
+  href,
+  className,
+  children,
+  ...rest
+}: { variant?: Variant; size?: "sm" | "md" | "lg"; full?: boolean; href?: string } & ButtonHTMLAttributes<HTMLButtonElement>) {
+  const cls = cx(
+    "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition active:scale-[0.98] disabled:opacity-45 disabled:pointer-events-none",
+    size === "sm" && "px-4 py-2 text-sm",
+    size === "md" && "px-6 py-3 text-[15px]",
+    size === "lg" && "px-7 py-4 text-lg",
+    full && "w-full",
+    variants[variant],
+    className,
   );
-}
-
-export function Chip({ label, selected, onPress }: { label: string; selected?: boolean; onPress: () => void }) {
-  const c = usePalette();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={[
-        styles.chip,
-        { borderColor: selected ? c.accent : c.border, backgroundColor: selected ? c.accent : c.surface },
-      ]}
-    >
-      <Text style={{ color: selected ? c.onAccent : c.text, fontSize: 14 }}>{label}</Text>
-    </Pressable>
-  );
-}
-
-export function Tile({
-  emoji,
-  title,
-  subtitle,
-  onPress,
-  locked,
-}: {
-  emoji: string;
-  title: string;
-  subtitle?: string;
-  onPress: () => void;
-  locked?: boolean;
-}) {
-  const c = usePalette();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.tile,
-        { backgroundColor: c.surface, borderColor: pressed ? c.accent : c.border, opacity: locked ? 0.55 : 1 },
-      ]}
-    >
-      <Text style={{ fontSize: 26 }}>{locked ? "🔒" : emoji}</Text>
-      <Text style={{ color: c.text, fontWeight: "700", marginTop: 6 }}>{title}</Text>
-      {subtitle ? <Text style={{ color: c.muted, fontSize: 13, marginTop: 2 }}>{subtitle}</Text> : null}
-    </Pressable>
-  );
-}
-
-export function Grid({ children }: { children: ReactNode }) {
-  return <View style={styles.grid}>{children}</View>;
-}
-
-export function ProgressBar({ value, color }: { value: number; color?: string }) {
-  const c = usePalette();
-  return (
-    <View style={[styles.progress, { backgroundColor: c.accentSoft }]}>
-      <View style={{ width: `${Math.min(100, Math.max(0, value * 100))}%`, height: "100%", backgroundColor: color ?? c.accent }} />
-    </View>
-  );
-}
-
-export function SpeakButton({ text }: { text: string }) {
-  const c = usePalette();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Listen: ${text}`}
-      onPress={() => speakGerman(text)}
-      hitSlop={8}
-      style={[styles.speak, { borderColor: c.border }]}
-    >
-      <Text>🔊</Text>
-    </Pressable>
-  );
-}
-
-export function PartnerName({ i, suffix = "" }: { i: PartnerIndex; suffix?: string }) {
-  const c = usePalette();
-  const { state } = useProgress();
-  return <Text style={{ color: partnerColor(c, i), fontWeight: "700" }}>{partnerName(state, i) + suffix}</Text>;
-}
-
-/** Header switch for who is currently studying. */
-export function LearnerSwitch() {
-  const c = usePalette();
-  const { state, setLearner, accountMode } = useProgress();
-  // Linked phones: each person has their own phone, so there's nothing to switch.
-  if (state.couple?.status === "linked" || accountMode) {
+  if (href) {
     return (
-      <View style={[styles.switch, { backgroundColor: c.surface, borderColor: c.border }]}>
-        <View style={[styles.switchBtn, { backgroundColor: partnerColor(c, 0) }]}>
-          <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>
-            {partnerName(state, 0)}
-            {state.couple?.status === "linked" ? " 💞" : ""}
-          </Text>
-        </View>
-      </View>
+      <Link href={href} className={cls}>
+        {children}
+      </Link>
     );
   }
   return (
-    <View style={[styles.switch, { backgroundColor: c.surface, borderColor: c.border }]}>
-      {([0, 1] as const).map((i) => {
-        const on = state.learner === i;
-        return (
-          <Pressable
-            key={i}
-            accessibilityRole="button"
-            accessibilityState={{ selected: on }}
-            onPress={() => setLearner(i)}
-            style={[styles.switchBtn, on && { backgroundColor: partnerColor(c, i) }]}
-          >
-            <Text style={{ color: on ? "#fff" : c.text, fontSize: 13, fontWeight: on ? "700" : "400" }}>
-              {partnerName(state, i)}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+    <button type="button" className={cls} {...rest}>
+      {children}
+    </button>
   );
 }
 
-/** Row of CEFR level pills; locked ones show a padlock. */
-export function LevelPicker({
-  value,
-  unlocked,
-  onChange,
-}: {
-  value: LevelId;
-  unlocked: number;
-  onChange: (id: LevelId) => void;
-}) {
-  const c = usePalette();
+/** The handwritten titles from the design. */
+export function Script({ className, children, as: Tag = "h1" }: { className?: string; children: ReactNode; as?: "h1" | "h2" | "h3" | "p" | "span" }) {
+  return <Tag className={cx("font-script font-bold text-plum", className)}>{children}</Tag>;
+}
+
+export function ProgressBar({ value, className, color = "bg-plum" }: { value: number; className?: string; color?: string }) {
+  const pct = Math.max(0, Math.min(100, value * 100));
   return (
-    <View style={styles.levelRow}>
-      {LEVELS.map((l, i) => {
-        const on = l.id === value;
-        return (
-          <Pressable
-            key={l.id}
-            accessibilityRole="button"
-            accessibilityLabel={`Level ${l.id}${i > unlocked ? ", locked" : ""}`}
-            accessibilityState={{ selected: on }}
-            onPress={() => onChange(l.id)}
-            style={[
-              styles.levelPill,
-              { borderColor: on ? c.accent : c.border, backgroundColor: on ? c.accent : c.surface },
-            ]}
-          >
-            <Text style={{ color: on ? c.onAccent : c.text, fontWeight: "800" }}>{l.id}</Text>
-            {i > unlocked ? <Text style={{ fontSize: 10 }}>🔒</Text> : null}
-          </Pressable>
-        );
-      })}
-    </View>
+    <div className={cx("h-2.5 w-full overflow-hidden rounded-full bg-rose-soft/60", className)} role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
+      <div className={cx("h-full rounded-full transition-all duration-500", color)} style={{ width: `${pct}%` }} />
+    </div>
   );
 }
 
-export const Row = ({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) => (
-  <View style={[styles.row, style]}>{children}</View>
-);
-
-const styles = StyleSheet.create({
-  inner: { width: "100%", maxWidth: 640, alignSelf: "center", padding: 16 },
-  h1: { fontSize: 26, fontWeight: "800", marginTop: 4, marginBottom: 4 },
-  h2: { fontSize: 18, fontWeight: "700", marginTop: 20, marginBottom: 8 },
-  card: { borderWidth: 1, borderRadius: 16, padding: 16, marginBottom: 12 },
-  button: { borderRadius: 12, paddingVertical: 13, paddingHorizontal: 18, alignItems: "center" },
-  buttonText: { fontWeight: "700", fontSize: 15 },
-  chip: { borderWidth: 1, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 12 },
-  tile: { borderWidth: 1, borderRadius: 16, padding: 14, flexGrow: 1, flexBasis: 150 },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  progress: { height: 8, borderRadius: 999, overflow: "hidden", marginVertical: 8 },
-  speak: { borderWidth: 1, borderRadius: 999, paddingVertical: 3, paddingHorizontal: 9, alignSelf: "center" },
-  switch: { flexDirection: "row", borderWidth: 1, borderRadius: 999, padding: 3, gap: 2 },
-  switchBtn: { borderRadius: 999, paddingVertical: 5, paddingHorizontal: 11 },
-  levelRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 8 },
-  levelPill: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 8,
-    minWidth: 40,
-    flexBasis: 40,
-    alignItems: "center",
-    flexGrow: 1,
-  },
-  row: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
-});
-
-/** "Learn through: English / मराठी" switch for one partner. */
-export function LangPicker({ i }: { i: PartnerIndex }) {
-  const { state, setLang } = useProgress();
+/** Circular progress, like the 68% / 72% rings in the design. */
+export function Ring({ value, size = 104, stroke = 10, color = "#8b2f55", children }: { value: number; size?: number; stroke?: number; color?: string; children?: ReactNode }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(1, value));
   return (
-    <Row>
-      {LANGS.map((l) => (
-        <Chip key={l.id} label={l.label} selected={state.partners[i].lang === l.id} onPress={() => setLang(i, l.id)} />
-      ))}
-    </Row>
+    <div className="relative inline-grid place-items-center" style={{ width: size, height: size }} role="img" aria-label={`${Math.round(pct * 100)} percent`}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="#f6c9d6" strokeWidth={stroke} fill="none" />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke={color}
+          strokeWidth={stroke}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - pct)}
+          style={{ transition: "stroke-dashoffset 0.8s ease" }}
+        />
+      </svg>
+      <div className="absolute inset-0 grid place-items-center text-center">{children}</div>
+    </div>
   );
 }
 
-/** A word's meaning in the learner's language, with the other language underneath for comparison. */
-export function Meaning({ w, lang, size = 15 }: { w: { en: string; mr: string }; lang: Lang; size?: number }) {
-  const c = usePalette();
-  const main = meaning(w, lang);
+export function Chip({ selected, onClick, children, className }: { selected?: boolean; onClick?: () => void; children: ReactNode; className?: string }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      className={cx(
+        "rounded-full border px-3.5 py-1.5 text-sm transition",
+        selected ? "border-plum bg-plum text-white" : "border-line bg-white/70 text-ink hover:border-rose",
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+export const fieldClass =
+  "w-full rounded-2xl border border-line bg-white/80 px-4 py-3 text-base text-ink placeholder:text-muted/70 outline-none focus:border-rose focus:ring-2 focus:ring-rose-soft";
+
+/** Round plum play button that reads German aloud. */
+export function Speak({ text, className, big }: { text: string; className?: string; big?: boolean }) {
+  return (
+    <button
+      type="button"
+      aria-label={`Listen: ${text}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        speakGerman(text);
+      }}
+      className={cx(
+        "inline-grid shrink-0 place-items-center rounded-full bg-plum text-white shadow-soft transition hover:bg-plum-dark active:scale-95",
+        big ? "h-14 w-14" : "h-9 w-9",
+        className,
+      )}
+    >
+      <Volume2 size={big ? 26 : 17} />
+    </button>
+  );
+}
+
+/** A word's meaning in the learner's language, with the other language underneath. */
+export function Meaning({ w, lang, className }: { w: { en: string; mr: string }; lang: Lang; className?: string }) {
   const other = otherMeaning(w, lang);
   return (
-    <View>
-      <Text style={{ color: c.text, fontSize: size }}>{main}</Text>
-      {other ? <Text style={{ color: c.muted, fontSize: Math.round(size * 0.85) }}>{other}</Text> : null}
-    </View>
+    <div className={className}>
+      <div className="text-ink">{meaning(w, lang)}</div>
+      {other ? <div className="text-sm text-muted">{other}</div> : null}
+    </div>
   );
 }
 
-/** A big, friendly, full-width button. */
-export function BigButton({ title, onPress, color, large }: { title: string; onPress: () => void; color: string; large?: boolean }) {
+/** Mobile screen header: back arrow, centred title, optional right action. */
+export function PageHeader({ title, back = true, right, script }: { title: ReactNode; back?: boolean | string; right?: ReactNode; script?: boolean }) {
+  const router = useRouter();
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={title.replace(/[▶👍]/g, "").trim()}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        alignSelf: "stretch",
-        backgroundColor: color,
-        borderRadius: 18,
-        paddingVertical: large ? 20 : 14,
-        alignItems: "center",
-        marginTop: 14,
-        opacity: pressed ? 0.85 : 1,
-        transform: [{ scale: pressed ? 0.98 : 1 }],
-      })}
-    >
-      <Text style={{ color: "#fff", fontSize: large ? 24 : 18, fontWeight: "900" }}>{title}</Text>
-    </Pressable>
+    <div className="mb-4 flex items-center gap-2">
+      {back ? (
+        <button
+          type="button"
+          aria-label="Back"
+          onClick={() => (typeof back === "string" ? router.push(back) : window.history.length > 1 ? router.back() : router.push("/"))}
+          className="grid h-10 w-10 place-items-center rounded-full text-plum hover:bg-blush"
+        >
+          <ChevronLeft size={26} />
+        </button>
+      ) : null}
+      <div className={cx("flex-1 text-center", script ? "font-script text-3xl font-bold text-plum" : "text-lg font-bold text-ink", back ? "pr-10" : "")}>{title}</div>
+      {right}
+    </div>
+  );
+}
+
+export function Spinner({ label = "Loading…" }: { label?: string }) {
+  return (
+    <div className="grid place-items-center py-16" role="status" aria-live="polite">
+      <div className="h-10 w-10 animate-spin rounded-full border-4 border-rose-soft border-t-plum" />
+      <span className="sr-only">{label}</span>
+    </div>
+  );
+}
+
+/** The friendly heart mascot from the design. */
+export function Mascot({ size = 88, className }: { size?: number; className?: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- static export, tiny local image
+    <img src="/art/heart.jpg" alt="" width={size} height={size} className={cx("rounded-3xl mix-blend-multiply", className)} />
+  );
+}
+
+/** Heart-and-plane doodle used next to titles. */
+export function HeartPlane({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 120 50" className={className} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+      <path d="M22 40C8 30 4 20 10 13c5-6 12-2 12 3 0-5 7-9 12-3 6 7 2 17-12 27z" />
+      <path d="M38 33c14-6 26-10 40-12" strokeDasharray="4 5" />
+      <path d="M86 15l22-7-6 6 6 6-22-5z" fill="currentColor" stroke="none" />
+    </svg>
   );
 }

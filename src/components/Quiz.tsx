@@ -1,24 +1,22 @@
+import { Check, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
-import { checkTypedAnswer, isAccepted, type AnswerVerdict } from "../lib/answers";
-import type { Question } from "../lib/questions";
-import { speakGerman } from "../lib/speech";
-import { usePalette } from "../lib/theme";
-import { Button, Card, ProgressBar, Row, SpeakButton, T } from "./ui";
+import { checkTypedAnswer, isAccepted, type AnswerVerdict } from "../core/lib/answers";
+import type { Question } from "../core/lib/questions";
+import { speakGerman } from "../web/speech";
+import { Button, Card, cx, fieldClass, ProgressBar, Speak } from "./ui";
 
 const UMLAUTS = ["ä", "ö", "ü", "ß"];
 
 type Props = {
   questions: Question[];
-  /** Shown above the progress bar, e.g. "Aryan's turn" or "A1 exam". */
+  /** Shown above the progress bar, e.g. "Aryan's turn" or "A1 big test". */
   label?: ReactNode;
   color?: string;
   onFinish: (correct: number, total: number) => void;
 };
 
-/** Runs a list of questions one by one with instant feedback, then reports the score. */
+/** Runs questions one by one with instant feedback, then reports the score. */
 export function Quiz({ questions, label, color, onFinish }: Props) {
-  const c = usePalette();
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
@@ -28,150 +26,125 @@ export function Quiz({ questions, label, color, onFinish }: Props) {
   const q = questions[index];
   if (!q) return null;
   const answered = verdict !== null;
+  const last = index + 1 >= questions.length;
 
   const settle = (v: AnswerVerdict) => {
     setVerdict(v);
     if (isAccepted(v)) setCorrect((n) => n + 1);
-    // Hear the German whenever it wasn't already on screen, or after a mistake.
     if (q.kind === "type" || (q.kind === "choice" && q.direction === "x-de") || !isAccepted(v)) speakGerman(q.german);
   };
-
-  const choose = (option: string) => {
+  const choose = (o: string) => {
     if (answered || q.kind !== "choice") return;
-    setPicked(option);
-    settle(option === q.answer ? "correct" : "wrong");
+    setPicked(o);
+    settle(o === q.answer ? "correct" : "wrong");
   };
-
-  const check = () => {
+  const check = (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (answered || q.kind !== "type" || !typed.trim()) return;
     settle(checkTypedAnswer(typed, q.answer));
   };
-
   const next = () => {
-    const total = correct; // already includes this question
-    if (index + 1 >= questions.length) return onFinish(total, questions.length);
+    if (last) return onFinish(correct, questions.length);
     setIndex(index + 1);
     setPicked(null);
     setTyped("");
     setVerdict(null);
   };
 
-  const instruction =
-    q.kind === "type"
-      ? "Type this in German"
-      : q.direction === "de-x"
-        ? "What does this mean?"
-        : "How do you say this in German?";
+  const instruction = q.kind === "type" ? "Type this in German" : q.direction === "de-x" ? "What does this mean?" : "How do you say this in German?";
 
   return (
-    <View>
-      <Row>
-        {label}
-        <View style={{ flex: 1 }} />
-        <T muted style={{ fontSize: 13 }}>
+    <div className="mx-auto max-w-2xl">
+      <div className="mb-2 flex items-center gap-2 text-sm">
+        <div className="font-semibold text-ink">{label}</div>
+        <div className="ml-auto text-muted">
           {index + 1} / {questions.length}
-        </T>
-      </Row>
+        </div>
+      </div>
       <ProgressBar value={index / questions.length} color={color} />
 
-      <Card style={{ marginTop: 8 }}>
-        <T muted style={{ fontSize: 13 }}>{instruction}</T>
-        <Row style={{ marginTop: 4, flexWrap: "nowrap" }}>
-          <Text style={{ color: c.text, fontSize: 21, fontWeight: "800", flexShrink: 1 }}>{q.prompt}</Text>
-          {q.kind === "choice" && q.direction === "de-x" ? <SpeakButton text={q.german} /> : null}
-        </Row>
+      <Card className="mt-4 text-center">
+        <p className="text-sm font-semibold text-muted">{instruction}</p>
+        <div className="mt-2 flex items-center justify-center gap-3">
+          <p className="text-3xl font-extrabold text-ink">{q.prompt}</p>
+          {q.kind === "choice" && q.direction === "de-x" ? <Speak text={q.german} /> : null}
+        </div>
       </Card>
 
       {q.kind === "choice" ? (
-        <View style={{ gap: 8 }}>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {q.options.map((o) => {
             const isAnswer = answered && o === q.answer;
             const isWrong = answered && picked === o && o !== q.answer;
             return (
-              <Pressable
+              <button
                 key={o}
-                accessibilityRole="button"
-                accessibilityLabel={`Answer: ${o}`}
+                type="button"
+                aria-label={`Answer: ${o}`}
                 disabled={answered}
-                onPress={() => choose(o)}
-                style={{
-                  borderWidth: 2,
-                  borderRadius: 16,
-                  padding: 18,
-                  borderColor: isAnswer ? c.good : isWrong ? c.bad : c.border,
-                  backgroundColor: isAnswer ? c.goodSoft : isWrong ? c.badSoft : c.surface,
-                }}
+                onClick={() => choose(o)}
+                className={cx(
+                  "flex items-center gap-2 rounded-2xl border-2 px-5 py-4 text-left text-lg font-semibold transition",
+                  isAnswer ? "border-good bg-good/10" : isWrong ? "border-bad bg-bad/10 anim-shake" : "border-line bg-white hover:border-rose",
+                )}
               >
-                <Text style={{ color: c.text, fontSize: 18, fontWeight: "600" }}>{o}</Text>
-              </Pressable>
+                <span className="flex-1">{o}</span>
+                {isAnswer ? <Check className="text-good" /> : isWrong ? <X className="text-bad" /> : null}
+              </button>
             );
           })}
-        </View>
+        </div>
       ) : (
-        <View>
-          <TextInput
+        <form onSubmit={check} className="mt-4">
+          <input
+            className={cx(fieldClass, "text-lg")}
             value={typed}
-            onChangeText={setTyped}
-            editable={!answered}
+            onChange={(e) => setTyped(e.target.value)}
+            disabled={answered}
             autoCapitalize="none"
-            autoCorrect={false}
+            autoCorrect="off"
             spellCheck={false}
+            autoFocus
             placeholder="Auf Deutsch…"
-            placeholderTextColor={c.muted}
-            accessibilityLabel="Your answer in German"
-            onSubmitEditing={check}
-            returnKeyType="done"
-            style={{
-              borderWidth: 1,
-              borderColor: c.border,
-              backgroundColor: c.surface,
-              color: c.text,
-              borderRadius: 12,
-              padding: 14,
-              fontSize: 18,
-            }}
+            aria-label="Your answer in German"
           />
-          <Row style={{ marginTop: 8 }}>
+          <div className="mt-3 flex gap-2">
             {UMLAUTS.map((u) => (
-              <Pressable
+              <button
                 key={u}
-                accessibilityRole="button"
-                accessibilityLabel={`Insert ${u}`}
+                type="button"
+                aria-label={`Insert ${u}`}
                 disabled={answered}
-                onPress={() => setTyped((t) => t + u)}
-                style={{ borderWidth: 1, borderColor: c.border, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14, backgroundColor: c.surface }}
+                onClick={() => setTyped((t) => t + u)}
+                className="rounded-xl border border-line bg-white px-4 py-2 text-lg font-bold hover:border-rose"
               >
-                <Text style={{ color: c.text, fontSize: 17, fontWeight: "700" }}>{u}</Text>
-              </Pressable>
+                {u}
+              </button>
             ))}
-          </Row>
+          </div>
           {!answered ? (
-            <Button title="Check" onPress={check} disabled={!typed.trim()} style={{ marginTop: 12 }} />
+            <Button type="submit" full size="lg" className="mt-4" disabled={!typed.trim()}>
+              Check
+            </Button>
           ) : null}
-        </View>
+        </form>
       )}
 
       {answered ? (
-        <View
-          accessibilityLiveRegion="polite"
-          style={{
-            marginTop: 14,
-            borderRadius: 14,
-            padding: 14,
-            backgroundColor: isAccepted(verdict) ? c.goodSoft : c.badSoft,
-          }}
-        >
-          <Text style={{ color: isAccepted(verdict) ? c.good : c.bad, fontWeight: "800", fontSize: 17 }}>
+        <div aria-live="polite" className={cx("mt-5 rounded-3xl p-5 anim-pop-in", isAccepted(verdict) ? "bg-good/12" : "bg-bad/10")}>
+          <p className={cx("text-lg font-extrabold", isAccepted(verdict) ? "text-good" : "text-bad")}>
             {verdict === "correct" ? "Richtig! ✓" : verdict === "typo" ? "Fast! Almost — watch the spelling" : "Nicht ganz — not quite"}
-          </Text>
+          </p>
           {verdict !== "correct" ? (
-            <T style={{ marginTop: 4 }}>
-              Correct answer: <Text style={{ fontWeight: "700" }}>{q.answer}</Text>
-            </T>
+            <p className="mt-1 text-ink">
+              Correct answer: <b>{q.answer}</b>
+            </p>
           ) : null}
-          <Button title={index + 1 >= questions.length ? "See results" : "Continue"} onPress={next} style={{ marginTop: 10 }} />
-        </View>
+          <Button full size="lg" className="mt-3" onClick={next}>
+            {last ? "See results" : "Continue"}
+          </Button>
+        </div>
       ) : null}
-    </View>
+    </div>
   );
 }

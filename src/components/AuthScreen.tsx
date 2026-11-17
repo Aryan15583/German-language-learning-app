@@ -1,17 +1,46 @@
+import { Eye, EyeOff, Lock as LockIcon } from "lucide-react";
 import { useState } from "react";
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { usePalette } from "../lib/theme";
-import { emailProblem, passwordProblem } from "../lib/vault";
-import { useAccount } from "../state/account";
-import { Button, Card, Chip, Row, T } from "./ui";
+import { emailProblem, passwordProblem } from "../core/lib/vault";
+import { useAccount } from "../web/account";
+import { Button, Card, Chip, cx, fieldClass, HeartPlane, Spinner } from "./ui";
+import { Onboarding, WelcomeSplash } from "./Welcome";
 
 type Mode = "login" | "signup" | "forgot";
+type Step = "splash" | "intro" | "form";
 
-/** Log in / create account / forgot password, plus "unlock" and "set a new password" steps. */
+/** Welcome → intro slides → log in / create account. Also the "unlock" and "new password" steps. */
 export function AuthScreen() {
-  const c = usePalette();
   const acct = useAccount();
+  const phase = acct.phase;
+  const [step, setStep] = useState<Step>(phase === "signed-out" ? "splash" : "form");
   const [chosenMode, setMode] = useState<Mode>("signup");
+
+  if (phase === "signed-out" && step === "splash") {
+    return (
+      <WelcomeSplash
+        onStart={() => setStep("intro")}
+        onSignIn={() => {
+          setMode("login");
+          setStep("form");
+        }}
+      />
+    );
+  }
+  if (phase === "signed-out" && step === "intro") {
+    return (
+      <Onboarding
+        onDone={() => {
+          setMode("signup");
+          setStep("form");
+        }}
+      />
+    );
+  }
+  return <AuthForm chosenMode={chosenMode} setMode={setMode} />;
+}
+
+function AuthForm({ chosenMode, setMode }: { chosenMode: Mode; setMode: (m: Mode) => void }) {
+  const acct = useAccount();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -20,17 +49,29 @@ export function AuthScreen() {
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [mismatch, setMismatch] = useState(false);
+  const [lastSignup, setLastSignup] = useState("");
+  const [resent, setResent] = useState("");
 
-  const input = {
-    borderWidth: 1,
-    borderColor: c.border,
-    backgroundColor: c.surface,
-    color: c.text,
-    borderRadius: 14,
-    padding: 14,
-    fontSize: 16,
-    marginTop: 10,
-  } as const;
+  const phase = acct.phase;
+  const signupOpen = acct.settings?.signupOpen !== false;
+  const mode: Mode = !signupOpen && chosenMode === "signup" ? "login" : chosenMode;
+  const google = acct.account?.provider === "google";
+  const choosing = phase === "unlock" && google && acct.hasBackup === false;
+
+  const heading =
+    phase === "unlock"
+      ? google
+        ? choosing
+          ? "Choose a backup passphrase"
+          : "Your backup passphrase"
+        : "Welcome back"
+      : phase === "recovery"
+        ? "Choose a new password"
+        : mode === "signup"
+          ? "Create your account"
+          : mode === "login"
+            ? "Willkommen zurück!"
+            : "Reset your password";
 
   const run = async (fn: () => Promise<{ ok: boolean; error?: string; code?: string }>) => {
     setBusy(true);
@@ -46,47 +87,8 @@ export function AuthScreen() {
     return r;
   };
 
-  const signupOpen = acct.settings?.signupOpen !== false;
-  const mode: Mode = !signupOpen && chosenMode === "signup" ? "login" : chosenMode;
-  const [lastSignup, setLastSignup] = useState("");
-  const [resent, setResent] = useState("");
-  const phase = acct.phase;
-  const google = acct.account?.provider === "google";
-  const choosing = phase === "unlock" && google && acct.hasBackup === false;
-  const heading =
-    phase === "unlock"
-      ? google
-        ? choosing
-          ? "Choose a backup passphrase 🔐"
-          : "Your backup passphrase 🔐"
-        : "Welcome back 💞"
-      : phase === "recovery"
-        ? "Choose a new password"
-        : mode === "signup"
-          ? "Create your account"
-          : mode === "login"
-            ? "Willkommen zurück!"
-            : "Reset your password";
-
-  const passwordField = (value: string, set: (t: string) => void, label: string, placeholder: string) => (
-    <TextInput
-      style={input}
-      value={value}
-      onChangeText={(t) => {
-        set(t);
-        setError("");
-      }}
-      placeholder={placeholder}
-      placeholderTextColor={c.muted}
-      secureTextEntry={!show}
-      autoCapitalize="none"
-      autoCorrect={false}
-      textContentType={mode === "signup" || phase === "recovery" ? "newPassword" : "password"}
-      accessibilityLabel={label}
-    />
-  );
-
-  const submit = async () => {
+  const submit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (busy) return;
     if (phase === "unlock") {
       if (choosing) {
@@ -102,8 +104,8 @@ export function AuthScreen() {
       if (password !== confirm) return setError("The two passwords don’t match.");
       return run(() => acct.setNewPassword(password));
     }
-    const e = emailProblem(email);
-    if (e) return setError(e);
+    const em = emailProblem(email);
+    if (em) return setError(em);
     if (mode === "forgot") {
       const r = await run(() => acct.sendReset(email));
       if (r.ok) setInfo("If there’s an account for this email, a reset link is on its way. Check your inbox (and spam).");
@@ -120,193 +122,199 @@ export function AuthScreen() {
     return run(() => acct.signIn(email, password));
   };
 
+  const pwLabel = google && phase === "unlock" ? "Backup passphrase" : "Password";
+  const showConfirm = (phase === "signed-out" && mode === "signup") || phase === "recovery" || choosing;
+  const showPassword = mode !== "forgot" || phase !== "signed-out";
+
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: c.bg }}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 48, alignItems: "center" }} keyboardShouldPersistTaps="handled">
-        <Image source={{ uri: "/icons/icon-192.png" }} style={{ width: 84, height: 84, borderRadius: 20 }} accessibilityIgnoresInvertColors />
-        <Text style={{ color: c.accent, fontWeight: "900", fontSize: 22, marginTop: 12 }}>Zwei Herzen ♡</Text>
-        <T muted style={{ marginBottom: 18 }}>Until Berlin — learning German together</T>
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center px-5 pb-10 pt-10">
+      {/* eslint-disable-next-line @next/next/no-img-element -- static export */}
+      <img src="/icons/icon-192.png" alt="" width={84} height={84} className="rounded-3xl shadow-soft" />
+      <h1 className="mt-3 font-script text-4xl font-bold text-plum">Zwei Herzen ♡</h1>
+      <p className="mb-6 text-muted">until Berlin — learning German together</p>
 
-        <Card style={{ width: "100%", maxWidth: 420 }}>
-          <Text style={{ color: c.text, fontSize: 20, fontWeight: "800" }}>{heading}</Text>
+      <Card className="w-full">
+        <h2 className="text-2xl font-bold text-ink">{heading}</h2>
 
-          {phase === "signed-out" && !signupOpen ? (
-            <T muted style={{ fontSize: 13, marginTop: 6 }}>🔒 This is a private app — new sign-ups are closed.</T>
-          ) : null}
+        {phase === "signed-out" && !signupOpen ? (
+          <p className="mt-2 text-sm text-muted">🔒 This is a private app — new sign-ups are closed.</p>
+        ) : null}
+        {phase === "signed-out" ? (
+          <div className="mt-3 flex gap-2">
+            {signupOpen ? (
+              <Chip selected={mode === "signup"} onClick={() => setMode("signup")}>
+                Create account
+              </Chip>
+            ) : null}
+            <Chip selected={mode === "login"} onClick={() => setMode("login")}>
+              Log in
+            </Chip>
+          </div>
+        ) : null}
+
+        {phase === "unlock" && !google ? (
+          <p className="mt-2 text-muted">
+            Enter the password for <b className="text-ink">{acct.account?.email}</b> to unlock your progress on this device.
+          </p>
+        ) : null}
+        {phase === "unlock" && google ? (
+          acct.hasBackup === null ? (
+            <p className="mt-2 text-muted">Checking your backup…</p>
+          ) : (
+            <p className="mt-2 text-muted">
+              Signed in with Google as <b className="text-ink">{acct.account?.email}</b>.{" "}
+              {choosing
+                ? "Choose a passphrase that locks your progress so only you can read it. You’ll type it once on each new device. Write it down — it can’t be recovered."
+                : "Enter the backup passphrase you chose, to unlock your progress on this device."}
+            </p>
+          )
+        ) : null}
+        {phase === "recovery" ? <p className="mt-2 text-muted">Your progress on this device is kept and locked with the new password.</p> : null}
+
+        <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
           {phase === "signed-out" ? (
-            <Row style={{ marginTop: 10 }}>
-              {signupOpen ? <Chip label="Create account" selected={mode === "signup"} onPress={() => setMode("signup")} /> : null}
-              <Chip label="Log in" selected={mode === "login"} onPress={() => setMode("login")} />
-            </Row>
-          ) : null}
-
-          {phase === "unlock" && !google ? (
-            <T muted style={{ marginTop: 6 }}>
-              Enter the password for <Text style={{ fontWeight: "700" }}>{acct.account?.email}</Text> to unlock your progress on this phone.
-            </T>
-          ) : null}
-          {phase === "unlock" && google ? (
-            acct.hasBackup === null ? (
-              <T muted style={{ marginTop: 6 }}>Checking your backup…</T>
-            ) : (
-              <T muted style={{ marginTop: 6 }}>
-                Signed in with Google as <Text style={{ fontWeight: "700" }}>{acct.account?.email}</Text>.{" "}
-                {choosing
-                  ? "Choose a passphrase that locks your progress so only you can read it. You’ll type it once on each new phone. Write it down somewhere safe — it can’t be recovered."
-                  : "Enter the backup passphrase you chose, to unlock your progress on this phone."}
-              </T>
-            )
-          ) : null}
-          {phase === "recovery" ? (
-            <T muted style={{ marginTop: 6 }}>Your progress on this phone is kept and locked with the new password.</T>
-          ) : null}
-
-          {phase === "signed-out" ? (
-            <TextInput
-              style={input}
+            <input
+              className={fieldClass}
+              type="email"
+              autoComplete="email"
+              placeholder="Email"
+              aria-label="Email"
               value={email}
-              onChangeText={(t) => {
-                setEmail(t);
+              onChange={(e) => {
+                setEmail(e.target.value);
                 setError("");
               }}
-              placeholder="Email"
-              placeholderTextColor={c.muted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              textContentType="emailAddress"
-              autoComplete="email"
-              accessibilityLabel="Email"
             />
           ) : null}
-
-          {mode !== "forgot" || phase !== "signed-out"
-            ? passwordField(
-                password,
-                setPassword,
-                google && phase === "unlock" ? "Backup passphrase" : "Password",
-                phase === "recovery" ? "New password" : google && phase === "unlock" ? "Backup passphrase" : "Password",
-              )
-            : null}
-          {(phase === "signed-out" && mode === "signup") || phase === "recovery" || choosing
-            ? passwordField(confirm, setConfirm, "Confirm password", "Type it again")
-            : null}
-
-          {mode !== "forgot" || phase !== "signed-out" ? (
-            <Pressable accessibilityRole="button" onPress={() => setShow(!show)} style={{ alignSelf: "flex-end", padding: 6 }}>
-              <T muted style={{ fontSize: 13 }}>{show ? "🙈 Hide password" : "👁 Show password"}</T>
-            </Pressable>
+          {showPassword ? (
+            <input
+              className={fieldClass}
+              type={show ? "text" : "password"}
+              autoComplete={mode === "signup" || phase === "recovery" || choosing ? "new-password" : "current-password"}
+              placeholder={phase === "recovery" ? "New password" : pwLabel}
+              aria-label={pwLabel}
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setError("");
+              }}
+            />
+          ) : null}
+          {showConfirm ? (
+            <input
+              className={fieldClass}
+              type={show ? "text" : "password"}
+              autoComplete="new-password"
+              placeholder="Type it again"
+              aria-label="Confirm password"
+              value={confirm}
+              onChange={(e) => {
+                setConfirm(e.target.value);
+                setError("");
+              }}
+            />
+          ) : null}
+          {showPassword ? (
+            <button type="button" onClick={() => setShow(!show)} className="flex items-center gap-1.5 self-end text-sm text-muted">
+              {show ? <EyeOff size={16} /> : <Eye size={16} />} {show ? "Hide" : "Show"} password
+            </button>
           ) : null}
 
           {error ? (
-            <Text accessibilityLiveRegion="polite" style={{ color: c.bad, marginTop: 6 }}>
+            <p role="alert" className="text-bad">
               {error}
-            </Text>
+            </p>
           ) : null}
           {info ? (
-            <Text accessibilityLiveRegion="polite" style={{ color: c.good, marginTop: 6 }}>
+            <p aria-live="polite" className="text-good">
               {info}
-            </Text>
+            </p>
           ) : null}
 
-          <View style={{ marginTop: 12 }}>
-            {busy ? (
-              <ActivityIndicator color={c.accent} />
-            ) : (
-              <Button
-                title={
-                  phase === "unlock"
-                    ? choosing
-                      ? "Save passphrase 🔐"
-                      : "Unlock"
-                    : phase === "recovery"
-                      ? "Save new password"
-                      : mode === "signup"
-                        ? "Create account 💞"
-                        : mode === "login"
-                          ? "Log in"
-                          : "Send reset link"
-                }
-                onPress={submit}
-              />
-            )}
-          </View>
+          {busy ? (
+            <Spinner />
+          ) : (
+            <Button type="submit" size="lg" full>
+              {phase === "unlock"
+                ? choosing
+                  ? "Save passphrase 🔐"
+                  : "Unlock"
+                : phase === "recovery"
+                  ? "Save new password"
+                  : mode === "signup"
+                    ? "Create account 💞"
+                    : mode === "login"
+                      ? "Log in"
+                      : "Send reset link"}
+            </Button>
+          )}
+        </form>
 
-          {mismatch ? (
-            <View style={{ marginTop: 10 }}>
-              <T muted style={{ fontSize: 13 }}>
-                You can start a new backup with your current password. Anything already on this phone is kept.
-              </T>
-              <Button title="Start a new backup" variant="secondary" onPress={() => run(() => acct.startFresh(password))} style={{ marginTop: 6 }} />
-            </View>
-          ) : null}
+        {info && lastSignup && phase === "signed-out" ? (
+          <button
+            type="button"
+            className="mt-3 text-sm text-muted underline"
+            onClick={async () => {
+              const r = await acct.resendConfirmation(lastSignup);
+              setResent(r.ok ? "Sent again — check your inbox (and spam)." : r.error);
+            }}
+          >
+            Didn’t get it? Resend the email
+          </button>
+        ) : null}
+        {resent ? <p className="mt-1 text-sm text-muted">{resent}</p> : null}
 
-          {info && lastSignup && phase === "signed-out" ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={async () => {
-                const r = await acct.resendConfirmation(lastSignup);
-                setResent(r.ok ? "Sent again — check your inbox (and spam)." : r.error);
-              }}
-              style={{ marginTop: 8, alignSelf: "flex-start" }}
+        {mismatch ? (
+          <div className="mt-4">
+            <p className="text-sm text-muted">You can start a new backup with your current password. Anything already on this device is kept.</p>
+            <Button variant="soft" full className="mt-2" onClick={() => run(() => acct.startFresh(password))}>
+              Start a new backup
+            </Button>
+          </div>
+        ) : null}
+
+        {phase === "signed-out" && mode !== "forgot" && acct.settings?.google ? (
+          <div className="mt-5">
+            <div className="mb-4 flex items-center gap-3 text-sm text-muted">
+              <span className="h-px flex-1 bg-line" /> or <span className="h-px flex-1 bg-line" />
+            </div>
+            <button
+              type="button"
+              aria-label="Continue with Google"
+              disabled={busy}
+              onClick={() => run(() => acct.signInWithGoogle())}
+              className="flex w-full items-center justify-center gap-3 rounded-full border border-line bg-white py-3 font-semibold text-ink shadow-card hover:bg-blush"
             >
-              <T muted style={{ fontSize: 13, textDecorationLine: "underline" }}>Didn’t get it? Resend the email</T>
-            </Pressable>
-          ) : null}
-          {resent ? <T muted style={{ fontSize: 13, marginTop: 4 }}>{resent}</T> : null}
+              <span className="text-lg font-black text-[#4285F4]">G</span> Continue with Google
+            </button>
+          </div>
+        ) : null}
 
-          {phase === "signed-out" && mode !== "forgot" && Platform.OS === "web" && acct.settings?.google ? (
-            <View style={{ marginTop: 14 }}>
-              <Row style={{ justifyContent: "center", marginBottom: 10 }}>
-                <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
-                <T muted style={{ fontSize: 13 }}>or</T>
-                <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
-              </Row>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Continue with Google"
-                disabled={busy}
-                onPress={() => run(() => acct.signInWithGoogle())}
-                style={({ pressed }) => ({
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 10,
-                  borderWidth: 1,
-                  borderColor: c.border,
-                  backgroundColor: pressed ? c.accentSoft : c.surface,
-                  borderRadius: 12,
-                  paddingVertical: 12,
-                })}
-              >
-                <Text style={{ fontSize: 18, fontWeight: "900", color: "#4285F4" }}>G</Text>
-                <Text style={{ color: c.text, fontWeight: "700", fontSize: 15 }}>Continue with Google</Text>
-              </Pressable>
-            </View>
-          ) : null}
-
+        <div className="mt-4 flex flex-col items-center gap-2 text-sm">
           {phase === "signed-out" && mode === "login" ? (
-            <Pressable accessibilityRole="button" onPress={() => setMode("forgot")} style={{ marginTop: 12, alignSelf: "center" }}>
-              <T muted style={{ fontSize: 13, textDecorationLine: "underline" }}>Forgot password?</T>
-            </Pressable>
+            <button type="button" className="text-muted underline" onClick={() => setMode("forgot")}>
+              Forgot password?
+            </button>
           ) : null}
           {phase === "signed-out" && mode === "forgot" ? (
-            <Pressable accessibilityRole="button" onPress={() => setMode("login")} style={{ marginTop: 12, alignSelf: "center" }}>
-              <T muted style={{ fontSize: 13, textDecorationLine: "underline" }}>Back to log in</T>
-            </Pressable>
+            <button type="button" className="text-muted underline" onClick={() => setMode("login")}>
+              Back to log in
+            </button>
           ) : null}
           {phase === "unlock" ? (
-            <Pressable accessibilityRole="button" onPress={acct.signOut} style={{ marginTop: 12, alignSelf: "center" }}>
-              <T muted style={{ fontSize: 13, textDecorationLine: "underline" }}>Use a different account</T>
-            </Pressable>
+            <button type="button" className="text-muted underline" onClick={acct.signOut}>
+              Use a different account
+            </button>
           ) : null}
-        </Card>
+        </div>
+      </Card>
 
-        <T muted style={{ fontSize: 12, textAlign: "center", marginTop: 14, maxWidth: 380 }}>
-          🔒 Your progress is encrypted on your phone with your password before it’s saved. Nobody else can read it — which also means a
-          forgotten password can’t be recovered.
-        </T>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <p className={cx("mt-5 flex max-w-sm items-start gap-2 text-center text-xs text-muted")}>
+        <LockIcon size={14} className="mt-0.5 shrink-0" />
+        Your progress is encrypted on your device with your password before it’s saved. Nobody else can read it — which also means a forgotten password
+        can’t be recovered.
+      </p>
+      <HeartPlane className="mt-6 h-8 w-24 text-rose-soft" />
+    </div>
   );
 }

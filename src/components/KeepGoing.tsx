@@ -1,22 +1,22 @@
-import { router } from "expo-router";
-import { Text } from "react-native";
-import { nextStep, stepHref, stepLabel } from "../lib/path";
-import { usePalette } from "../lib/theme";
-import { useProgress } from "../state/progress";
-import { BigButton, Card, T } from "./ui";
+import { Play } from "lucide-react";
+import { nextStep, stepLabel } from "../core/lib/path";
+import { hrefOf } from "../web/nav";
+import { useProgress } from "../web/progress";
+import { Button, Card } from "./ui";
 
-/** After finishing something: show what's next and one big button to go there. */
+/** After finishing something: what's next, and one big button to go there. */
 export function KeepGoing() {
-  const c = usePalette();
   const { state } = useProgress();
   const step = nextStep(state.partners[state.learner]);
   const label = stepLabel(step);
   return (
-    <Card style={{ alignItems: "center" }}>
-      <T muted style={{ fontWeight: "700" }}>Next up</T>
-      <Text style={{ fontSize: 44 }}>{label.emoji}</Text>
-      <Text style={{ color: c.text, fontSize: 20, fontWeight: "900", textAlign: "center" }}>{label.title}</Text>
-      <BigButton title="▶  Keep going" onPress={() => router.replace(stepHref(step))} color={c.good} large />
+    <Card className="flex flex-col items-center text-center">
+      <p className="text-sm font-semibold text-muted">Next up</p>
+      <p className="text-5xl">{label.emoji}</p>
+      <p className="mt-1 text-xl font-extrabold text-ink">{label.title}</p>
+      <Button href={hrefOf(step)} variant="good" size="lg" full className="mt-4">
+        <Play size={20} fill="currentColor" /> Keep going
+      </Button>
     </Card>
   );
 }

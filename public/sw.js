@@ -1,6 +1,6 @@
 // Zwei Herzen ♡ — offline support. Caches only this app's own files.
 // Never touches other origins (e.g. the encrypted message relay).
-const CACHE = "zh-v1";
+const CACHE = "zh-v2";
 const SHELL = ["/", "/manifest.json", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -27,16 +27,16 @@ self.addEventListener("fetch", (event) => {
       fetch(req)
         .then((res) => {
           const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put("/", copy));
+          if (res.ok) caches.open(CACHE).then((c) => c.put(url.pathname, copy));
           return res;
         })
-        .catch(() => caches.match("/")),
+        .catch(() => caches.match(url.pathname).then((hit) => hit || caches.match("/"))),
     );
     return;
   }
 
   // Versioned bundles and icons: cache first.
-  if (url.pathname.startsWith("/_expo/static/") || url.pathname.startsWith("/icons/") || url.pathname.startsWith("/assets/")) {
+  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/") || url.pathname.startsWith("/art/")) {
     event.respondWith(
       caches.match(req).then(
         (hit) =>
