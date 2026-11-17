@@ -67,6 +67,7 @@ Progress is saved in the browser (localStorage) and, with accounts, in an encryp
 ## Together from anywhere 🌍
 Link your two phones with a **6-character partner code** (Us tab). Then:
 - **Chat** inside the app, including love notes, quick German phrases and **secrets** that unlock at a 7-day streak.
+- **Disappearing messages:** pick a timer in the chat — **after seen** (gone on both phones once your partner has read it and left the chat), **1 day** or **30 days**.
 - **Remote duels**: play a round in Mumbai, and your partner in the USA gets the exact same questions in their own language.
 - **Weekly XP battle, daily goal, hearts levels and achievements**, with each other's progress synced in every message.
 - **Our words**: phrases you add appear on both phones and can be practised with flashcards.

@@ -4,7 +4,7 @@ import { meet, recall, type Memory } from "../lib/srs";
 import { isLang, LEVELS, levelIndex, levelUnits, type Lang, type Level, type LevelId, type SubLevel } from "../content/levels";
 import { newId, type PinHash } from "../lib/crypto";
 import { isoWeek } from "../lib/game";
-import type { SharedWord } from "../lib/link";
+import type { SharedWord, Vanish } from "../lib/link";
 
 export type PartnerIndex = 0 | 1;
 
@@ -87,6 +87,10 @@ export type ChatItem = {
   /** Secrets open when the reader's streak reaches this many days. */
   unlockAt?: number;
   duelId?: string;
+  /** Disappearing message timer. */
+  vanish?: Vanish;
+  /** When I first saw a disappearing message from my partner. */
+  viewedAt?: number;
 };
 
 /** A duel played on two phones: same questions (same seed), one after the other. */
@@ -122,6 +126,8 @@ export type AppState = {
   updatedAt: number;
   /** Recent things you did, newest last (for "Recent activity"). */
   log: LogEntry[];
+  /** Timer for new chat messages I send ("off" = keep). */
+  vanish: Vanish | "off";
 };
 
 export type LogEntry = { at: number; icon: string; text: string };
@@ -173,6 +179,7 @@ export const freshState = (): AppState => ({
   welcomeDone: false,
   updatedAt: 0,
   log: [],
+  vanish: "off",
 });
 
 const clampLevel = (n: unknown) => (typeof n === "number" && n >= 0 ? Math.min(Math.floor(n), MAX_LEVEL) : 0);
@@ -217,6 +224,7 @@ export function migrate(raw: unknown): AppState {
     welcomeDone: r.welcomeDone === true,
     updatedAt: typeof r.updatedAt === "number" && r.updatedAt > 0 ? r.updatedAt : 0,
     log: Array.isArray(r.log) ? r.log.slice(-40) : [],
+    vanish: r.vanish === "seen" || r.vanish === "1d" || r.vanish === "30d" ? r.vanish : "off",
   };
 }
 

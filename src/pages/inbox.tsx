@@ -36,6 +36,7 @@ export default function Inbox() {
   const what = {
     hello: "linked your phones 💞",
     stats: "shared their progress 📈",
+    viewed: "saw your disappearing messages 👁",
     msg: "sent you a message 💬",
     note: "sent you a love note 💌",
     secret: "sent you a secret 🔒",

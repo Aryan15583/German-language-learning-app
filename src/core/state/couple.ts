@@ -69,6 +69,8 @@ export function recordOutgoing(s: AppState, envId: string, p: Payload, at: numbe
     pushChat(next, { id: envId, from: 0, kind, text, at, ...extra });
   switch (p.kind) {
     case "msg":
+      next = mine("msg", p.text, p.vanish ? { vanish: p.vanish } : {});
+      break;
     case "note":
       next = mine(p.kind, p.text);
       break;
@@ -134,8 +136,14 @@ export function receive(s: AppState, env: Envelope, now: number): ReceiveResult 
       next = systemNote(next, `${env.from.name} joined — your phones are linked 💞`, now);
       break;
     case "msg":
+      theirs("msg", env.text, env.vanish ? { vanish: env.vanish } : {});
+      break;
     case "note":
       theirs(env.kind, env.text);
+      break;
+    case "viewed":
+      // My partner saw my "after seen" messages: delete my copies too.
+      next = { ...next, chat: next.chat.filter((m) => !(m.from === 0 && m.vanish === "seen" && env.ids.includes(m.id))) };
       break;
     case "secret":
       theirs("secret", env.text, { unlockAt: env.unlockAt });
@@ -244,4 +252,56 @@ export function coupleContext(s: AppState, streak: number, hasPartner: boolean, 
     postcards: postcardCount,
     berlinReady: a.ready >= 7 || b.ready >= 7,
   };
+}
+
+// ---- disappearing messages ----
+
+export const VANISH_MS = { "1d": 864e5, "30d": 30 * 864e5 } as const;
+/** An "after seen" message stays readable this long after you first see it (or until you leave the chat). */
+export const SEEN_GRACE_MS = 2 * 60 * 1000;
+/** If my partner never opens it (or can't send the receipt), my copy still goes after 30 days. */
+export const SEEN_FALLBACK_MS = VANISH_MS["30d"];
+
+export function isExpired(m: ChatItem, now: number): boolean {
+  if (!m.vanish) return false;
+  if (m.vanish === "seen") {
+    if (m.from === 1) return m.viewedAt !== undefined && now - m.viewedAt >= SEEN_GRACE_MS;
+    return now - m.at >= SEEN_FALLBACK_MS;
+  }
+  return now - m.at >= VANISH_MS[m.vanish];
+}
+
+/** Remove every message whose time is up. Returns the same state when nothing changed. */
+export function purgeExpired(s: AppState, now: number): AppState {
+  const chat = s.chat.filter((m) => !isExpired(m, now));
+  return chat.length === s.chat.length ? s : { ...s, chat };
+}
+
+/** I'm looking at these messages now: start the "after seen" countdown. Returns the ids seen for the first time. */
+export function markViewed(s: AppState, now: number): { state: AppState; ids: string[] } {
+  const ids: string[] = [];
+  const chat = s.chat.map((m) => {
+    if (m.from === 1 && m.vanish === "seen" && m.viewedAt === undefined) {
+      ids.push(m.id);
+      return { ...m, viewedAt: now };
+    }
+    return m;
+  });
+  return ids.length ? { state: { ...s, chat }, ids } : { state: s, ids };
+}
+
+/** Leaving the chat: "after seen" messages I've already seen are gone right away. */
+export function leaveChat(s: AppState): AppState {
+  const chat = s.chat.filter((m) => !(m.from === 1 && m.vanish === "seen" && m.viewedAt !== undefined));
+  return chat.length === s.chat.length ? s : { ...s, chat };
+}
+
+/** A short "when does this disappear?" label. */
+export function vanishLabel(m: ChatItem, now: number): string | null {
+  if (!m.vanish) return null;
+  if (m.vanish === "seen") return m.from === 0 ? "👁 Disappears once seen" : "👁 Disappears when you leave the chat";
+  const total = VANISH_MS[m.vanish];
+  const left = Math.min(total, m.at + total - now);
+  const h = Math.max(0, Math.ceil(left / 3600e3));
+  return h <= 24 ? `⏱ ${h} h left` : `⏱ ${Math.ceil(h / 24)} days left`;
 }
