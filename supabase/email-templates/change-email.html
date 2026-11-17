@@ -1,0 +1,29 @@
+<!-- Zwei Herzen ♡ email. Paste into Supabase → Authentication → Emails. Inline styles only, because email apps ignore style blocks. -->
+<div style="margin:0;padding:32px 12px;background:#fbe8ee;font-family:Helvetica,Arial,sans-serif;color:#3a1c29;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 12px 32px rgba(120,38,72,0.18);">
+    <tr>
+      <td style="background:linear-gradient(135deg,#a8476f,#6a1f40);background-color:#8b2f55;padding:28px 24px;text-align:center;">
+        <div style="font-size:30px;line-height:1;">💞</div>
+        <div style="margin-top:8px;font-family:'Brush Script MT','Segoe Script',cursive;font-size:32px;color:#ffffff;">Zwei Herzen</div>
+        <div style="margin-top:2px;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#f6c9d6;">until Berlin</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:28px 28px 8px;">
+        <h1 style="margin:0 0 12px;font-size:22px;color:#3a1c29;">Confirm your new email</h1>
+        <p style="margin:0 0 22px;font-size:16px;line-height:1.55;color:#5c3a48;">Tap the button to confirm {{ .NewEmail }} as your new email for Zwei Herzen.</p>
+        <p style="margin:0 0 26px;text-align:center;">
+          <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 28px;border-radius:999px;background:#8b2f55;color:#ffffff;font-weight:bold;font-size:16px;text-decoration:none;">Confirm new email</a>
+        </p>
+        <p style="margin:0 0 6px;font-size:13px;color:#876270;">Button not working? Copy this link into your browser:</p>
+        <p style="margin:0 0 22px;font-size:12px;word-break:break-all;"><a href="{{ .ConfirmationURL }}" style="color:#8b2f55;">{{ .ConfirmationURL }}</a></p>
+        <p style="margin:0 0 22px;font-size:14px;line-height:1.5;color:#5c3a48;">Didn't ask for this? Ignore this email and nothing changes.</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:16px 28px 26px;border-top:1px solid #f0d3dd;text-align:center;font-size:12px;color:#a58796;">
+        Gemeinsam nach Berlin ♡<br />This email was sent to {{ .Email }} because someone used it in Zwei Herzen.
+      </td>
+    </tr>
+  </table>
+</div>

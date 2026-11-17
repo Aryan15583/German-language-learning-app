@@ -121,6 +121,25 @@ Without Supabase, the app runs as before: one shared phone, no accounts.
 - **Email links open `localhost:3000`:** set **Site URL** (Authentication → URL Configuration) to your app's address and add it under **Redirect URLs**.
 - **Pausing:** free projects pause after a week with no activity. If that happens, open the project and click **Restore**.
 
+## Send emails from your own Gmail (not Supabase)
+Supabase's built-in sender only reaches your own Supabase team. To send confirmation and password emails yourself, from your Gmail as **"Zwei Herzen ♡"**:
+
+1. **Make a Gmail app password** (needs 2-Step Verification on the Google account): go to **myaccount.google.com/apppasswords**, name it `Zwei Herzen`, and copy the 16-letter password. Keep it private — never paste it into a chat.
+2. **Supabase → Authentication → Emails → SMTP Settings** → turn on **Enable custom SMTP** and fill in:
+   | Field | Value |
+   |---|---|
+   | Sender email | your Gmail address |
+   | Sender name | `Zwei Herzen ♡` |
+   | Host | `smtp.gmail.com` |
+   | Port | `465` |
+   | Username | your Gmail address |
+   | Password | the 16-letter app password |
+   Then **Save**.
+3. **Make the emails pretty (optional):** in **Authentication → Emails → Templates**, paste the designs from [`supabase/email-templates/`](supabase/email-templates/README.md).
+4. **Check the link address:** **Authentication → URL Configuration** → **Site URL** = `https://zwei-herzen-until-berlin.vercel.app`, and add `https://zwei-herzen-until-berlin.vercel.app/**` under **Redirect URLs**. (Otherwise links open `localhost:3000`.)
+
+Gmail can send up to 500 emails a day — plenty for two. Prefer not to use Gmail? Any email service with SMTP (for example Brevo's free plan) works the same way.
+
 ## Deploy the web version (Vercel)
 `vercel.json` is already set up: Vercel runs `npm run build` (a static Next.js export, no server code) and serves `out/`. The Vercel settings `EXPO_PUBLIC_RELAY_URL` and `EXPO_PUBLIC_RELAY_KEY` keep their names.
 
