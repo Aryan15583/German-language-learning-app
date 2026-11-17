@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
 import { Button, Card, cx, HeartPlane, Mascot, ProgressBar, Ring, Script, Speak } from "../components/ui";
-import { LEVELS, levelWords, meaning } from "../core/content/levels";
+import { allTopics, LEVELS, levelWords, meaning } from "../core/content/levels";
 import { DAILY_GOAL } from "../core/lib/game";
 import { nextStop, routeShare } from "../core/lib/journey";
 import { missionComplete, missionFor, missionTasks, MISSION_XP } from "../core/lib/missions";
@@ -90,34 +90,29 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Continue learning — the one big button: the photo fills the card, the info sits on it */}
+        {/* Continue learning — exactly like the design: the photo fills the card, its lower half frosted */}
         <Link
           href={hrefOf(step)}
           aria-label={`Start: ${label.title}`}
-          className="group gold-ring relative isolate flex min-h-[310px] flex-col justify-end overflow-hidden rounded-[26px] bg-[#4a1430] lg:min-h-full"
+          className="group relative isolate block aspect-[1.35] overflow-hidden rounded-[26px] shadow-soft lg:aspect-auto lg:min-h-full"
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- static export */}
-          <img src="/art/splash.jpg" alt="" className="absolute inset-x-0 top-0 -z-10 h-[72%] w-full object-cover object-[center_62%] transition duration-700 group-hover:scale-105" />
-          <div aria-hidden className="absolute inset-x-0 top-0 -z-10 h-[72%] bg-gradient-to-b from-transparent from-55% to-[#4a1430]" />
-          <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-[#6a1f40] shadow-card">{step.level.id}</span>
-          <div className="m-3 rounded-[22px] bg-[#5a1a3b]/70 px-4 py-3.5 text-white ring-1 ring-white/15 backdrop-blur-md">
+          <img src="/art/continue.jpg" alt="" className="absolute inset-0 -z-10 h-full w-full object-cover object-top transition duration-700 group-hover:scale-105" />
+          <div className="absolute inset-x-0 bottom-0 flex h-[45%] flex-col justify-center gap-2.5 rounded-t-[18px] border-t border-white/25 bg-gradient-to-b from-[#a85477]/30 to-[#6a1f40]/50 px-5 text-white backdrop-blur-md">
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wider text-white/75">{mine.todayXp >= DAILY_GOAL ? "Goal done! Next up" : "Continue learning"}</p>
-                <h2 className="mt-0.5 truncate text-xl font-extrabold">
-                  <span aria-hidden>{label.emoji}</span> {label.title}
-                </h2>
-                <p className="truncate text-sm text-white/80">{label.detail}</p>
+                <h2 className="text-[22px] font-semibold leading-tight drop-shadow-sm">{mine.todayXp >= DAILY_GOAL ? "Keep Going" : "Continue Learning"}</h2>
+                <p className="mt-1 truncate text-[15px] text-white/90">{continueLine(step)}</p>
               </div>
-              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white text-[#8b2f55] shadow-soft transition group-hover:scale-110 group-active:scale-95">
-                <Play size={26} fill="currentColor" className="ml-0.5" />
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#fdeef3] text-[#8b2f55] shadow-soft transition group-hover:scale-110 group-active:scale-95">
+                <Play size={24} fill="currentColor" className="ml-0.5" />
               </span>
             </div>
-            <div className="mt-3 flex items-center gap-3">
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/25" role="progressbar" aria-valuenow={Math.round(mine.levelShare * 100)} aria-valuemin={0} aria-valuemax={100}>
-                <div className="h-full rounded-full bg-gradient-to-r from-[#f6c9d6] to-white" style={{ width: `${Math.round(mine.levelShare * 100)}%` }} />
+            <div className="flex items-center gap-3 pr-1">
+              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#f3b6c8]/35" role="progressbar" aria-valuenow={Math.round(mine.levelShare * 100)} aria-valuemin={0} aria-valuemax={100}>
+                <div className="h-full rounded-full bg-[#f8c6d4]" style={{ width: `${Math.round(mine.levelShare * 100)}%` }} />
               </div>
-              <span className="text-xs font-semibold text-white/90">{Math.round(mine.levelShare * 100)}%</span>
+              <span className="text-sm text-white/95">{Math.round(mine.levelShare * 100)}%</span>
             </div>
           </div>
         </Link>
@@ -445,4 +440,13 @@ function Bar({ label, value, color }: { label: string; value: number; color: str
       <ProgressBar value={value} color={color} className="mt-1 h-2" />
     </div>
   );
+}
+
+/** "Unit 1 • Pet names & greetings", like the design. */
+function continueLine(step: ReturnType<typeof nextStep>): string {
+  if (step.kind === "test") return `${step.level.id} • Big test`;
+  if (step.kind === "smart") return `Smart review • ${step.count} words`;
+  const n = allTopics().findIndex((u) => u.id === step.unit.id) + 1;
+  const part = step.kind === "learn" && step.parts > 1 ? ` • Lesson ${step.part}/${step.parts}` : step.kind === "quiz" ? " • Quiz" : "";
+  return `Unit ${n} • ${step.unit.title}${part}`;
 }
