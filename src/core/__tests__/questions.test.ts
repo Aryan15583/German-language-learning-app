@@ -82,6 +82,7 @@ describe("Marathi", () => {
     for (const q of qs) {
       const word = pool.find((w) => w.de === q.german)!;
       if (q.kind === "type") expect(q.prompt).toBe(word.mr);
+      else if (q.kind !== "choice") throw new Error("unexpected question kind");
       else if (q.direction === "de-x") {
         expect(q.answer).toBe(word.mr);
         for (const o of q.options) expect(pool.map((w) => w.mr)).toContain(o);

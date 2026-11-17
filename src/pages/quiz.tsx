@@ -5,22 +5,24 @@ import { Missing } from "../components/NotFound";
 import { Quiz } from "../components/Quiz";
 import { Results } from "../components/Results";
 import { Button, PageHeader } from "../components/ui";
-import { findTopic, levelOfTopic, levelWords, subLevelOfTopic, type Level, type Topic } from "../core/content/levels";
+import { levelWords, subLevelOfTopic, type Level, type Topic } from "../core/content/levels";
+import { questionKey } from "../core/lib/questions";
+import { SLOW_MS } from "../core/lib/srs";
+import { lessonById } from "../web/topics";
 import { makeQuestions } from "../core/lib/questions";
 import { useId } from "../web/nav";
 import { partnerName, UNIT_PASS, UNIT_TEST_QUESTIONS, useProgress, XP } from "../web/progress";
 
 export default function QuizPage() {
   const id = useId();
-  const unit = id ? findTopic(id) : undefined;
-  const level = id ? levelOfTopic(id) : undefined;
+  const found = id ? lessonById(id) : null;
   if (id === null) return <Missing loading />;
-  if (!unit || !level) return <Missing />;
-  return <UnitQuiz key={unit.id} unit={unit} level={level} />;
+  if (!found) return <Missing />;
+  return <UnitQuiz key={found.topic.id} unit={found.topic} level={found.level} berlin={found.berlin} />;
 }
 
-function UnitQuiz({ unit, level }: { unit: Topic; level: Level }) {
-  const { state, recordUnitScore, practiced, log } = useProgress();
+function UnitQuiz({ unit, level, berlin }: { unit: Topic; level: Level; berlin: boolean }) {
+  const { state, recordUnitScore, practiced, log, remember, did } = useProgress();
   const learner = state.learner;
   const sub = subLevelOfTopic(unit.id);
   const build = () => makeQuestions(unit.words, levelWords(level), { count: UNIT_TEST_QUESTIONS, typingShare: 0.25, lang: state.partners[learner].lang });
@@ -39,7 +41,11 @@ function UnitQuiz({ unit, level }: { unit: Topic; level: Level }) {
           title={passed ? "Bestanden! You passed ⭐" : "Almost! Fast geschafft!"}
           message={passed ? `${unit.title} is done. Keep going!` : `You need ${Math.round(UNIT_PASS * 100)}% to pass. Look at the words again and try once more.`}
         >
-          {passed ? (
+          {passed && berlin ? (
+            <Button size="lg" href="/journey">
+              💌 See your new postcard
+            </Button>
+          ) : passed ? (
             <KeepGoing />
           ) : (
             <>
@@ -69,12 +75,14 @@ function UnitQuiz({ unit, level }: { unit: Topic; level: Level }) {
       <Quiz
         key={attempt}
         questions={questions}
-        label={`${partnerName(state, learner)} · ${sub?.id ?? level.id} quiz`}
+        label={`${partnerName(state, learner)} · ${berlin ? "Berlin" : (sub?.id ?? level.id)} quiz`}
+        onAnswer={(q, ok, ms) => remember(learner, questionKey(q), ok, ms > SLOW_MS)}
         onFinish={(correct, total) => {
+          if (correct === total) did(learner, "perfect");
           const score = correct / total;
           recordUnitScore(learner, unit.id, score);
           practiced(learner, correct * XP.correctAnswer + (score >= UNIT_PASS ? XP.unitPassed : 0));
-          log(score >= UNIT_PASS ? "⭐" : "✏️", score >= UNIT_PASS ? `Passed the “${unit.title}” quiz` : `Tried the “${unit.title}” quiz`);
+          log(score >= UNIT_PASS ? (berlin ? "💌" : "⭐") : "✏️", score >= UNIT_PASS ? (berlin ? `Explored ${unit.title} — new Berlin postcard!` : `Passed the “${unit.title}” quiz`) : `Tried the “${unit.title}” quiz`);
           setResult({ correct, total });
         }}
       />

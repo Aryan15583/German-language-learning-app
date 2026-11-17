@@ -5,6 +5,7 @@ import { newId, newKey } from "../lib/crypto";
 import { CODE_TTL_MS, type Envelope, type Payload, type PartnerInfo, type SharedWord, type Stats } from "../lib/link";
 import { addXp, unitPassed, type AppState, type ChatItem, type Partner, type PartnerIndex, type RemoteDuel, XP } from "./logic";
 import { LEVELS, levelUnits } from "../content/levels";
+import type { CoupleContext } from "../lib/game";
 
 const MAX_CHAT = 500;
 const MAX_SEEN = 1000;
@@ -222,5 +223,25 @@ export function achievementContext(s: AppState, i: PartnerIndex, streak: number)
     messages: p.counts.messages,
     duelsWon: p.counts.duelsWon,
     linked: isLinked(s),
+    perfect: p.counts.perfect,
+    a1: p.examsPassed.includes("A1"),
+  };
+}
+
+/** Numbers for the couple achievements. On linked phones some of my partner's numbers aren't known, so those use what I can see. */
+export function coupleContext(s: AppState, streak: number, hasPartner: boolean, postcardCount: number): CoupleContext {
+  const [a, b] = s.partners;
+  const unitsOf = (i: 0 | 1) => achievementContext(s, i, streak).unitsPassed;
+  const notesFromPartner = isLinked(s) ? s.chat.filter((m) => m.from === 1 && m.kind === "note").length : 0;
+  return {
+    bothLearned: hasPartner && unitsOf(0) >= 1 && unitsOf(1) >= 1,
+    streak,
+    duels: a.counts.duels + b.counts.duels + s.remoteDuels.length,
+    talks: a.counts.talks + b.counts.talks,
+    notes: a.counts.notes + b.counts.notes + notesFromPartner,
+    a1Both: hasPartner && a.examsPassed.includes("A1") && b.examsPassed.includes("A1"),
+    missions: a.counts.hearts + b.counts.hearts,
+    postcards: postcardCount,
+    berlinReady: a.ready >= 7 || b.ready >= 7,
   };
 }

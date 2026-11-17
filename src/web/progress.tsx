@@ -47,13 +47,21 @@ type Ctx = {
   recordChat: (i: PartnerIndex, chatId: string, stars: number) => void;
   /** Award XP and keep the shared streak alive. */
   practiced: (i: PartnerIndex, xp: number) => void;
-  markKnown: (i: PartnerIndex, unitId: string, wordIndex: number) => void;
+  /** `key` (the German) also starts the word's review schedule. */
+  markKnown: (i: PartnerIndex, unitId: string, wordIndex: number, key?: string) => void;
   recordUnitScore: (i: PartnerIndex, unitId: string, score: number) => void;
   recordExam: (i: PartnerIndex, level: LevelId, score: number) => void;
   applyPlacement: (i: PartnerIndex, levelIdx: number) => void;
   addDuel: (d: DuelResult) => void;
   /** Remember something for "Recent activity". */
   log: (icon: string, text: string) => void;
+  /** A quiz answer about a word: update its review schedule. */
+  remember: (i: PartnerIndex, key: string, correct: boolean, slow?: boolean) => void;
+  markPractised: (i: PartnerIndex, unitId: string) => void;
+  /** Count something for today's mission and the couple achievements. */
+  did: (i: PartnerIndex, what: "talk" | "duel" | "perfect" | "note") => void;
+  claimMission: (i: PartnerIndex) => void;
+  finishReadyDay: (i: PartnerIndex, day: number) => void;
   reset: () => void;
 
   // PIN lock
@@ -163,7 +171,10 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
       const s = stateRef.current;
       if (!s.couple || s.couple.status !== "linked") throw new Error("Not linked");
       const env = envelopeFor(payload);
-      update((x) => C.recordOutgoing(x, env.id, payload, env.at));
+      update((x) => {
+        const sent = C.recordOutgoing(x, env.id, payload, env.at);
+        return payload.kind === "note" ? L.bumpMission(L.countUp(sent, 0, "notes"), 0, "notes", today()) : sent;
+      });
       const box = inboxFor(s.couple.id, s.couple.key, otherRole(s.couple.role ?? "joiner"));
       return deliver(box, sealEnvelope(s.couple.key, env));
     },
@@ -262,12 +273,32 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
       setLang: (i, lang) => update((s) => L.setLang(s, i, lang)),
       recordChat: (i, chatId, stars) => update((s) => L.recordChat(s, i, chatId, stars)),
       practiced: (i, xp) => update((s) => L.applyPractice(s, i, xp, today(), yesterday())),
-      markKnown: (i, unitId, w) => update((s) => L.markKnown(s, i, unitId, w)),
+      markKnown: (i, unitId, w, key?: string) =>
+        update((s) => {
+          const isNew = !(s.partners[i].known[unitId] ?? []).includes(w);
+          let next = L.markKnown(s, i, unitId, w);
+          if (key) next = L.meetWord(next, i, key, today());
+          return isNew ? L.bumpMission(next, i, "words", today()) : next;
+        }),
       recordUnitScore: (i, unitId, score) => update((s) => L.recordUnitScore(s, i, unitId, score)),
       recordExam: (i, level, score) => update((s) => L.recordExam(s, i, level, score)),
       applyPlacement: (i, idx) => update((s) => L.applyPlacement(s, i, idx)),
       addDuel: (d) => update((s) => ({ ...s, duels: [...s.duels, d].slice(-20) })),
       log: (icon, text) => update((s) => L.logActivity(s, icon, text, Date.now())),
+      remember: (i, key, correct, slow) => update((s) => L.remember(s, i, key, correct, today(), slow)),
+      markPractised: (i, unitId) => update((s) => L.markPractised(s, i, unitId)),
+      did: (i, what) =>
+        update((s) =>
+          what === "talk"
+            ? L.bumpMission(L.countUp(s, i, "talks"), i, "talks", today())
+            : what === "duel"
+              ? L.bumpMission(L.countUp(s, i, "duels"), i, "duels", today())
+              : what === "note"
+                ? L.bumpMission(L.countUp(s, i, "notes"), i, "notes", today())
+                : L.countUp(s, i, "perfect"),
+        ),
+      claimMission: (i) => update((s) => L.claimMission(s, i, today())),
+      finishReadyDay: (i, day) => update((s) => L.finishReadyDay(s, i, day)),
       reset: () => {
         setLocked(false);
         update(() => L.freshState());

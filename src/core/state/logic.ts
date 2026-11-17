@@ -1,4 +1,6 @@
 // Pure progress rules: no React, no storage. Everything here is unit-tested.
+import { bump, missionComplete, missionFor, MISSION_XP, type Mission, type MissionKind } from "../lib/missions";
+import { meet, recall, type Memory } from "../lib/srs";
 import { isLang, LEVELS, levelIndex, levelUnits, type Lang, type Level, type LevelId, type SubLevel } from "../content/levels";
 import { newId, type PinHash } from "../lib/crypto";
 import { isoWeek } from "../lib/game";
@@ -28,12 +30,37 @@ export type Partner = {
   /** XP earned this ISO week and today, for the weekly battle and daily goal. */
   week: { id: string; xp: number };
   today: { date: string; xp: number };
-  counts: { messages: number; duelsWon: number };
+  counts: Counts;
+  /** Spaced repetition: how well you know each word (by its German). */
+  memory: Record<string, Memory>;
+  /** Units whose practice step (hear, say, type, use) is done. */
+  practised: string[];
+  /** Today's couple mission. */
+  mission: Mission | null;
+  /** Berlin Ready: days of the final trip completed (0–7). */
+  ready: number;
   /** XP per calendar day (last 60 days), for the streak chart. */
   history: Record<string, number>;
   /** For the partner on a linked phone: their own streak and totals, from their last message. */
   remote: { streak: number; streakDay: string | null; wordsKnown: number; unitsPassed: number; at: number } | null;
 };
+
+export type Counts = {
+  messages: number;
+  duelsWon: number;
+  /** Love notes sent. */
+  notes: number;
+  /** Quizzes with every answer right. */
+  perfect: number;
+  /** Daily missions completed (❤️ couple hearts). */
+  hearts: number;
+  /** Duels played (any kind). */
+  duels: number;
+  /** Conversations finished (chats, role-plays). */
+  talks: number;
+};
+
+export const freshCounts = (): Counts => ({ messages: 0, duelsWon: 0, notes: 0, perfect: 0, hearts: 0, duels: 0, talks: 0 });
 
 export type Couple = {
   id: string;
@@ -123,9 +150,13 @@ export const newPartner = (): Partner => ({
   chatStars: {},
   week: { id: "", xp: 0 },
   today: { date: "", xp: 0 },
-  counts: { messages: 0, duelsWon: 0 },
+  counts: freshCounts(),
   remote: null,
   history: {},
+  memory: {},
+  practised: [],
+  mission: null,
+  ready: 0,
 });
 
 export const freshState = (): AppState => ({
@@ -164,7 +195,11 @@ export function migrate(raw: unknown): AppState {
     pin: p?.pin && typeof p.pin === "object" ? p.pin : null,
     week: p?.week ?? { id: "", xp: 0 },
     today: p?.today ?? { date: "", xp: 0 },
-    counts: p?.counts ?? { messages: 0, duelsWon: 0 },
+    counts: { ...freshCounts(), ...(p?.counts ?? {}) },
+    memory: p?.memory && typeof p.memory === "object" ? p.memory : {},
+    practised: Array.isArray(p?.practised) ? p.practised : [],
+    mission: p?.mission && typeof p.mission === "object" ? p.mission : null,
+    ready: typeof p?.ready === "number" ? Math.max(0, Math.min(7, Math.floor(p.ready))) : 0,
     remote: p?.remote ?? null,
     history: p?.history && typeof p.history === "object" ? p.history : {},
   });
@@ -275,6 +310,37 @@ export const recordChat = (s: AppState, i: PartnerIndex, chatId: string, stars: 
 /** Placement never takes levels away. */
 export const applyPlacement = (s: AppState, i: PartnerIndex, levelIdx: number): AppState =>
   withPartner(s, i, (p) => ({ ...p, unlocked: Math.max(p.unlocked, clampLevel(levelIdx)) }));
+
+// ---- Memory, practice, missions ----
+
+/** A quiz answer about one word: move it along its review schedule. */
+export const remember = (s: AppState, i: PartnerIndex, key: string, correct: boolean, today: string, slow = false): AppState =>
+  withPartner(s, i, (p) => ({ ...p, memory: { ...p.memory, [key]: recall(p.memory[key], correct, today, slow) } }));
+
+/** Met a word in flashcards: it starts its review schedule (seen again tomorrow). */
+export const meetWord = (s: AppState, i: PartnerIndex, key: string, today: string): AppState =>
+  withPartner(s, i, (p) => (p.memory[key] ? p : { ...p, memory: { ...p.memory, [key]: meet(undefined, today) } }));
+
+export const markPractised = (s: AppState, i: PartnerIndex, unitId: string): AppState =>
+  withPartner(s, i, (p) => (p.practised.includes(unitId) ? p : { ...p, practised: [...p.practised, unitId] }));
+
+export const bumpMission = (s: AppState, i: PartnerIndex, kind: MissionKind, today: string, n = 1): AppState =>
+  withPartner(s, i, (p) => ({ ...p, mission: bump(p.mission, kind, today, n) }));
+
+export const countUp = (s: AppState, i: PartnerIndex, key: keyof Counts, n = 1): AppState =>
+  withPartner(s, i, (p) => ({ ...p, counts: { ...p.counts, [key]: p.counts[key] + n } }));
+
+/** Claim today's mission reward: +100 XP and a couple heart. Only once, and only when done. */
+export function claimMission(s: AppState, i: PartnerIndex, today: string): AppState {
+  const m = missionFor(s.partners[i].mission, today);
+  if (m.claimed || !missionComplete(m)) return s;
+  const claimed = withPartner(s, i, (p) => ({ ...p, mission: { ...m, claimed: true }, counts: { ...p.counts, hearts: p.counts.hearts + 1 } }));
+  return addXp(claimed, i, MISSION_XP, today);
+}
+
+/** Berlin Ready: finish a day of the trip (in order). */
+export const finishReadyDay = (s: AppState, i: PartnerIndex, day: number): AppState =>
+  withPartner(s, i, (p) => ({ ...p, ready: Math.max(p.ready, Math.min(7, day)) }));
 
 // ---- Queries ----
 export const unitPassed = (p: Partner, unitId: string) => (p.unitScores[unitId] ?? 0) >= UNIT_PASS;

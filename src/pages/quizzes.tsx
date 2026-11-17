@@ -5,7 +5,7 @@ import { AppShell } from "../components/AppShell";
 import { LevelPicker } from "../components/pickers";
 import { Button, Card, Chip, Script } from "../components/ui";
 import { LEVELS, type LevelId } from "../core/content/levels";
-import { resolveTopic } from "../core/lib/topics";
+import { DUEL_MODES, duelInfo, encodeDuel, type DuelMode } from "../core/lib/duels";
 import { couple, partnerName, useProgress } from "../web/progress";
 
 /** Couple quizzes: duel each other, on two phones (remote) or one (same phone). */
@@ -16,7 +16,8 @@ export default function Quizzes() {
   const linked = couple.isLinked(state);
   const [mode, setMode] = useState<"remote" | "local">(linked ? "remote" : "local");
   const remote = linked && (accountMode || mode === "remote");
-  const href = (topic: string) => (remote ? `/remote-duel?topic=${topic}` : `/duel?id=${topic}`);
+  const [duelMode, setDuelMode] = useState<DuelMode>("classic");
+  const href = (topic: string) => (remote ? `/remote-duel?topic=${encodeDuel(duelMode, topic)}` : `/duel?id=${encodeDuel(duelMode, topic)}`);
   const remoteDuels = [...state.remoteDuels].reverse().slice(0, 8);
   const recent = state.duels.slice(-5).reverse();
   const cantPlay = accountMode && !linked;
@@ -61,7 +62,7 @@ export default function Quizzes() {
               return (
                 <Card key={d.id} className="p-4">
                   <div className="flex items-center gap-2">
-                    <p className="flex-1 font-bold">{resolveTopic(d.topic)?.title ?? d.topic}</p>
+                    <p className="flex-1 font-bold">{duelInfo(d.topic)?.title ?? d.topic}</p>
                     <span className="font-extrabold text-plum">{d.scores[0] ?? "–"}</span>:<span className="font-extrabold text-partner">{d.scores[1] ?? "–"}</span>
                   </div>
                   <p className="text-sm text-muted">
@@ -82,6 +83,22 @@ export default function Quizzes() {
       {cantPlay ? null : (
         <section className="mt-6">
           <h2 className="mb-2 text-lg font-bold">Start a new duel</h2>
+          <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {DUEL_MODES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                aria-pressed={duelMode === m.id}
+                onClick={() => setDuelMode(m.id)}
+                className={`rounded-2xl border-2 p-3 text-left transition ${duelMode === m.id ? "border-plum bg-blush" : "border-line bg-white hover:border-rose"}`}
+              >
+                <span className="block font-bold">
+                  {m.emoji} {m.title}
+                </span>
+                <span className="block text-xs text-muted">{m.desc}</span>
+              </button>
+            ))}
+          </div>
           <LevelPicker value={levelId} onChange={setLevelId} />
           <p className="mb-3 mt-1 text-sm text-muted">
             {level.id} · {level.name}

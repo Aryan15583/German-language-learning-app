@@ -1,13 +1,10 @@
 import { useRouter } from "next/router";
 import { useState } from "react";
 import { AppShell } from "../components/AppShell";
-import { Quiz } from "../components/Quiz";
+import { DuelRun } from "../components/DuelRun";
 import { Button, Card, PageHeader, Script, Spinner } from "../components/ui";
-import { levelWords } from "../core/content/levels";
 import { newId } from "../core/lib/crypto";
-import { makeQuestions } from "../core/lib/questions";
-import { REMOTE_QUESTIONS, resolveTopic } from "../core/lib/topics";
-import { seededRng } from "../core/lib/util";
+import { duelInfo } from "../core/lib/duels";
 import { couple, partnerName, useProgress, XP, type SendResult } from "../web/progress";
 import { shareText } from "../web/share";
 
@@ -23,17 +20,14 @@ export default function RemoteDuelPage() {
 }
 
 function RemoteDuel({ id, topic }: { id: string; topic: string }) {
-  const { state, playRemoteDuel, practiced, log } = useProgress();
+  const { state, playRemoteDuel, practiced, log, did } = useProgress();
   const existing = id ? state.remoteDuels.find((d) => d.id === id) : undefined;
   const [setup] = useState(() => (existing ? { id: existing.id, topic: existing.topic, seed: existing.seed } : { id: newId(), topic, seed: Math.floor(Math.random() * 2 ** 31) }));
-  const info = resolveTopic(setup.topic);
+  const info = duelInfo(setup.topic);
   const [phase, setPhase] = useState<"play" | "sending" | "done">("play");
   const [score, setScore] = useState(0);
   const [result, setResult] = useState<SendResult | null>(null);
   const [shareNote, setShareNote] = useState("");
-  const [questions] = useState(() =>
-    info ? makeQuestions(info.pool, levelWords(info.level), { count: REMOTE_QUESTIONS, lang: state.partners[0].lang, rng: seededRng(setup.seed) }) : [],
-  );
 
   const title = info ? `🌍 ${info.title}` : "Duel";
   if (!couple.isLinked(state)) {
@@ -69,17 +63,20 @@ function RemoteDuel({ id, topic }: { id: string; topic: string }) {
           <PageHeader title={`🌍 ${info.title}`} />
           <Card className="mb-4 bg-blush/70">
             {existing
-              ? `🌍 ${partnerName(state, 1)} scored ${existing.scores[1]}/${REMOTE_QUESTIONS}. Can you beat it?`
+              ? `🌍 ${partnerName(state, 1)} scored ${existing.scores[1]} points. Can you beat it?`
               : `🌍 Play now — ${partnerName(state, 1)} gets the exact same questions on their phone.`}
           </Card>
-          <Quiz
-            questions={questions}
+          <DuelRun
+            raw={setup.topic}
+            seed={setup.seed}
+            lang={state.partners[0].lang}
             label={`${partnerName(state, 0)}’s turn`}
             onFinish={async (correct) => {
               setScore(correct);
               setPhase("sending");
               practiced(0, correct * XP.duelCorrect);
-              log("⚔️", `Played a duel: ${info.title} (${correct}/${REMOTE_QUESTIONS})`);
+              did(0, "duel");
+              log("⚔️", `Played a duel: ${info.title} (${correct} points)`);
               const r = await playRemoteDuel({ id: setup.id, topic: setup.topic, seed: setup.seed, score: correct });
               setResult(r);
               setPhase("done");
@@ -106,7 +103,7 @@ function RemoteDuel({ id, topic }: { id: string; topic: string }) {
       <div className="text-center anim-fade-up">
         <p className="mt-4 text-6xl">{status === "won" ? "🏆" : status === "lost" ? "💪" : status === "tie" ? "🤝" : "📨"}</p>
         <Script className="mt-2 text-4xl">
-          {status === "won" ? "Du gewinnst! You win!" : status === "lost" ? `${partnerName(state, 1)} gewinnt!` : status === "tie" ? "Unentschieden!" : `You scored ${score}/${REMOTE_QUESTIONS}`}
+          {status === "won" ? "Du gewinnst! You win!" : status === "lost" ? `${partnerName(state, 1)} gewinnt!` : status === "tie" ? "Unentschieden!" : `You scored ${score} points`}
         </Script>
         {theirs !== null && theirs !== undefined ? (
           <Card className="mt-5 flex justify-around">

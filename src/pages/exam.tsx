@@ -7,7 +7,8 @@ import { Quiz } from "../components/Quiz";
 import { Results } from "../components/Results";
 import { Button, Card, PageHeader, Script } from "../components/ui";
 import { findLevel, LEVELS, levelIndex, levelWords, type Level } from "../core/content/levels";
-import { makeQuestions } from "../core/lib/questions";
+import { makeQuestions, questionKey } from "../core/lib/questions";
+import { SLOW_MS } from "../core/lib/srs";
 import { useId } from "../web/nav";
 import { EXAM_PASS, EXAM_QUESTIONS, partnerName, useProgress, XP } from "../web/progress";
 
@@ -21,7 +22,7 @@ export default function ExamPage() {
 
 /** The big test at the end of a level. Passing opens the next one (you can also test out early). */
 function Exam({ level }: { level: Level }) {
-  const { state, recordExam, practiced, log } = useProgress();
+  const { state, recordExam, practiced, log, remember, did } = useProgress();
   const learner = state.learner;
   const build = () => makeQuestions(levelWords(level), levelWords(level), { count: EXAM_QUESTIONS, typingShare: 1 / 3, lang: state.partners[learner].lang });
   const [questions, setQuestions] = useState(build);
@@ -110,7 +111,9 @@ function Exam({ level }: { level: Level }) {
         key={attempt}
         questions={questions}
         label={`${name} · ${level.id} big test`}
+        onAnswer={(q, ok, ms) => remember(learner, questionKey(q), ok, ms > SLOW_MS)}
         onFinish={(correct, total) => {
+          if (correct === total) did(learner, "perfect");
           const score = correct / total;
           recordExam(learner, level.id, score);
           practiced(learner, correct * XP.correctAnswer + (score >= EXAM_PASS ? XP.examPassed : 0));

@@ -51,9 +51,9 @@ describe("game", () => {
   });
 
   it("earns achievements from progress", () => {
-    const none = { streak: 0, wordsKnown: 0, unitsPassed: 0, examsPassed: 0, chatStars: 0, messages: 0, duelsWon: 0, linked: false };
+    const none = { streak: 0, wordsKnown: 0, unitsPassed: 0, examsPassed: 0, chatStars: 0, messages: 0, duelsWon: 0, linked: false, perfect: 0, a1: false };
     expect(earnedAchievements(none)).toEqual([]);
-    const all = { streak: 30, wordsKnown: 150, unitsPassed: 1, examsPassed: 1, chatStars: 6, messages: 10, duelsWon: 3, linked: true };
+    const all = { streak: 30, wordsKnown: 150, unitsPassed: 1, examsPassed: 1, chatStars: 6, messages: 10, duelsWon: 3, linked: true, perfect: 1, a1: true };
     expect(earnedAchievements(all)).toHaveLength(ACHIEVEMENTS.length);
     expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(ACHIEVEMENTS.length);
   });

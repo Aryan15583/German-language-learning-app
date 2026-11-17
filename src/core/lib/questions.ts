@@ -9,6 +9,8 @@ export type ChoiceQuestion = {
   answer: string;
   options: string[];
   german: string;
+  /** Which word this practises (for spaced repetition); defaults to `german`. */
+  key?: string;
 };
 
 export type TypeQuestion = {
@@ -16,9 +18,22 @@ export type TypeQuestion = {
   prompt: string; // meaning in the learner's language
   answer: string; // German
   german: string;
+  key?: string;
 };
 
-export type Question = ChoiceQuestion | TypeQuestion;
+/** Hear it, then pick what you heard. */
+export type ListenQuestion = { kind: "listen"; prompt: string; answer: string; options: string[]; german: string; key?: string };
+
+/** Fill the gap in a real sentence. `prompt` has "___"; `hint` is its translation. */
+export type ClozeQuestion = { kind: "cloze"; prompt: string; hint: string; answer: string; options: string[]; german: string; key?: string };
+
+/** See it, hear it, say it out loud (self-checked). */
+export type SayQuestion = { kind: "say"; prompt: string; answer: string; german: string; key?: string };
+
+export type Question = ChoiceQuestion | TypeQuestion | ListenQuestion | ClozeQuestion | SayQuestion;
+
+/** The word a question practises. */
+export const questionKey = (q: Question) => q.key ?? q.german;
 
 export type QuestionOptions = {
   count: number;
@@ -27,6 +42,8 @@ export type QuestionOptions = {
   /** Language the meanings are shown in (default English). */
   lang?: Lang;
   rng?: Rng;
+  /** Force one direction (e.g. translation duels: German → your language). */
+  direction?: "de-x" | "x-de";
 };
 
 /** Typing long sentences on a phone isn't fun; only short phrases become typing questions. */
@@ -49,7 +66,8 @@ export function makeQuestions(pool: readonly Word[], distractors: readonly Word[
       typingLeft--;
       return { kind: "type", prompt: meaning(w, lang), answer: w.de, german: w.de };
     }
-    const direction = rng() < 0.5 ? "de-x" : "x-de";
+    const coin = rng() < 0.5 ? "de-x" : "x-de";
+    const direction = opts.direction ?? coin;
     const side = (x: Word) => (direction === "de-x" ? meaning(x, lang) : x.de);
     const answer = side(w);
     const wrong: string[] = [];

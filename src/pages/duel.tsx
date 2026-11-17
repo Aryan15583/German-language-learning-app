@@ -1,34 +1,28 @@
 import { useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { Missing } from "../components/NotFound";
-import { Quiz } from "../components/Quiz";
+import { DuelRun } from "../components/DuelRun";
 import { Button, Card, PageHeader, Script } from "../components/ui";
-import { levelWords } from "../core/content/levels";
-import { makeQuestions } from "../core/lib/questions";
-import { resolveTopic } from "../core/lib/topics";
-import { seededRng } from "../core/lib/util";
+import { duelInfo } from "../core/lib/duels";
 import { useId } from "../web/nav";
 import { partnerName, today, useProgress, XP, type PartnerIndex } from "../web/progress";
 
-const QUESTIONS = 6;
-
 export default function DuelPage() {
   const id = useId();
-  const info = id ? resolveTopic(id) : null;
-  if (id === null) return <Missing loading />;
+  const info = id ? duelInfo(id) : null;
+  if (id === null || !id) return <Missing loading={id === null} />;
   if (!info) return <Missing />;
-  return <Duel info={info} />;
+  return <Duel raw={id} info={info} />;
 }
 
 /** Same-phone duel: one plays, then hands the phone over. Same questions, each in their own language. */
-function Duel({ info }: { info: NonNullable<ReturnType<typeof resolveTopic>> }) {
-  const { state, practiced, addDuel, log } = useProgress();
+function Duel({ raw, info }: { raw: string; info: NonNullable<ReturnType<typeof duelInfo>> }) {
+  const { state, practiced, addDuel, log, did } = useProgress();
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1e9));
   const [player, setPlayer] = useState<PartnerIndex>(0);
   const [phase, setPhase] = useState<"handoff" | "play" | "result">("handoff");
   const [scores, setScores] = useState<[number, number]>([0, 0]);
   const [round, setRound] = useState(0);
-  const questionsFor = (i: PartnerIndex) => makeQuestions(info.pool, levelWords(info.level), { count: QUESTIONS, lang: state.partners[i].lang, rng: seededRng(seed) });
 
   return (
     <AppShell focus>
@@ -38,7 +32,7 @@ function Duel({ info }: { info: NonNullable<ReturnType<typeof resolveTopic>> }) 
           <div className="text-center">
             <p className="mt-8 text-6xl">📱➡️</p>
             <Script className="mt-3 text-4xl">Pass the phone to {partnerName(state, player)}</Script>
-            <p className="mb-6 mt-2 text-muted">{player ? `No peeking at ${partnerName(state, 0)}’s score! 🙈` : `${Math.min(QUESTIONS, info.pool.length)} questions. Viel Glück!`}</p>
+            <p className="mb-6 mt-2 text-muted">{player ? `No peeking at ${partnerName(state, 0)}’s score! 🙈` : "Same questions for both of you. Viel Glück!"}</p>
             <Button size="lg" onClick={() => setPhase("play")}>
               I’m ready
             </Button>
@@ -52,9 +46,11 @@ function Duel({ info }: { info: NonNullable<ReturnType<typeof resolveTopic>> }) 
             setPhase("handoff");
           }} />
         ) : (
-          <Quiz
+          <DuelRun
             key={`${round}-${player}`}
-            questions={questionsFor(player)}
+            raw={raw}
+            seed={seed}
+            lang={state.partners[player].lang}
             color={player ? "bg-partner" : "bg-plum"}
             label={`${partnerName(state, player)}’s turn`}
             onFinish={(correct) => {
@@ -69,6 +65,8 @@ function Duel({ info }: { info: NonNullable<ReturnType<typeof resolveTopic>> }) 
               practiced(0, a * XP.duelCorrect + (a > b ? XP.duelWin : 0));
               practiced(1, b * XP.duelCorrect + (b > a ? XP.duelWin : 0));
               addDuel({ title: info.title, scores: next, date: today() });
+              did(0, "duel");
+              did(1, "duel");
               log("⚔️", `Duel “${info.title}”: ${a} – ${b}`);
               setPhase("result");
             }}
