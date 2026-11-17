@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppShell } from "../components/AppShell";
 import { Script } from "../components/ui";
 import { CHATS } from "../core/content/chats";
+import { ROLEPLAYS } from "../core/content/extras";
 import { DIALOGUES, LANGS, LEVELS } from "../core/content/levels";
 import { partnerName, useProgress } from "../web/progress";
 
@@ -23,7 +24,15 @@ export default function Talk() {
         })}
       </div>
 
-      <h2 className="mt-8 text-lg font-bold">Role-play together 🎭</h2>
+      <h2 className="mt-8 text-lg font-bold">Real-life role-play 🇩🇪</h2>
+      <p className="mb-3 text-sm text-muted">You each get a task card — “order two coffees and ask for the bill” — and build the German yourselves. Then switch roles.</p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {ROLEPLAYS.map((r) => (
+          <Tile key={r.id} href={`/roleplay?id=${r.id}`} emoji={r.emoji} title={r.title} sub={r.level} />
+        ))}
+      </div>
+
+      <h2 className="mt-8 text-lg font-bold">Read a scene together 🎭</h2>
       <p className="mb-3 text-sm text-muted">
         Read a scene out loud. {partnerName(state, 0)} plays A, {partnerName(state, 1)} plays B.
       </p>

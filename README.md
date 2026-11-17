@@ -33,6 +33,19 @@ Couple Quizzes ⚔️ (duels), Talk 💬 (chat practice and role-play) and Love 
 - **Quiz duel ⚔️**: pass the phone, and both partners answer the same questions on any unit or level mix.
 - **Role-play dialogues 🎭** for every level (in the Talk tab), and a **love-note builder 💌**.
 
+## Learning together, all the way to Berlin
+- **🗺️ Mumbai → Berlin map:** every lesson you pass moves you along the route (as a couple, the average of you two). Each stop — airport, café, apartment, train station, shopping, meeting locals, date night, Berlin — has its own words, and passing its quiz gives you a **Berlin postcard** (Fernsehturm, Brandenburger Tor, …).
+- **A stronger lesson flow:** 👀 see → 🔊 hear (flashcards) → 🗣️ say → ✍️ type → 🧩 use it in a real sentence (the practice step) → ✏️ quiz → 🎓 big test.
+- **🧠 Smart review with spaced repetition:** every word has a relationship with you (🌱 Seed → 🌿 Growing → 🌳 Strong → ❤️ Mastered). Right answers come back after 1, 3, 7, 14 and 30 days; mistakes and slow answers come back sooner. When many words are due, ▶ Start suggests a 3-minute review, often as a gap-fill in a real sentence.
+- **💞 Couple learning mode:** puzzles that need both of you — each phone shows only its half: complete my sentence, arrange together, say it together, role swap, translate for me, guess what I'd say. Two phones build the same round from the same date and round number, so nothing needs to be sent.
+- **🧩 Word builder** (German word order), **🎧 listening** (easy → expert), **🤔 grammar bites** (word-by-word), **🇮🇳 मराठी ↔ Deutsch** comparisons, **👫 Teach your partner** (explain it, they guess).
+- **🎭 Real-life role-play:** 12 scenes (café, supermarket, train, hotel, doctor, apartment, job interview, meeting the parents, birthday, date, making friends, emergency). Each of you gets a task card and builds the German; then swap roles.
+- **💬 Chats with fading help:** A1 full translations → A2 on request → B1 one-word hints → B2 none → C1/C2 just conversation.
+- **⚔️ Six duel types:** classic, ⚡ speed, 🧠 knowledge, 🧩 sentence, 🗣️ translation and 🎯 streak (until 3 mistakes) — on one phone or two.
+- **💌 Love notes that teach:** type what you feel (English or Marathi) and get real German from a phrasebook (no AI), add it to the note, and "learn this phrase" into Our words. **🔐 Secret phrases** unlock at 7, 14, 30, 50 and 100 days of streak.
+- **🎯 Daily mission** (learn 5 words, 1 conversation, a duel, a love note → +100 XP and a ❤️ couple heart), **couple achievements**, and a **❤️ Together** progress bar.
+- **✈️ Berlin Ready:** the final challenge after B1 — a 7-day trip in German only, with free typing and no translations.
+
 ## Run it
 ```sh
 npm install

@@ -21,12 +21,16 @@ export default function ChatPage() {
 
 /** A guided chat: the character talks, you reply in German (pick or type), a coach explains slips. */
 function GuidedChat({ chat }: { chat: Chat }) {
-  const { state, practiced, recordChat, log } = useProgress();
+  const { state, practiced, recordChat, log, did } = useProgress();
   const learner = state.learner;
   const lang = state.partners[learner].lang;
   const [cs, setCs] = useState(() => startChat(chat));
   const [text, setText] = useState("");
-  const [help, setHelp] = useState(true);
+  // Help fades as the level goes up: A1 full translation → A2 on request → B1 one-word hint → B2 none → C1/C2 just conversation.
+  const tier = chat.level === "A1" ? 0 : chat.level === "A2" ? 1 : chat.level === "B1" ? 2 : chat.level === "B2" ? 3 : 4;
+  const [help, setHelp] = useState(tier === 0);
+  const [hint, setHint] = useState(false);
+  const [showOptions, setShowOptions] = useState(tier < 4);
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -37,10 +41,15 @@ function GuidedChat({ chat }: { chat: Chat }) {
     if (next === cs) return;
     setCs(next);
     setText("");
+    if (next.step !== cs.step) {
+      setHint(false);
+      setShowOptions(tier < 4);
+    }
     if (next.step > cs.step) practiced(learner, XP.chatTurn);
     if (next.done && !cs.done) {
       recordChat(learner, chat.id, chatStars(next.mistakes));
       practiced(learner, XP.chatDone);
+      did(learner, "talk");
       log("💬", `Finished the chat “${chat.title}” ${"⭐".repeat(chatStars(next.mistakes))}`);
     }
   };
@@ -55,9 +64,15 @@ function GuidedChat({ chat }: { chat: Chat }) {
           <p>
             {chat.emoji} {meaning(chat.intro, lang)}
           </p>
-          <Chip className="mt-2" selected={help} onClick={() => setHelp(!help)}>
-            {meaning({ en: "Show translations", mr: "भाषांतर दाखवा" }, lang)}
-          </Chip>
+          {tier <= 1 ? (
+            <Chip className="mt-2" selected={help} onClick={() => setHelp(!help)}>
+              {meaning({ en: "Show translations", mr: "भाषांतर दाखवा" }, lang)}
+            </Chip>
+          ) : (
+            <p className="mt-2 text-xs font-semibold text-muted">
+              {tier === 2 ? "💡 B1: no translations — but you can ask for a one-word hint." : tier === 3 ? "B2: no hints. You've got this!" : `${chat.level}: just conversation. Type your answer.`}
+            </p>
+          )}
         </Card>
 
         <div className="my-4 space-y-2" aria-live="polite">
@@ -84,8 +99,18 @@ function GuidedChat({ chat }: { chat: Chat }) {
             <p className="mb-2 text-xs text-muted">
               {partnerName(state, learner)} · {meaning({ en: "Pick a reply or type your own", mr: "उत्तर निवडा किंवा टाइप करा" }, lang)}
             </p>
+            {tier === 2 ? (
+              <Chip className="mb-2" selected={hint} onClick={() => setHint(true)}>
+                {hint ? `💡 Starts with: „${step.replies.find((r) => r.ok)!.de.split(" ")[0]} …“` : "💡 One-word hint"}
+              </Chip>
+            ) : null}
+            {!showOptions ? (
+              <Chip className="mb-2" onClick={() => setShowOptions(true)}>
+                Show options
+              </Chip>
+            ) : null}
             <div className="flex flex-col gap-2">
-              {step.replies.map((r, k) => (
+              {(showOptions ? step.replies : []).map((r, k) => (
                 <button key={r.de} type="button" aria-label={`Reply: ${r.de}`} onClick={() => send({ reply: k })} className="rounded-2xl border border-line bg-white px-4 py-2.5 text-left hover:border-rose">
                   <span className="block text-ink">{r.de}</span>
                   {help ? <span className="block text-xs text-muted">{meaning(r, lang)}</span> : null}

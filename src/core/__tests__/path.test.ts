@@ -1,6 +1,6 @@
 import { LEVELS, levelUnits } from "../content/levels";
 import { nextStep, stepHref, stepLabel, unitState } from "../lib/path";
-import { applyPlacement, freshState, markKnown, recordExam, recordUnitScore, type AppState } from "../state/logic";
+import { applyPlacement, freshState, markKnown, markPractised, recordExam, recordUnitScore, remember, type AppState } from "../state/logic";
 
 const A1 = LEVELS[0];
 const [u1, u2] = levelUnits(A1);
@@ -10,7 +10,7 @@ describe("next step", () => {
   it("starts by learning the first unit's words", () => {
     const step = nextStep(freshState().partners[0]);
     expect(step).toMatchObject({ kind: "learn", unit: { id: u1.id } });
-    expect(stepHref(step)).toEqual({ pathname: "/lesson/[topicId]", params: { topicId: u1.id } });
+    expect(stepHref(step)).toBe(`/lesson?id=${u1.id}`);
   });
 
   it("keeps learning until every word of the unit is known", () => {
@@ -18,11 +18,28 @@ describe("next step", () => {
     expect(nextStep(s.partners[0])).toMatchObject({ kind: "learn", unit: { id: u1.id } });
   });
 
-  it("then asks for the unit's quiz", () => {
+  it("then practises the words (hear, say, type, use)", () => {
     const s = learnAll(freshState(), u1.id, u1.words.length);
     const step = nextStep(s.partners[0]);
+    expect(step).toMatchObject({ kind: "practice", unit: { id: u1.id } });
+    expect(stepHref(step)).toBe(`/practice?id=${u1.id}`);
+  });
+
+  it("then asks for the unit's quiz", () => {
+    const s = markPractised(learnAll(freshState(), u1.id, u1.words.length), 0, u1.id);
+    const step = nextStep(s.partners[0]);
     expect(step).toMatchObject({ kind: "quiz", unit: { id: u1.id } });
-    expect(stepHref(step).pathname).toBe("/quiz/[topicId]");
+    expect(stepHref(step)).toBe(`/quiz?id=${u1.id}`);
+  });
+
+  it("puts a smart review first when many words are due", () => {
+    let s = freshState();
+    for (const w of u1.words) s = remember(s, 0, w.de, false, "2026-11-10");
+    const step = nextStep(s.partners[0], 0, "2026-11-10");
+    expect(step).toMatchObject({ kind: "smart", count: u1.words.length });
+    expect(stepHref(step)).toBe("/review");
+    // Without a date (e.g. drawing the path) the review nudge is skipped.
+    expect(nextStep(s.partners[0]).kind).toBe("learn");
   });
 
   it("moves to the next unit once the quiz is passed", () => {
@@ -34,7 +51,7 @@ describe("next step", () => {
     const s = levelUnits(A1).reduce((acc, u) => recordUnitScore(acc, 0, u.id, 1), freshState());
     const step = nextStep(s.partners[0]);
     expect(step).toMatchObject({ kind: "test", level: { id: "A1" } });
-    expect(stepHref(step)).toEqual({ pathname: "/exam/[levelId]", params: { levelId: "A1" } });
+    expect(stepHref(step)).toBe("/exam?id=A1");
   });
 
   it("goes on to the next level after the big test", () => {

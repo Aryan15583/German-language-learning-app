@@ -3,7 +3,8 @@ import { AppShell } from "../components/AppShell";
 import { KeepGoing } from "../components/KeepGoing";
 import { Missing } from "../components/NotFound";
 import { Button, Card, cx, PageHeader, ProgressBar, Script, Speak } from "../components/ui";
-import { findTopic, meaning, otherMeaning, type Topic, type Word } from "../core/content/levels";
+import { meaning, otherMeaning, type Topic, type Word } from "../core/content/levels";
+import { lessonById } from "../web/topics";
 import { shuffle } from "../core/lib/util";
 import { useId } from "../web/nav";
 import { useProgress, XP } from "../web/progress";
@@ -15,7 +16,7 @@ const oursTopic = (words: Word[]): Topic | undefined =>
 export default function LessonPage() {
   const id = useId();
   const { state } = useProgress();
-  const topic = id === "ours" ? oursTopic(state.customWords) : id ? findTopic(id) : undefined;
+  const topic = id === "ours" ? oursTopic(state.customWords) : id ? lessonById(id)?.topic : undefined;
   if (id === null) return <Missing loading />;
   if (!topic) return <Missing />;
   return <Lesson key={topic.id} topic={topic} />;
@@ -61,11 +62,15 @@ function Lesson({ topic }: { topic: Topic }) {
           <p className="mt-6 text-6xl">🎉</p>
           <Script className="mt-2 text-4xl">Toll gemacht! Well done!</Script>
           <p className="mt-1 text-lg text-muted">+{gained} XP</p>
-          {!ours ? (
+          {ours ? null : topic.id.startsWith("berlin-") ? (
+            <Button size="lg" full variant="good" href={`/quiz?id=${topic.id}`} className="mt-6">
+              ✏️ Take the {topic.title} quiz
+            </Button>
+          ) : (
             <div className="mt-6">
               <KeepGoing />
             </div>
-          ) : null}
+          )}
           <Button variant="ghost" href="/" className="mt-4">
             I’m done for now
           </Button>
@@ -126,7 +131,7 @@ function Lesson({ topic }: { topic: Topic }) {
               size="lg"
               variant="good"
               onClick={() => {
-                markKnown(learner, topic.id, deck[pos]);
+                markKnown(learner, topic.id, deck[pos], word.de);
                 const xp = gained + XP.flashcard;
                 setGained(xp);
                 next(deck, xp);

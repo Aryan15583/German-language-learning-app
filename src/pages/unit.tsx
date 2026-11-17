@@ -1,10 +1,13 @@
 import { ChevronDown } from "lucide-react";
+import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
 import { Missing } from "../components/NotFound";
 import { Button, Card, Meaning, PageHeader, ProgressBar, Speak } from "../components/ui";
 import { findTopic, levelOfTopic, meaning, subLevelOfTopic } from "../core/content/levels";
 import { useId } from "../web/nav";
+import { nextReviewLabel, stage } from "../core/lib/srs";
+import { today } from "../web/progress";
 import { knownInUnit, unitPassed, useProgress } from "../web/progress";
 
 /** One unit: learn the words, then the quiz. Tips and the word list fold away. */
@@ -37,15 +40,18 @@ export default function Unit() {
             You know {known} of {unit.words.length} words
           </p>
           <ProgressBar value={known / unit.words.length} className="mt-2" color={allKnown ? "bg-good" : "bg-plum"} />
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <Button href={`/lesson?id=${unit.id}`} size="lg" variant={allKnown ? "soft" : "good"}>
               📚 Learn the words
+            </Button>
+            <Button href={`/practice?id=${unit.id}`} size="lg" variant={allKnown && !p.practised.includes(unit.id) ? "good" : "soft"}>
+              🗣️ Practise
             </Button>
             <Button href={`/quiz?id=${unit.id}`} size="lg" variant={allKnown && !passed ? "good" : "soft"}>
               ✏️ {passed ? "Do the quiz again" : "Quiz"}
             </Button>
           </div>
-          <p className="mt-3 text-center text-sm text-muted">{allKnown ? "You know all the words — try the quiz!" : "Tip: learn the words first, then take the quiz."}</p>
+          <p className="mt-3 text-center text-sm text-muted">{allKnown ? (p.practised.includes(unit.id) ? "You know all the words — try the quiz!" : "Now practise: hear, say, type and use them.") : "Learn → practise → quiz."}</p>
         </Card>
 
         <Card className="mt-4">
@@ -66,6 +72,11 @@ export default function Unit() {
         <Fold title={`💡 Little grammar tip: ${unit.tip.title}`}>
           <p className="whitespace-pre-line text-ink">{unit.tip.body}</p>
         </Fold>
+        <Card className="mt-4 p-0">
+          <Link href="/grammar" className="flex items-center gap-2 px-5 py-4 font-bold text-ink hover:text-plum">
+            <span className="flex-1">🤔 Why is German like this? (grammar bites)</span>→
+          </Link>
+        </Card>
         <Fold title="🇮🇳 Marathi ↔ German">
           <p className="text-ink">{meaning(unit.compare, p.lang)}</p>
         </Fold>
@@ -76,6 +87,9 @@ export default function Unit() {
                 <div className="flex-1">
                   <p className="font-bold text-ink">{w.de}</p>
                   <Meaning w={w} lang={p.lang} className="text-sm" />
+                  <p className="mt-0.5 text-xs text-muted">
+                    {stage(p.memory[w.de]).emoji} {stage(p.memory[w.de]).label} · next review: {nextReviewLabel(p.memory[w.de], today())}
+                  </p>
                 </div>
                 <Speak text={w.de} />
               </li>
