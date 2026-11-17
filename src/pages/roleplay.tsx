@@ -56,7 +56,7 @@ function Scene({ rp }: { rp: Roleplay }) {
         <PageHeader title={`${rp.emoji} ${rp.title}`} />
         <div className="mb-4 grid grid-cols-2 gap-3 text-center text-sm">
           {(["a", "b"] as const).map((w) => (
-            <div key={w} className={cx("rounded-2xl p-3", who(w) === 0 ? "bg-blush" : "bg-[#e6eefb]")}>
+            <div key={w} className={cx("rounded-2xl p-3", who(w) === 0 ? "bg-blush" : "bg-partner-soft")}>
               <p className="font-bold">{partnerName(state, who(w))}</p>
               <p className="text-muted">{meaning(rp.roles[w], state.partners[who(w)].lang)}</p>
             </div>
@@ -66,7 +66,7 @@ function Scene({ rp }: { rp: Roleplay }) {
         {/* What's been said so far */}
         <div className="mb-4 space-y-2">
           {rp.turns.slice(0, turn).map((x, k) => (
-            <div key={k} className={cx("max-w-[86%] rounded-3xl px-4 py-2.5", who(x.who) === 1 ? "ml-auto rounded-br-md bg-[#e6eefb]" : "mr-auto rounded-bl-md bg-blush")}>
+            <div key={k} className={cx("max-w-[86%] rounded-3xl px-4 py-2.5", who(x.who) === 1 ? "ml-auto rounded-br-md bg-partner-soft" : "mr-auto rounded-bl-md bg-blush")}>
               <div className="flex items-center gap-2">
                 <p className="flex-1">{x.de}</p>
                 <Speak text={x.de} />

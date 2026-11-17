@@ -47,7 +47,7 @@ export function Recorder({ className }: { className?: string }) {
           <span className="h-2 w-2 animate-ping rounded-full bg-white" />
         </button>
       ) : (
-        <button type="button" onClick={start} className="flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2 font-semibold text-plum hover:border-rose">
+        <button type="button" onClick={start} className="flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2 font-semibold text-plum hover:border-rose">
           <Mic size={16} /> {state === "done" ? "Record again" : "Record myself"}
         </button>
       )}

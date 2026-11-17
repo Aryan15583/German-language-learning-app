@@ -36,7 +36,7 @@ export default function Grammar() {
             <p className="text-muted">{meaning(b.example, lang)}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {b.gloss.map(([de, en], k) => (
-                <span key={k} className="rounded-xl bg-white px-3 py-1.5 text-center shadow-card">
+                <span key={k} className="rounded-xl bg-surface px-3 py-1.5 text-center shadow-card">
                   <span className="block font-bold text-plum">{de}</span>
                   <span className="block text-xs text-muted">{en}</span>
                 </span>

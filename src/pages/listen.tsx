@@ -96,7 +96,7 @@ export default function Listen() {
               type="button"
               aria-pressed={mode === m.id}
               onClick={() => setMode(m.id)}
-              className={cx("rounded-3xl border-2 p-4 text-left transition", mode === m.id ? "border-plum bg-blush" : "border-line bg-white hover:border-rose")}
+              className={cx("rounded-3xl border-2 p-4 text-left transition", mode === m.id ? "border-plum bg-blush" : "border-line bg-surface hover:border-rose")}
             >
               <p className="font-bold">{m.title}</p>
               <p className="text-sm text-muted">{m.desc}</p>
@@ -193,7 +193,7 @@ function Round({ item, lang, once, onDone }: { item: Item; lang: "en" | "mr" | "
               }}
               className={cx(
                 "rounded-2xl border-2 px-5 py-3 text-left font-semibold",
-                ok !== null && o === answer ? "border-good bg-good/10" : ok === false && picked === o ? "border-bad bg-bad/10" : "border-line bg-white hover:border-rose",
+                ok !== null && o === answer ? "border-good bg-good/10" : ok === false && picked === o ? "border-bad bg-bad/10" : "border-line bg-surface hover:border-rose",
               )}
             >
               {o}

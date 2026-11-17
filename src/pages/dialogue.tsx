@@ -57,7 +57,7 @@ function Scene({ d }: { d: Dialogue }) {
                 aria-label={hidden ? "Reveal German line" : undefined}
                 onClick={() => hidden && setRevealed(new Set(revealed).add(i))}
                 onKeyDown={(e) => hidden && (e.key === "Enter" || e.key === " ") && setRevealed(new Set(revealed).add(i))}
-                className={cx("max-w-[86%] rounded-3xl px-4 py-3", right ? "ml-auto rounded-br-md bg-[#e6eefb]" : "mr-auto rounded-bl-md bg-blush", hidden && "cursor-pointer")}
+                className={cx("max-w-[86%] rounded-3xl px-4 py-3", right ? "ml-auto rounded-br-md bg-partner-soft" : "mr-auto rounded-bl-md bg-blush", hidden && "cursor-pointer")}
               >
                 <p className={cx("text-[11px] font-extrabold uppercase", right ? "text-partner" : "text-plum")}>{partnerName(state, p)}</p>
                 {hidden ? (

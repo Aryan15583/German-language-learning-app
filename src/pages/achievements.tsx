@@ -68,7 +68,7 @@ function CoupleBadges() {
           const ok = a.test(c);
           return (
             <Card key={a.id} className={cx("flex flex-col items-center p-4 text-center", ok ? "bg-gradient-to-br from-card to-blush" : "opacity-55")}>
-              <span className={cx("grid h-16 w-16 place-items-center rounded-full text-3xl", ok ? "bg-white" : "bg-line/50")}>{ok ? a.emoji : "🔒"}</span>
+              <span className={cx("grid h-16 w-16 place-items-center rounded-full text-3xl", ok ? "bg-surface" : "bg-line/50")}>{ok ? a.emoji : "🔒"}</span>
               <p className="mt-2 font-bold">{a.title}</p>
               <p className="text-xs text-muted">{a.desc}</p>
             </Card>

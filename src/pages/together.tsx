@@ -240,7 +240,7 @@ function Half({ r, role, lang, nameOf, onHeart }: { r: Round; role: Role; lang: 
                   <p className="text-sm text-muted">{meaning(l, lang)}</p>
                 </div>
               ) : (
-                <div key={k} className="ml-auto max-w-[70%] rounded-3xl rounded-br-md bg-[#e6eefb] px-4 py-2.5 text-sm italic text-muted">
+                <div key={k} className="ml-auto max-w-[70%] rounded-3xl rounded-br-md bg-partner-soft px-4 py-2.5 text-sm italic text-muted">
                   🔊 {nameOf(other)} says something… listen!
                 </div>
               ),
@@ -284,7 +284,7 @@ function Half({ r, role, lang, nameOf, onHeart }: { r: Round; role: Role; lang: 
                 type="button"
                 disabled={guess !== null}
                 onClick={() => (mine === null ? setMine(o.de) : setGuess(o.de))}
-                className={cx("rounded-2xl border-2 px-4 py-3 text-left", mine === o.de ? "border-plum bg-blush" : guess === o.de ? "border-partner bg-[#e6eefb]" : "border-line bg-white hover:border-rose")}
+                className={cx("rounded-2xl border-2 px-4 py-3 text-left", mine === o.de ? "border-plum bg-blush" : guess === o.de ? "border-partner bg-partner-soft" : "border-line bg-surface hover:border-rose")}
               >
                 <span className="block font-semibold">{o.de}</span>
                 <span className="block text-xs text-muted">{meaning(o, lang)}</span>

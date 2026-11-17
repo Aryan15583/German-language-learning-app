@@ -1,9 +1,10 @@
-import { BarChart3, Bell, BookOpen, Dumbbell, Gamepad2, Heart, Home, Map, Search, Settings, Trophy, User } from "lucide-react";
+import { BarChart3, Bell, BookOpen, Dumbbell, Gamepad2, Heart, Home, Map, Moon, Search, Settings, Sun, Trophy, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useMemo, useState, type ReactNode } from "react";
 import { allTopics, levelOfTopic } from "../core/content/levels";
 import { partnerName, useProgress } from "../web/progress";
+import { useTheme } from "../web/theme";
 import { BrandTitle, SecretHeart } from "./BrandTitle";
 import { cx, HeartPlane } from "./ui";
 
@@ -62,7 +63,7 @@ export function AppShell({ children, focus }: { children: ReactNode; focus?: boo
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[260px_1fr]">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-dvh flex-col border-r border-line/70 bg-cream/80 px-5 py-6 backdrop-blur lg:flex">
+      <aside className="glass sticky top-0 hidden h-dvh flex-col border-r border-line/60 px-5 py-6 lg:flex">
         <Link href="/" className="mb-8 block text-plum" aria-label="Zwei Herzen until Berlin — home">
           <HeartPlane className="mb-1 h-8 w-24" />
           <div className="font-script text-[34px] font-bold leading-[1.05]">
@@ -80,8 +81,8 @@ export function AppShell({ children, focus }: { children: ReactNode; focus?: boo
                 href={href}
                 aria-current={on ? "page" : undefined}
                 className={cx(
-                  "flex items-center gap-3 rounded-2xl px-4 py-3 text-[15px] font-medium transition",
-                  on ? "bg-plum text-white shadow-soft" : "text-ink hover:bg-blush",
+                  "flex items-center gap-3 rounded-2xl px-4 py-3 text-[15px] font-medium transition duration-200",
+                  on ? "btn-primary text-white" : "text-ink/85 hover:translate-x-0.5 hover:bg-blush hover:text-ink",
                 )}
               >
                 <Icon size={21} strokeWidth={on ? 2.4 : 1.8} />
@@ -92,7 +93,7 @@ export function AppShell({ children, focus }: { children: ReactNode; focus?: boo
         </nav>
         <div className="mt-auto">
           {/* eslint-disable-next-line @next/next/no-img-element -- static export */}
-          <img src="/art/skyline.jpg" alt="" className="w-full rounded-2xl opacity-90 mix-blend-multiply" />
+          <img src="/art/skyline.jpg" alt="" className="w-full rounded-2xl opacity-90 mix-blend-multiply dark:opacity-70 dark:mix-blend-normal" />
         </div>
       </aside>
 
@@ -105,7 +106,7 @@ export function AppShell({ children, focus }: { children: ReactNode; focus?: boo
       {focus ? null : (
         <nav
           aria-label="Main"
-          className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-cream/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+          className="glass fixed inset-x-0 bottom-0 z-30 border-t border-line/60 pb-[env(safe-area-inset-bottom)] lg:hidden"
         >
           <div className="mx-auto grid max-w-lg grid-cols-5">
             {TABS.map(({ href, label, icon: Icon }) => {
@@ -115,10 +116,11 @@ export function AppShell({ children, focus }: { children: ReactNode; focus?: boo
                   key={href}
                   href={href}
                   aria-current={on ? "page" : undefined}
-                  className={cx("flex flex-col items-center gap-0.5 py-2.5 text-[12px] font-semibold", on ? "text-plum" : "text-muted")}
+                  className={cx("relative flex flex-col items-center gap-0.5 py-2.5 text-[12px] font-semibold transition", on ? "text-plum" : "text-muted")}
                 >
-                  <Icon size={on ? 26 : 23} strokeWidth={on ? 2.4 : 1.8} />
-                  {label}
+                  {on ? <span aria-hidden className="absolute top-1 h-8 w-14 rounded-full bg-blush" /> : null}
+                  <Icon size={on ? 25 : 23} strokeWidth={on ? 2.4 : 1.8} className="relative" />
+                  <span className="relative">{label}</span>
                 </Link>
               );
             })}
@@ -134,7 +136,7 @@ function TopBar() {
   const unread = useUnread();
   const me = partnerName(state, state.learner);
   return (
-    <header className="sticky top-0 z-20 border-b border-line/50 bg-cream/85 backdrop-blur lg:border-none lg:bg-transparent lg:backdrop-blur-none">
+    <header className="glass sticky top-0 z-20 border-b border-line/50 lg:border-none lg:bg-transparent lg:backdrop-blur-none">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8 lg:py-5">
         <div className="lg:hidden">
           <BrandTitle />
@@ -143,11 +145,12 @@ function TopBar() {
           <SearchBox />
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Link href="/us" aria-label={unread ? `${unread} new messages` : "Messages"} className="relative grid h-11 w-11 place-items-center rounded-full bg-white/80 text-plum shadow-card hover:bg-blush">
+          <ThemeToggle />
+          <Link href="/us" aria-label={unread ? `${unread} new messages` : "Messages"} className="card-premium relative grid h-11 w-11 place-items-center rounded-full text-plum hover:bg-blush">
             <Bell size={20} />
             {unread ? <span className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-rose px-1 text-[10px] font-bold text-white">{unread}</span> : null}
           </Link>
-          <Link href="/profile" aria-label="Profile" className="grid h-11 w-11 place-items-center rounded-full bg-plum text-base font-bold text-white shadow-soft">
+          <Link href="/profile" aria-label="Profile" className="btn-primary grid h-11 w-11 place-items-center rounded-full text-base font-bold text-white ring-2 ring-gold/40 ring-offset-2 ring-offset-cream">
             {me.slice(0, 1).toUpperCase()}
           </Link>
         </div>
@@ -180,7 +183,7 @@ export function SearchBox() {
 
   return (
     <div className="relative max-w-md">
-      <label className="flex items-center gap-2 rounded-full border border-line bg-white/85 px-4 py-2.5 shadow-card focus-within:border-rose">
+      <label className="flex items-center gap-2 rounded-full border border-line bg-surface/85 px-4 py-2.5 shadow-card focus-within:border-rose">
         <Search size={18} className="text-muted" />
         <input
           value={q}
@@ -196,7 +199,7 @@ export function SearchBox() {
         />
       </label>
       {open && results.length ? (
-        <ul className="absolute inset-x-0 top-full z-40 mt-2 overflow-hidden rounded-2xl border border-line bg-white shadow-soft" role="listbox">
+        <ul className="absolute inset-x-0 top-full z-40 mt-2 overflow-hidden rounded-2xl border border-line bg-surface shadow-soft" role="listbox">
           {results.map((r, k) => (
             <li key={r.id + r.title + k}>
               <Link href={`/unit?id=${r.id}`} className="block px-4 py-2.5 hover:bg-blush" onClick={() => setOpen(false)}>
@@ -208,5 +211,20 @@ export function SearchBox() {
         </ul>
       ) : null}
     </div>
+  );
+}
+
+/** Sun / moon: switch between light and dark (Profile has "follow my phone" too). */
+export function ThemeToggle() {
+  const { dark, toggle } = useTheme();
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      className="card-premium grid h-11 w-11 place-items-center rounded-full text-plum transition hover:rotate-12"
+    >
+      {dark ? <Sun size={20} /> : <Moon size={20} />}
+    </button>
   );
 }

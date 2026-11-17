@@ -141,7 +141,7 @@ export function Quiz({ questions, label, color, onAnswer, lives, onFinish }: Pro
                 onClick={() => choose(o)}
                 className={cx(
                   "flex items-center gap-2 rounded-2xl border-2 px-5 py-4 text-left text-lg font-semibold transition",
-                  isAnswer ? "border-good bg-good/10" : isWrong ? "border-bad bg-bad/10 anim-shake" : "border-line bg-white hover:border-rose",
+                  isAnswer ? "border-good bg-good/10" : isWrong ? "border-bad bg-bad/10 anim-shake" : "border-line bg-surface hover:border-rose",
                 )}
               >
                 <span className="flex-1">{o}</span>
@@ -166,7 +166,7 @@ export function Quiz({ questions, label, color, onAnswer, lives, onFinish }: Pro
           />
           <div className="mt-3 flex gap-2">
             {UMLAUTS.map((u) => (
-              <button key={u} type="button" aria-label={`Insert ${u}`} disabled={answered} onClick={() => setTyped((t) => t + u)} className="rounded-xl border border-line bg-white px-4 py-2 text-lg font-bold hover:border-rose">
+              <button key={u} type="button" aria-label={`Insert ${u}`} disabled={answered} onClick={() => setTyped((t) => t + u)} className="rounded-xl border border-line bg-surface px-4 py-2 text-lg font-bold hover:border-rose">
                 {u}
               </button>
             ))}

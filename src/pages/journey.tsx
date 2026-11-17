@@ -58,7 +58,7 @@ export default function Journey() {
             {JOURNEY.map((s) => {
               const got = cards.includes(s);
               return (
-                <div key={s.id} className={cx("overflow-hidden rounded-2xl border border-line/70 bg-white shadow-card", !got && "opacity-55")}>
+                <div key={s.id} className={cx("overflow-hidden rounded-2xl border border-line/70 bg-surface shadow-card", !got && "opacity-55")}>
                   <div className="relative h-20 bg-blush">
                     {got ? (
                       // eslint-disable-next-line @next/next/no-img-element -- static export
@@ -68,7 +68,7 @@ export default function Journey() {
                         <Lock size={22} />
                       </span>
                     )}
-                    <span className="absolute bottom-1 right-1 rounded-full bg-white/90 px-1.5 text-sm">{s.postcard.emoji}</span>
+                    <span className="absolute bottom-1 right-1 rounded-full bg-surface/90 px-1.5 text-sm">{s.postcard.emoji}</span>
                   </div>
                   <div className="p-2.5">
                     <p className="text-[11px] font-bold uppercase tracking-wider text-rose">🇩🇪 Berlin</p>

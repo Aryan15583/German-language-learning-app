@@ -47,7 +47,7 @@ export function SentenceBuilder({ sentence, lang, rng, onDone, showMeaning = tru
             aria-label={`Word: ${t.w}`}
             disabled={built.includes(t.k) || result !== null}
             onClick={() => setBuilt([...built, t.k])}
-            className={cx("rounded-xl border-2 px-3 py-2 font-semibold transition", built.includes(t.k) ? "border-transparent bg-line/40 text-transparent" : "border-line bg-white text-ink hover:border-rose")}
+            className={cx("rounded-xl border-2 px-3 py-2 font-semibold transition", built.includes(t.k) ? "border-transparent bg-line/40 text-transparent" : "border-line bg-surface text-ink hover:border-rose")}
           >
             {t.w}
           </button>

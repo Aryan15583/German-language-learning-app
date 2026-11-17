@@ -283,7 +283,7 @@ function AuthForm({ chosenMode, setMode }: { chosenMode: Mode; setMode: (m: Mode
               aria-label="Continue with Google"
               disabled={busy}
               onClick={() => run(() => acct.signInWithGoogle())}
-              className="flex w-full items-center justify-center gap-3 rounded-full border border-line bg-white py-3 font-semibold text-ink shadow-card hover:bg-blush"
+              className="flex w-full items-center justify-center gap-3 rounded-full border border-line bg-surface py-3 font-semibold text-ink shadow-card hover:bg-blush"
             >
               <span className="text-lg font-black text-[#4285F4]">G</span> Continue with Google
             </button>
