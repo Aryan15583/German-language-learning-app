@@ -75,6 +75,22 @@ abschalten|to switch off / unwind|आराम करणे|schalte ab,schaltest
 überzeugen|to convince|पटवून देणे|überzeuge,überzeugst,überzeugt,überzeugen,überzeugt,überzeugen|hat überzeugt
 zeigen|to show|दाखवणे|zeige,zeigst,zeigt,zeigen,zeigt,zeigen|hat gezeigt
 setzen|to put / set|ठेवणे|setze,setzt,setzt,setzen,setzt,setzen|hat gesetzt
+fühlen|to feel|वाटणे|fühle,fühlst,fühlt,fühlen,fühlt,fühlen|hat gefühlt
+hören|to hear|ऐकणे|höre,hörst,hört,hören,hört,hören|hat gehört
+zuhören|to listen|लक्ष देऊन ऐकणे|höre zu,hörst zu,hört zu,hören zu,hört zu,hören zu|hat zugehört
+einladen|to invite|आमंत्रण देणे|lade ein,lädst ein,lädt ein,laden ein,ladet ein,laden ein|hat eingeladen
+sich ausruhen|to rest|विश्रांती घेणे|ruhe mich aus,ruhst dich aus,ruht sich aus,ruhen uns aus,ruht euch aus,ruhen sich aus|hat sich ausgeruht
+sich vorstellen|to imagine|कल्पना करणे|stelle mir vor,stellst dir vor,stellt sich vor,stellen uns vor,stellt euch vor,stellen sich vor|hat sich vorgestellt
+umziehen|to move house|घर बदलणे|ziehe um,ziehst um,zieht um,ziehen um,zieht um,ziehen um|ist umgezogen
+ziehen|to pull|ओढणे|ziehe,ziehst,zieht,ziehen,zieht,ziehen|hat gezogen
+verzeihen|to forgive|माफ करणे|verzeihe,verzeihst,verzeiht,verzeihen,verzeiht,verzeihen|hat verziehen
+aufteilen|to divide up|वाटणी करणे|teile auf,teilst auf,teilt auf,teilen auf,teilt auf,teilen auf|hat aufgeteilt
+stören|to bother|त्रास देणे|störe,störst,stört,stören,stört,stören|hat gestört
+genießen|to enjoy|आनंद घेणे|genieße,genießt,genießt,genießen,genießt,genießen|hat genossen
+lassen|to let|करू देणे|lasse,lässt,lässt,lassen,lasst,lassen|hat gelassen
+beschäftigen|to be on someone's mind|मनात घोळणे|beschäftige,beschäftigst,beschäftigt,beschäftigen,beschäftigt,beschäftigen|hat beschäftigt
+liegen|to lie (be placed)|पडलेले असणे|liege,liegst,liegt,liegen,liegt,liegen|hat gelegen
+schweben|to float|तरंगणे|schwebe,schwebst,schwebt,schweben,schwebt,schweben|hat geschwebt
 verschlimmbessern|to make worse by "improving"|सुधारता सुधारता बिघडवणे|verschlimmbessere,verschlimmbesserst,verschlimmbessert,verschlimmbessern,verschlimmbessert,verschlimmbessern|hat verschlimmbessert
 `;
 
@@ -182,6 +198,18 @@ das Kopfkino|imagining scenes in your head|-
 der Kummerspeck|weight from emotional eating|-
 das Fingerspitzengefühl|tact, intuition|-
 die Schnapsidee|crazy idea|die Schnapsideen
+das Foto|photo|die Fotos
+die Meinung|opinion|die Meinungen
+der Abend|evening|die Abende
+das Budget|budget|die Budgets
+die Lust|desire (feel like it)|-
+die Wolke|cloud|die Wolken
+der Finger|finger|die Finger
+der Bär|bear|die Bären
+die Besserung|recovery|-
+die Hausarbeit|housework|-
+die Augenhöhe|eye level|-
+der Strang|rope|die Stränge
 `;
 
 export const ADJECTIVES = `

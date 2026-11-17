@@ -123,7 +123,7 @@ function Stop({ stop, state, here, lang }: { stop: JourneyStop; state: ReturnTyp
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button size="sm" href={`/lesson?id=${id}`}>
-                📚 Learn the words
+                ▶ Easy lesson
               </Button>
               <Button size="sm" variant="soft" href={`/practice?id=${id}`}>
                 🗣️ Practise

@@ -15,6 +15,7 @@ export default function Train() {
       <p className="text-muted">Pick anything — or just tap ▶ Start on the dashboard and let the app choose.</p>
       <Section title="Just for you">
         <Tile href="/review" emoji="💡" title="Smart review" sub={due ? `${due} words need your attention` : "All words fresh"} badge={due || undefined} />
+        <Tile href="/vocab" emoji="📖" title="My words" sub="Every word and its forms" />
         <Tile href="/builder" emoji="🧩" title="Word builder" sub="Put German words in order" />
         <Tile href="/listen" emoji="🎧" title="Listening" sub="Easy → expert" />
         <Tile href="/grammar" emoji="🤔" title="Why is German like this?" sub="Tiny grammar bites" />

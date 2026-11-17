@@ -63,9 +63,14 @@ export default function Words() {
             </h2>
             {state.customWords.length ? (
               <>
-                <Button variant="soft" href="/lesson?id=ours" full>
-                  📚 Practise with flashcards
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="good" href="/lesson?id=ours">
+                    ▶ Easy lesson
+                  </Button>
+                  <Button variant="soft" href="/cards?id=ours">
+                    📚 Flashcards
+                  </Button>
+                </div>
                 <Card className="mt-3 divide-y divide-line/60 py-2">
                   {[...state.customWords].reverse().map((w) => (
                     <div key={w.de} className="flex items-center gap-3 py-2.5">

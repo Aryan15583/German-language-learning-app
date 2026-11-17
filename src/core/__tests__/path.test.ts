@@ -88,6 +88,8 @@ describe("path bubbles", () => {
 
 describe("labels", () => {
   it("are short and friendly", () => {
-    expect(stepLabel(nextStep(freshState().partners[0]))).toMatchObject({ title: u1.title, detail: expect.stringContaining("Learn 8 words") });
+    expect(stepLabel(nextStep(freshState().partners[0]))).toMatchObject({ title: u1.title, detail: expect.stringContaining("Lesson 1 of 2 · 4 new words") });
+    const half = learnAll(freshState(), u1.id, 4);
+    expect(stepLabel(nextStep(half.partners[0])).detail).toContain("Lesson 2 of 2");
   });
 });

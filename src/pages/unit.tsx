@@ -42,7 +42,7 @@ export default function Unit() {
           <ProgressBar value={known / unit.words.length} className="mt-2" color={allKnown ? "bg-good" : "bg-plum"} />
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <Button href={`/lesson?id=${unit.id}`} size="lg" variant={allKnown ? "soft" : "good"}>
-              📚 Learn the words
+              ▶ Easy lesson
             </Button>
             <Button href={`/practice?id=${unit.id}`} size="lg" variant={allKnown && !p.practised.includes(unit.id) ? "good" : "soft"}>
               🗣️ Practise
@@ -51,7 +51,16 @@ export default function Unit() {
               ✏️ {passed ? "Do the quiz again" : "Quiz"}
             </Button>
           </div>
-          <p className="mt-3 text-center text-sm text-muted">{allKnown ? (p.practised.includes(unit.id) ? "You know all the words — try the quiz!" : "Now practise: hear, say, type and use them.") : "Learn → practise → quiz."}</p>
+          <p className="mt-3 text-center text-sm">
+            <Link href={`/cards?id=${unit.id}`} className="font-semibold text-plum underline underline-offset-4">
+              📚 Flashcards
+            </Link>
+            {" · "}
+            <Link href="/vocab" className="font-semibold text-plum underline underline-offset-4">
+              📖 My words & forms
+            </Link>
+          </p>
+          <p className="mt-1 text-center text-sm text-muted">{allKnown ? (p.practised.includes(unit.id) ? "You know all the words — try the quiz!" : "Now practise: hear, say, type and use them.") : "Learn → practise → quiz."}</p>
         </Card>
 
         <Card className="mt-4">
