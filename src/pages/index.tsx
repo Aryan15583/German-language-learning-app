@@ -90,28 +90,37 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Continue learning — the one big button */}
-        <Card className="flex flex-col p-0 lg:row-span-1">
-          <div className="relative h-32 overflow-hidden rounded-t-3xl bg-blush">
-            {/* eslint-disable-next-line @next/next/no-img-element -- static export */}
-            <img src="/art/gate.jpg" alt="" className="h-full w-full object-cover" />
-            <span className="absolute left-3 top-3 rounded-full bg-surface/90 px-3 py-1 text-xs font-bold text-plum">{step.level.id}</span>
-          </div>
-          <div className="flex flex-1 flex-col p-5">
-            <p className="text-sm font-semibold text-muted">{mine.todayXp >= DAILY_GOAL ? "Goal done! Want more? Next up" : "Continue learning"}</p>
-            <h2 className="mt-1 flex items-center gap-2 text-xl font-extrabold text-ink">
-              <span aria-hidden>{label.emoji}</span> {label.title}
-            </h2>
-            <p className="text-sm text-muted">{label.detail}</p>
-            <div className="mt-3 flex items-center gap-3">
-              <ProgressBar value={mine.levelShare} />
-              <span className="text-sm font-semibold text-plum">{Math.round(mine.levelShare * 100)}%</span>
+        {/* Continue learning — the one big button: the photo fills the card, the info sits on it */}
+        <Link
+          href={hrefOf(step)}
+          aria-label={`Start: ${label.title}`}
+          className="group gold-ring relative isolate flex min-h-[310px] flex-col justify-end overflow-hidden rounded-[26px] bg-[#4a1430] lg:min-h-full"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- static export */}
+          <img src="/art/splash.jpg" alt="" className="absolute inset-x-0 top-0 -z-10 h-[72%] w-full object-cover object-[center_62%] transition duration-700 group-hover:scale-105" />
+          <div aria-hidden className="absolute inset-x-0 top-0 -z-10 h-[72%] bg-gradient-to-b from-transparent from-55% to-[#4a1430]" />
+          <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-[#6a1f40] shadow-card">{step.level.id}</span>
+          <div className="m-3 rounded-[22px] bg-[#5a1a3b]/70 px-4 py-3.5 text-white ring-1 ring-white/15 backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-white/75">{mine.todayXp >= DAILY_GOAL ? "Goal done! Next up" : "Continue learning"}</p>
+                <h2 className="mt-0.5 truncate text-xl font-extrabold">
+                  <span aria-hidden>{label.emoji}</span> {label.title}
+                </h2>
+                <p className="truncate text-sm text-white/80">{label.detail}</p>
+              </div>
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white text-[#8b2f55] shadow-soft transition group-hover:scale-110 group-active:scale-95">
+                <Play size={26} fill="currentColor" className="ml-0.5" />
+              </span>
             </div>
-            <Button href={hrefOf(step)} size="lg" full className="mt-4">
-              <Play size={20} fill="currentColor" /> Start
-            </Button>
+            <div className="mt-3 flex items-center gap-3">
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/25" role="progressbar" aria-valuenow={Math.round(mine.levelShare * 100)} aria-valuemin={0} aria-valuemax={100}>
+                <div className="h-full rounded-full bg-gradient-to-r from-[#f6c9d6] to-white" style={{ width: `${Math.round(mine.levelShare * 100)}%` }} />
+              </div>
+              <span className="text-xs font-semibold text-white/90">{Math.round(mine.levelShare * 100)}%</span>
+            </div>
           </div>
-        </Card>
+        </Link>
 
         {/* Today's mission */}
         <Card className="lg:col-span-2">
