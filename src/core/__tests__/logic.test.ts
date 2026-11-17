@@ -13,6 +13,9 @@ import {
   placementContinues,
   placementLevel,
   recordExam,
+  daysLearned,
+  lastDays,
+  logActivity,
   recordChat,
   recordUnitScore,
   setLang,
@@ -197,5 +200,35 @@ describe("migrate", () => {
     const s = migrate({ partners: [{ unlocked: 42 }, { unlocked: -3 }] });
     expect(s.partners[0].unlocked).toBe(LEVELS.length - 1);
     expect(s.partners[1].unlocked).toBe(0);
+  });
+});
+
+describe("history and activity", () => {
+  it("records XP per day and builds a 7-day chart", () => {
+    let s = applyPractice(freshState(), 0, 20, "2026-11-10", "2026-11-09");
+    s = applyPractice(s, 0, 15, "2026-11-12", "2026-11-11");
+    s = applyPractice(s, 0, 5, "2026-11-12", "2026-11-11");
+    const week = lastDays(s.partners[0], "2026-11-12");
+    expect(week).toHaveLength(7);
+    expect(week.at(-1)).toEqual({ date: "2026-11-12", xp: 20 });
+    expect(week.find((d) => d.date === "2026-11-10")?.xp).toBe(20);
+    expect(week[0].date).toBe("2026-11-06");
+    expect(daysLearned(s.partners[0])).toBe(2);
+  });
+
+  it("keeps only the last 60 days", () => {
+    let s = freshState();
+    for (let d = 1; d <= 70; d++) {
+      const date = new Date(Date.UTC(2026, 0, d)).toISOString().slice(0, 10);
+      s = applyPractice(s, 0, 1, date, date);
+    }
+    expect(Object.keys(s.partners[0].history)).toHaveLength(60);
+  });
+
+  it("keeps a short activity log", () => {
+    let s = freshState();
+    for (let k = 0; k < 50; k++) s = logActivity(s, "📚", `item ${k}`, k);
+    expect(s.log).toHaveLength(40);
+    expect(s.log.at(-1)).toEqual({ at: 49, icon: "📚", text: "item 49" });
   });
 });

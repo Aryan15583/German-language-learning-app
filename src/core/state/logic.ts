@@ -29,6 +29,8 @@ export type Partner = {
   week: { id: string; xp: number };
   today: { date: string; xp: number };
   counts: { messages: number; duelsWon: number };
+  /** XP per calendar day (last 60 days), for the streak chart. */
+  history: Record<string, number>;
   /** For the partner on a linked phone: their own streak and totals, from their last message. */
   remote: { streak: number; streakDay: string | null; wordsKnown: number; unitsPassed: number; at: number } | null;
 };
@@ -91,7 +93,11 @@ export type AppState = {
   welcomeDone: boolean;
   /** When this state last changed (ms) — decides which copy wins: this phone's or the cloud's. */
   updatedAt: number;
+  /** Recent things you did, newest last (for "Recent activity"). */
+  log: LogEntry[];
 };
+
+export type LogEntry = { at: number; icon: string; text: string };
 
 // ---- Rules ----
 export const UNIT_TEST_QUESTIONS = 8;
@@ -119,6 +125,7 @@ export const newPartner = (): Partner => ({
   today: { date: "", xp: 0 },
   counts: { messages: 0, duelsWon: 0 },
   remote: null,
+  history: {},
 });
 
 export const freshState = (): AppState => ({
@@ -134,6 +141,7 @@ export const freshState = (): AppState => ({
   relayCursor: {},
   welcomeDone: false,
   updatedAt: 0,
+  log: [],
 });
 
 const clampLevel = (n: unknown) => (typeof n === "number" && n >= 0 ? Math.min(Math.floor(n), MAX_LEVEL) : 0);
@@ -158,6 +166,7 @@ export function migrate(raw: unknown): AppState {
     today: p?.today ?? { date: "", xp: 0 },
     counts: p?.counts ?? { messages: 0, duelsWon: 0 },
     remote: p?.remote ?? null,
+    history: p?.history && typeof p.history === "object" ? p.history : {},
   });
   return {
     partners: [partner(r.partners?.[0]), partner(r.partners?.[1])],
@@ -172,6 +181,7 @@ export function migrate(raw: unknown): AppState {
     relayCursor: r.relayCursor && typeof r.relayCursor === "object" ? r.relayCursor : {},
     welcomeDone: r.welcomeDone === true,
     updatedAt: typeof r.updatedAt === "number" && r.updatedAt > 0 ? r.updatedAt : 0,
+    log: Array.isArray(r.log) ? r.log.slice(-40) : [],
   };
 }
 
@@ -190,8 +200,33 @@ export function addXp(s: AppState, i: PartnerIndex, xp: number, today: string): 
     xp: p.xp + gain,
     week: { id: week, xp: (p.week.id === week ? p.week.xp : 0) + gain },
     today: { date: today, xp: (p.today.date === today ? p.today.xp : 0) + gain },
+    history: trimHistory({ ...p.history, [today]: (p.history[today] ?? 0) + gain }),
   }));
 }
+
+const HISTORY_DAYS = 60;
+function trimHistory(h: Record<string, number>): Record<string, number> {
+  const days = Object.keys(h).sort();
+  return days.length <= HISTORY_DAYS ? h : Object.fromEntries(days.slice(-HISTORY_DAYS).map((d) => [d, h[d]]));
+}
+
+/** Remember something worth showing under "Recent activity". */
+export const logActivity = (s: AppState, icon: string, text: string, at: number): AppState => ({
+  ...s,
+  log: [...s.log, { at, icon, text }].slice(-40),
+});
+
+/** Days (most recent last) with the XP earned on each, e.g. for a Mon–Sun chart. */
+export function lastDays(p: Partner, today: string, n = 7): { date: string; xp: number }[] {
+  const [y, m, d] = today.split("-").map(Number);
+  return Array.from({ length: n }, (_, k) => {
+    const date = new Date(Date.UTC(y, m - 1, d - (n - 1 - k))).toISOString().slice(0, 10);
+    return { date, xp: p.history[date] ?? 0 };
+  });
+}
+
+/** How many different days this person has learned on. */
+export const daysLearned = (p: Partner) => Object.values(p.history).filter((x) => x > 0).length;
 
 /** Award XP and keep the shared streak alive (one bump per calendar day). */
 export function applyPractice(s: AppState, i: PartnerIndex, xp: number, today: string, yesterday: string): AppState {

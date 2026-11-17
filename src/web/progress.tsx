@@ -52,6 +52,8 @@ type Ctx = {
   recordExam: (i: PartnerIndex, level: LevelId, score: number) => void;
   applyPlacement: (i: PartnerIndex, levelIdx: number) => void;
   addDuel: (d: DuelResult) => void;
+  /** Remember something for "Recent activity". */
+  log: (icon: string, text: string) => void;
   reset: () => void;
 
   // PIN lock
@@ -265,6 +267,7 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
       recordExam: (i, level, score) => update((s) => L.recordExam(s, i, level, score)),
       applyPlacement: (i, idx) => update((s) => L.applyPlacement(s, i, idx)),
       addDuel: (d) => update((s) => ({ ...s, duels: [...s.duels, d].slice(-20) })),
+      log: (icon, text) => update((s) => L.logActivity(s, icon, text, Date.now())),
       reset: () => {
         setLocked(false);
         update(() => L.freshState());

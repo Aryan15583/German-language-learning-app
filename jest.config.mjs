@@ -10,8 +10,10 @@ const base = createJestConfig({
 
 // next/jest replaces transformIgnorePatterns, so set it afterwards:
 // the @noble crypto libraries ship as ES modules and must be transformed.
-export default async () => {
-  const config = await base();
-  config.transformIgnorePatterns = ["/node_modules/(?!(@noble)/)", "^.+\\.module\\.(css|sass|scss)$"];
-  return config;
+const config = async () => {
+  const c = await base();
+  c.transformIgnorePatterns = ["/node_modules/(?!(@noble)/)", "^.+\\.module\\.(css|sass|scss)$"];
+  return c;
 };
+
+export default config;

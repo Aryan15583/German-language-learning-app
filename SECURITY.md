@@ -21,9 +21,9 @@ Zwei Herzen ♡ Until Berlin is a private, personal app. This page explains how 
 - **PIN lock.** PINs are stored only as salted PBKDF2-SHA256 hashes (120,000 rounds) and checked in constant time. A forgotten PIN can't be recovered; the only way out is to reset the device's data.
 - **Links fallback.** Without the relay, messages travel as links whose secret part sits after `#`, which browsers never send to any server. The app wipes it from the address bar and history after reading it.
 - **No third-party scripts, trackers, fonts or analytics.** Every script and style is served from the app's own domain.
-- **No raw HTML rendering.** All text (including names you type) is rendered by React Native as plain text, so it cannot inject scripts. There is no `eval` or `dangerouslySetInnerHTML` in the codebase.
+- **No raw HTML rendering.** All text (including names you type) is rendered by React as plain text, so it cannot inject scripts. There is no `eval` or `dangerouslySetInnerHTML` in the codebase.
 - **Saved data is validated on load** (`migrate()` in `src/state/logic.ts`): unexpected or corrupted values fall back to safe defaults instead of crashing.
-- **Crash screen** (`ErrorBoundary` in `src/app/_layout.tsx`): unexpected errors show a friendly retry screen rather than a blank page.
+- **Crash screen** (`src/components/ErrorBoundary.tsx`): unexpected errors show a friendly retry screen rather than a blank page.
 
 ## Browser security headers (`vercel.json`)
 | Header | Protects against |
@@ -37,15 +37,15 @@ Zwei Herzen ♡ Until Berlin is a private, personal app. This page explains how 
 | `Cross-Origin-Opener-Policy` / `Cross-Origin-Resource-Policy: same-origin` | Cross-origin attacks on the window and its files |
 | `X-Robots-Tag: noindex` + `robots.txt` | The private app showing up in search engines |
 
-The full app was tested end to end in a browser with these exact headers applied, with no blocked content.
+The site is a static Next.js export built with webpack, which adds no inline scripts, so the policy needs no `unsafe-inline` for scripts. The full app was tested end to end in a browser with these exact headers applied, with no blocked content.
 
 ## Automated checks (GitHub)
-- **CI** (`.github/workflows/ci.yml`): lint, typecheck, 193 tests, relay and account SQL security tests on Postgres 16, `npm audit` (fails on high/critical issues in shipped dependencies) and a production build on every push.
+- **CI** (`.github/workflows/ci.yml`): lint, typecheck, 209 tests, relay and account SQL security tests on Postgres 16, `npm audit` (fails on high/critical issues in shipped dependencies) and a production build on every push.
 - **CodeQL** (`.github/workflows/codeql.yml`): GitHub's code security scanner on every push to `main`, every PR and weekly.
 - **Dependabot** (`.github/dependabot.yml`): weekly pull requests for dependency updates.
 
 ## Known, accepted advisories
-`npm audit` reports 3 moderate advisories in `minimatch` (a slow regular expression) inside `@expo/fingerprint`, a **build-time Expo tool**. It is not part of the app that ships to browsers. npm's suggested fix downgrades Expo to an older major version, which is worse, so this is tracked until Expo updates the dependency (Dependabot will propose it).
+`npm audit` reports moderate advisories in `minimatch`/`glob` inside Jest's coverage tooling (`test-exclude`). That is a **test-only** dependency and never ships to browsers; the audit of shipped dependencies (`npm audit --omit=dev`) is clean.
 
 ## Keeping it private
 - After you've both signed up, turn off **Allow new users to sign up** in Supabase (Authentication → Sign In / Providers).
