@@ -11,7 +11,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -40,5 +40,5 @@ jobs:
       PGUSER: postgres
       PGPASSWORD: postgres
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: psql -v ON_ERROR_STOP=1 -f supabase/tests/setup_roles.sql -f supabase/migrations/0001_relay.sql -f supabase/migrations/0002_accounts.sql -f supabase/migrations/0003_no_email_needed.sql -f supabase/tests/relay_test.sql -f supabase/tests/accounts_test.sql -f supabase/tests/no_email_test.sql
