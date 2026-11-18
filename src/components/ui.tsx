@@ -93,6 +93,28 @@ export function Ring({ value, size = 104, stroke = 10, color = "var(--color-plum
   );
 }
 
+/** An on/off row: title, one line of explanation, and a switch. */
+export function Toggle({ on, onChange, title, hint, disabled }: { on: boolean; onChange: (on: boolean) => void; title: string; hint?: string; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      disabled={disabled}
+      onClick={() => onChange(!on)}
+      className="flex w-full items-center gap-3 rounded-2xl px-1 py-2.5 text-left transition hover:bg-blush/50 disabled:opacity-50"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block font-semibold text-ink">{title}</span>
+        {hint ? <span className="block text-xs text-muted">{hint}</span> : null}
+      </span>
+      <span className={cx("relative h-7 w-12 shrink-0 rounded-full transition-colors duration-300", on ? "bg-plum" : "bg-line")}>
+        <span className={cx("absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all duration-300", on ? "left-6" : "left-1")} />
+      </span>
+    </button>
+  );
+}
+
 export function Chip({ selected, onClick, children, className }: { selected?: boolean; onClick?: () => void; children: ReactNode; className?: string }) {
   return (
     <button

@@ -2,6 +2,7 @@
 //  1. While the app is open or in the background, new messages show as phone notifications (with the text).
 //  2. With the "notify" function set up on Supabase, a Web Push ping arrives even when the app is closed.
 //     The server never sees the message, so that ping just says "New message" (like Signal).
+import { getPrefs } from "./prefs";
 import { minuteOfDay, pushLearned, pushPublicKey, pushSetReminder, pushSubscribe, pushUnsubscribe, type RelayConfig } from "../core/lib/relay";
 
 const PREF = "zh-notify";
@@ -196,6 +197,8 @@ export async function disableNotifications(relay: RelayConfig | null) {
 /** Show a message notification now (the app is open but not on screen). */
 export async function showMessageNotification(title: string, body: string) {
   if (notifyStatus() !== "on") return;
+  // Privacy setting: hide the text on the lock screen.
+  if (!getPrefs().notifyPreview) body = "New message 💌";
   try {
     const reg = await navigator.serviceWorker.ready;
     await reg.showNotification(title, { body, tag: "zh-chat", icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", data: { url: "/messages" }, renotify: true } as NotificationOptions);

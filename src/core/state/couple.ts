@@ -2,8 +2,9 @@
 // and remote duels. On every phone, partner 0 is "me" and partner 1 is the
 // other person. No React, no storage, no network — fully unit-tested.
 import { newId, newKey } from "../lib/crypto";
+import { coupleKeyFromDh, newDhPair, PAIR_PROTO, type DhPair } from "../lib/pair";
 import { CODE_TTL_MS, type Envelope, type Payload, type PartnerInfo, type SharedWord, type Stats } from "../lib/link";
-import { addXp, setReaction, unitPassed, type AppState, type ChatItem, type Partner, type PartnerIndex, type RemoteDuel, XP } from "./logic";
+import { addXp, editMessage, setReaction, unitPassed, unsendMessage, type AppState, type ChatItem, type Partner, type PartnerIndex, type RemoteDuel, XP } from "./logic";
 import { LEVELS, levelUnits } from "../content/levels";
 import type { CoupleContext } from "../lib/game";
 
@@ -14,9 +15,24 @@ export const isLinked = (s: AppState) => s.couple?.status === "linked";
 
 // ---- pairing ----
 
-/** I created a code: wait for my partner's hello, encrypted with the code key. */
-export function startPairing(s: AppState, code: string, couple: { id: string; key: string }, now: number): AppState {
-  return { ...s, couple: { id: couple.id, key: couple.key, status: "invited", since: now, code, role: "creator" }, learner: 0 };
+/** I created a code: wait for my partner's hello, encrypted with the code key. With `dh`: safe pairing v2. */
+export function startPairing(s: AppState, code: string, couple: { id: string; key: string }, now: number, dh?: DhPair): AppState {
+  return { ...s, couple: { id: couple.id, key: couple.key, status: "invited", since: now, code, role: "creator", ...(dh ? { proto: PAIR_PROTO, dh } : {}) }, learner: 0 };
+}
+
+/**
+ * Safe pairing v2, as the partner who typed the code: we're linked straight away with a key
+ * from the X25519 exchange. Send `pub` back (in a "join", encrypted with the code key).
+ */
+export function joinSafely(s: AppState, couple: { id: string; key: string }, creatorPub: string, now: number): { state: AppState; codeKey: string; pub: string } {
+  const mine = newDhPair();
+  const key = coupleKeyFromDh(mine.secret, creatorPub, couple.key, creatorPub, mine.pub);
+  const state: AppState = {
+    ...s,
+    couple: { id: couple.id, key, status: "linked", since: now, previousKey: couple.key, role: "joiner", proto: PAIR_PROTO, myPub: mine.pub },
+    learner: 0,
+  };
+  return { state: systemNote(state, "You linked your phones 💞", now), codeKey: couple.key, pub: mine.pub };
 }
 
 /**
@@ -85,6 +101,10 @@ export function recordOutgoing(s: AppState, envId: string, p: Payload, at: numbe
       break;
     case "react":
       return setReaction(s, p.to, 0, p.emoji);
+    case "edit":
+      return editMessage(s, p.to, 0, p.text, at);
+    case "unsend":
+      return unsendMessage(s, p.to, 0);
     default:
       return s;
   }
@@ -132,10 +152,27 @@ export function receive(s: AppState, env: Envelope, now: number): ReceiveResult 
 
   switch (env.kind) {
     case "hello":
+      // Older app version (no key exchange): still links, and Us suggests re-linking to upgrade.
       if (next.couple && next.couple.status === "invited") {
         next = { ...next, couple: { id: next.couple.id, key: env.key, status: "linked", since: now, previousKey: next.couple.key, role: "creator" } };
       }
       next = systemNote(next, `${env.from.name} joined — your phones are linked 💞`, now);
+      break;
+    case "join": {
+      const c = next.couple;
+      if (!c || c.status !== "invited" || !c.dh) return { state: s, isNew: false, envelope: env };
+      let key: string;
+      try {
+        key = coupleKeyFromDh(c.dh.secret, env.pub, c.key, c.dh.pub, env.pub);
+      } catch {
+        return { state: s, isNew: false, envelope: env };
+      }
+      // Linked. The one-time secret and the code key are no longer needed.
+      next = { ...next, couple: { id: c.id, key, status: "linked", since: now, role: "creator", proto: PAIR_PROTO } };
+      next = systemNote(next, `${env.from.name} joined — your phones are linked 💞`, now);
+      break;
+    }
+    case "offer":
       break;
     case "msg":
       theirs("msg", env.text, env.vanish ? { vanish: env.vanish } : {});
@@ -160,6 +197,12 @@ export function receive(s: AppState, env: Envelope, now: number): ReceiveResult 
       break;
     case "react":
       next = setReaction(next, env.to, 1, env.emoji);
+      break;
+    case "edit":
+      next = editMessage(next, env.to, 1, env.text, env.at);
+      break;
+    case "unsend":
+      next = unsendMessage(next, env.to, 1);
       break;
     case "stats":
       break;

@@ -8,7 +8,7 @@ const PRESETS = ["08:00", "13:00", "19:00", "21:30"];
 const pretty = (t: string) => new Date(`2000-01-01T${t}:00`).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
 /** "Remind me to learn" — one gentle notification a day, only if you haven't learned yet. */
-export function ReminderCard({ className }: { className?: string }) {
+export function ReminderCard({ className, plain = false }: { className?: string; plain?: boolean }) {
   const { saveReminder, relayOn } = useProgress();
   // Rendered only in the browser (behind the app's loading gate).
   const [r, setR] = useState<Reminder>(() => getReminder());
@@ -34,7 +34,7 @@ export function ReminderCard({ className }: { className?: string }) {
   };
 
   return (
-    <div className={cx("card-premium rounded-[26px] p-5", className)}>
+    <div className={cx(!plain && "card-premium rounded-[26px] p-5", className)}>
       <div className="flex items-start gap-3">
         <span className={cx("grid h-11 w-11 shrink-0 place-items-center rounded-full", r.on ? "bg-plum text-white" : "bg-blush text-plum")}>
           <AlarmClock size={20} />

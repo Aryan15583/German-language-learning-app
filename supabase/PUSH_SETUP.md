@@ -13,6 +13,7 @@ closed-app notification says “Shreya 💌 — New message from Shreya” (like
 3. Click **Run**. You should see “Success”.
 
 Then do the same with `supabase/migrations/0005_reminders.sql` (daily reminders). Run it after 0004.
+Then `supabase/migrations/0006_security.sql` (security hardening). Run it after 0005.
 
 ## 2. Create the “notify” function (3 minutes)
 

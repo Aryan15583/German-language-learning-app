@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { allTopics, levelOfTopic } from "../core/content/levels";
 import { couple, partnerName, useProgress } from "../web/progress";
+import { usePrefs } from "../web/prefs";
 import { useReveal } from "../web/reveal";
 import { useTheme } from "../web/theme";
 import { BrandTitle, SecretHeart } from "./BrandTitle";
@@ -64,13 +65,14 @@ export function AppShell({ children, focus }: { children: ReactNode; focus?: boo
   const path = router.pathname;
   const mainRef = useRef<HTMLElement>(null);
   // Cards rise gently into place as you scroll (not inside lessons and quizzes).
-  useReveal(mainRef, !focus, router.asPath);
+  const [prefs] = usePrefs();
+  useReveal(mainRef, !focus && prefs.animations, router.asPath);
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[260px_1fr]">
       {/* Desktop sidebar */}
-      <aside className="glass sticky top-0 hidden h-dvh flex-col border-r border-line/60 px-5 py-6 lg:flex">
-        <Link href="/" className="mb-8 block text-plum" aria-label="Zwei Herzen until Berlin — home">
+      <aside className="glass desk-scroll sticky top-0 hidden h-dvh flex-col overflow-y-auto overscroll-contain border-r border-line/60 px-5 py-6 lg:flex">
+        <Link href="/" className="mb-8 block shrink-0 text-plum" aria-label="Zwei Herzen until Berlin — home">
           <HeartPlane className="mb-1 h-8 w-24" />
           <div className="font-script text-[34px] font-bold leading-[1.05]">
             Zwei Herzen <SecretHeart />
@@ -97,7 +99,7 @@ export function AppShell({ children, focus }: { children: ReactNode; focus?: boo
             );
           })}
         </nav>
-        <div className="mt-auto">
+        <div className="mt-auto shrink-0 pt-6">
           {/* eslint-disable-next-line @next/next/no-img-element -- static export */}
           <img src="/art/skyline.jpg" alt="" className="w-full rounded-2xl opacity-90 mix-blend-multiply dark:opacity-70 dark:mix-blend-normal" />
         </div>

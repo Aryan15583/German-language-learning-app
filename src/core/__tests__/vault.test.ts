@@ -36,7 +36,9 @@ describe("vault", () => {
 
 describe("account input checks", () => {
   it.each([
-    ["short", "Use at least 8 characters."],
+    ["short", "Use at least 10 characters."],
+    ["passwort123", "That one is too easy to guess — try a short sentence, like “Berlin2027mitDir!”."],
+    ["aaaaaaaaaaaa", "That one is too easy to guess — try a short sentence, like “Berlin2027mitDir!”."],
     ["12345678", "Mix in some letters, not only numbers."],
     ["x".repeat(129), "That's a bit long — 128 characters max."],
   ])("rejects %s", (pw, why) => expect(passwordProblem(pw)).toBe(why));

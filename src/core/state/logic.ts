@@ -75,6 +75,12 @@ export type Couple = {
   role?: "creator" | "joiner";
   /** The pairing (code) key, kept so the first "hello" link can still be opened or re-sent. */
   previousKey?: string;
+  /** 2 = safe pairing (X25519 key exchange). Missing = older pairing: re-link to upgrade. */
+  proto?: 2;
+  /** Code maker, while waiting: my one-time X25519 key pair (deleted once linked). */
+  dh?: { secret: string; pub: string };
+  /** Partner who typed the code: my public key, to re-send the "join" if it got lost. */
+  myPub?: string;
 };
 
 export type ChatKind = "msg" | "note" | "secret" | "word" | "duel" | "system";
@@ -94,6 +100,8 @@ export type ChatItem = {
   viewedAt?: number;
   /** Emoji reactions: 0 = mine, 1 = my partner's. */
   reacts?: { 0?: string; 1?: string };
+  /** When the sender last edited the text. */
+  edited?: number;
 };
 
 /** A duel played on two phones: same questions (same seed), one after the other. */
@@ -242,6 +250,28 @@ export const addMemory = (s: AppState, m: MemoryEntry): AppState => {
   return { ...s, memories: [...s.memories, clean].sort((a, b) => a.at - b.at).slice(-MAX_MEMORIES) };
 };
 export const removeMemory = (s: AppState, id: string): AppState => ({ ...s, memories: s.memories.filter((m) => m.id !== id) });
+
+/** Messages that can be edited or deleted by whoever sent them. */
+export const EDITABLE: ChatItem["kind"][] = ["msg", "note"];
+
+/** Change the text of a message — only the person who sent it can. */
+export function editMessage(s: AppState, msgId: string, by: PartnerIndex, text: string, at: number): AppState {
+  const t = text.trim();
+  if (!t) return s;
+  let hit = false;
+  const chat = s.chat.map((m) => {
+    if (m.id !== msgId || m.from !== by || !EDITABLE.includes(m.kind) || m.text === t) return m;
+    hit = true;
+    return { ...m, text: t, edited: at };
+  });
+  return hit ? { ...s, chat } : s;
+}
+
+/** Delete a message for both of us — only the person who sent it can. */
+export function unsendMessage(s: AppState, msgId: string, by: PartnerIndex): AppState {
+  const chat = s.chat.filter((m) => !(m.id === msgId && m.from === by && (EDITABLE.includes(m.kind) || m.kind === "secret")));
+  return chat.length === s.chat.length ? s : { ...s, chat };
+}
 
 /** Set (or clear, with "") one person's reaction on a chat message. */
 export function setReaction(s: AppState, msgId: string, who: PartnerIndex, emoji: string): AppState {

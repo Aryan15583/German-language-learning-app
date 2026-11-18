@@ -13,6 +13,7 @@ import { couplePoints } from "../web/journey";
 import { nextStep, stepLabel } from "../core/lib/path";
 import { dailyIndex } from "../core/lib/util";
 import { hrefOf } from "../web/nav";
+import { usePrefs } from "../web/prefs";
 import { couple, currentStreak, daysLearned, lastDays, partnerName, today, useProgress } from "../web/progress";
 import { ago, goalShare, hasPartner, personStats, weekdayOf } from "../web/stats";
 
@@ -49,6 +50,7 @@ export default function Home() {
   const word = words[day % words.length];
   const talk = dailyConversation(LEVELS[me.unlocked].id, today());
   const surprise = dailySurprise(today());
+  const [prefs] = usePrefs();
   const quote = QUOTES[day % QUOTES.length];
   const journeyDay = Math.max(1, daysLearned(me));
   const linked = couple.isLinked(state);
@@ -237,7 +239,8 @@ export default function Home() {
           </div>
         </Card>
 
-        {/* Today for the two of you */}
+        {/* Today for the two of you (optional: Me → Home screen) */}
+        {prefs.homeExtras ? (
         <Card>
           <p className="text-xs font-bold uppercase tracking-wider text-rose">🎁 Heute für euch</p>
           <p className="mt-1 text-lg font-bold text-ink">
@@ -253,6 +256,7 @@ export default function Home() {
             <ChevronRight size={18} className="text-muted" />
           </Link>
         </Card>
+        ) : null}
 
         {/* Streak */}
         <Card>

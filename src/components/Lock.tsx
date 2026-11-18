@@ -1,5 +1,6 @@
 import { LockKeyhole } from "lucide-react";
 import { useState } from "react";
+import { pinWaitSeconds } from "../web/pinGuard";
 import { couple, partnerName, useProgress, type PartnerIndex } from "../web/progress";
 import { Button, Chip, cx, fieldClass, Spinner } from "./ui";
 
@@ -20,7 +21,8 @@ export function Lock() {
     const ok = await unlock(pin);
     setBusy(false);
     if (!ok) {
-      setError("Falsche PIN — wrong PIN");
+      const wait = pinWaitSeconds();
+      setError(wait ? `Too many wrong tries. Wait ${wait < 60 ? `${wait} s` : `${Math.ceil(wait / 60)} min`} and try again.` : "Falsche PIN — wrong PIN");
       setPin("");
       setShakeKey((k) => k + 1);
     }

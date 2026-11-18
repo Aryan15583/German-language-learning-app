@@ -8,7 +8,9 @@ import { NotifyCard } from "../components/NotifyCard";
 import { ReminderCard } from "../components/ReminderCard";
 import { useTheme, type ThemePref } from "../web/theme";
 import { LangPicker } from "../components/pickers";
-import { Button, Card, Chip, fieldClass, ProgressBar, Script, Spinner } from "../components/ui";
+import { Button, Card, Chip, fieldClass, ProgressBar, Script, Spinner, Toggle } from "../components/ui";
+import { usePrefs, type Prefs } from "../web/prefs";
+import { setSound, soundOn } from "../web/sound";
 import { LEVELS } from "../core/content/levels";
 import { ACHIEVEMENTS, earnedAchievements, heartLevel } from "../core/lib/game";
 import { CHAT_LIMITS, formatMB, type ArchiveStats } from "../core/lib/archive";
@@ -48,10 +50,22 @@ export default function Profile() {
           <Row href="/goals" emoji="🎯" title="Couple goals" detail="Targets to chase together" />
         </div>
 
-        <ReminderCard className="mt-4" />
-        {couple.isLinked(state) ? <NotifyCard /> : null}
-        <InstallCard />
+        <h2 className="mb-1 mt-8 text-sm font-bold uppercase tracking-wider text-muted">Settings</h2>
+        <Section title="Notifications & reminders 🔔">
+          <ReminderCard plain />
+          {couple.isLinked(state) ? (
+            <div className="mt-4 border-t border-line/60 pt-4">
+              <NotifyCard compact />
+              <PrefToggle k="notifyPreview" title="Show message text in notifications" hint="Off: the lock screen only says “New message 💌”." />
+            </div>
+          ) : null}
+        </Section>
         <Appearance />
+        <Section title="Home & Us 🏠">
+          <PrefToggle k="homeExtras" title="“Heute für euch” on Home" hint="Today’s surprise and conversation card." />
+          <PrefToggle k="nudge" title="Nudge card on Us" hint="Remind your partner to learn, or send some love." />
+        </Section>
+        <InstallCard />
         <ChatStorage />
 
         <Section title="My language 🌐">
@@ -190,10 +204,34 @@ function PinSettings() {
         </form>
       ) : null}
       {note ? <p className="mt-2 text-sm text-muted">{note}</p> : null}
+      {state.partners[state.learner].pin ? <LockAfterPicker /> : null}
       <p className="mt-2 flex items-start gap-1.5 text-xs text-muted">
         <Shield size={14} className="mt-0.5 shrink-0" /> The PIN is stored only as a salted, slow hash on this device. It can’t be recovered — forgetting it means resetting the app.
       </p>
     </Section>
+  );
+}
+
+function LockAfterPicker() {
+  const [prefs, setPrefs] = usePrefs();
+  const options: { id: Prefs["lockAfter"]; label: string }[] = [
+    { id: "0", label: "Right away" },
+    { id: "1", label: "After 1 min" },
+    { id: "5", label: "After 5 min" },
+    { id: "never", label: "Only when opened" },
+  ];
+  return (
+    <div className="mt-3">
+      <p className="text-sm font-semibold text-ink">Lock again when I leave the app</p>
+      <div className="mt-1.5 flex flex-wrap gap-2" role="radiogroup" aria-label="Lock again">
+        {options.map((o) => (
+          <Chip key={o.id} selected={prefs.lockAfter === o.id} onClick={() => setPrefs({ lockAfter: o.id })}>
+            {o.label}
+          </Chip>
+        ))}
+      </div>
+      <p className="mt-1 text-xs text-muted">After 5 wrong PINs, the app makes you wait before the next try.</p>
+    </div>
   );
 }
 
@@ -252,7 +290,32 @@ function Appearance() {
           </button>
         ))}
       </div>
+      <div className="mt-3 border-t border-line/60 pt-2">
+        <PrefToggle k="animations" title="Smooth animations" hint="Cards rise gently into view as you scroll." />
+        <SoundToggle />
+      </div>
     </Section>
+  );
+}
+
+/** One on/off setting for an optional feature (stored on this phone). */
+function PrefToggle({ k, title, hint }: { k: "animations" | "quickPhrases" | "homeExtras" | "nudge" | "notifyPreview"; title: string; hint?: string }) {
+  const [prefs, setPrefs] = usePrefs();
+  return <Toggle on={prefs[k]} onChange={(on) => setPrefs({ [k]: on })} title={title} hint={hint} />;
+}
+
+function SoundToggle() {
+  const [on, setOn] = useState(soundOn);
+  return (
+    <Toggle
+      on={on}
+      onChange={(v) => {
+        setSound(v);
+        setOn(v);
+      }}
+      title="Sounds"
+      hint="Little sounds for right and wrong answers."
+    />
   );
 }
 

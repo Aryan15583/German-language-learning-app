@@ -16,9 +16,11 @@ export const QUICK = ["Gut gemacht! 👏", "Ich bin stolz auf dich ❤️", "Du 
 
 /** Our journey: link phones with a code, then chat, battle and share. */
 export function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; now: number }) {
-  const { state, react, addMemory } = useProgress();
+  const { state, react, addMemory, editMessage, unsendMessage } = useProgress();
   const [open, setOpen] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   if (m.kind === "system") return <p className="py-1 text-center text-xs text-muted">{m.text}</p>;
   const mine = m.from === 0;
   const bubble = cx("cv-auto max-w-[86%] rounded-3xl px-4 py-3", mine ? "ml-auto rounded-br-md bg-blush" : "mr-auto rounded-bl-md bg-partner-soft");
@@ -70,7 +72,7 @@ export function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; n
       <div
         className={cx(bubble, "relative cursor-pointer", reacts.length > 0 && "mb-3")}
         onClick={(e) => {
-          if ((e.target as HTMLElement).closest("button")) return;
+          if ((e.target as HTMLElement).closest("button, form")) return;
           if (window.getSelection()?.toString()) return;
           setOpen((o) => !o);
         }}
@@ -84,11 +86,43 @@ export function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; n
       {m.kind === "secret" ? <p className="text-xs font-bold text-rose">✨ Secret{mine ? " (sent)" : " unlocked"}</p> : null}
       {m.kind === "note" ? <p className="text-xs font-bold text-rose">💌 Love note</p> : null}
       {m.kind === "word" ? <p className="text-xs font-bold text-rose">📖 New shared word</p> : null}
-      <div className="flex items-center gap-2">
-        <p className={cx("flex-1 whitespace-pre-wrap break-words text-ink", m.kind === "note" && "font-script text-2xl")}>{m.text}</p>
-        {m.kind !== "word" ? <Speak text={m.text} /> : null}
-      </div>
+      {editing !== null ? (
+        <form
+          className="flex flex-col gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (editing.trim()) editMessage(m.id, editing);
+            setEditing(null);
+          }}
+        >
+          <textarea
+            autoFocus
+            value={editing}
+            maxLength={1000}
+            aria-label="Edit message"
+            onChange={(e) => setEditing(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setEditing(null);
+            }}
+            className="min-h-16 w-full min-w-56 resize-none rounded-2xl border border-line bg-card px-3 py-2 text-ink outline-none focus:border-rose"
+          />
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setEditing(null)} className="rounded-full px-3 py-1 text-xs font-semibold text-muted hover:bg-surface">
+              Cancel
+            </button>
+            <button type="submit" disabled={!editing.trim()} className="btn-primary rounded-full px-3 py-1 text-xs font-semibold text-white disabled:opacity-50">
+              Save
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="flex items-center gap-2">
+          <p className={cx("flex-1 whitespace-pre-wrap break-words text-ink", m.kind === "note" && "font-script text-2xl")}>{m.text}</p>
+          {m.kind !== "word" ? <Speak text={m.text} /> : null}
+        </div>
+      )}
       <p className={cx("mt-0.5 text-[11px] text-muted", mine && "text-right")}>
+        {m.edited ? <span className="mr-1.5 italic">edited</span> : null}
         {time}
         {m.vanish ? <span className="ml-2 font-semibold text-plum">{couple.vanishLabel(m, now)}</span> : null}
       </p>
@@ -129,6 +163,37 @@ export function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; n
             >
               {saved ? "Saved 📖" : "📌 Memory book"}
             </button>
+          ) : null}
+          {mine && (m.kind === "msg" || m.kind === "note") ? (
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(m.text);
+                setOpen(false);
+              }}
+              className="rounded-full px-2.5 py-1.5 text-xs font-semibold text-plum hover:bg-blush"
+            >
+              ✏️ Edit
+            </button>
+          ) : null}
+          {mine && (m.kind === "msg" || m.kind === "note" || m.kind === "secret") ? (
+            confirmDelete ? (
+              <button
+                type="button"
+                onClick={() => {
+                  unsendMessage(m.id);
+                  setOpen(false);
+                  setConfirmDelete(false);
+                }}
+                className="rounded-full bg-bad px-2.5 py-1.5 text-xs font-semibold text-white"
+              >
+                Delete for both?
+              </button>
+            ) : (
+              <button type="button" onClick={() => setConfirmDelete(true)} className="rounded-full px-2.5 py-1.5 text-xs font-semibold text-bad hover:bg-blush">
+                🗑 Delete
+              </button>
+            )
           ) : null}
         </div>
       ) : null}
