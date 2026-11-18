@@ -1,9 +1,10 @@
 import { BarChart3, Bell, BookOpen, BookText, Dumbbell, Gamepad2, Heart, Home, Map, Moon, Search, Settings, Sun, Trophy, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { allTopics, levelOfTopic } from "../core/content/levels";
 import { partnerName, useProgress } from "../web/progress";
+import { useReveal } from "../web/reveal";
 import { useTheme } from "../web/theme";
 import { BrandTitle, SecretHeart } from "./BrandTitle";
 import { cx, HeartPlane } from "./ui";
@@ -60,6 +61,9 @@ const isActive = (path: string, href: string) => (href === "/" ? path === "/" : 
 export function AppShell({ children, focus }: { children: ReactNode; focus?: boolean }) {
   const router = useRouter();
   const path = router.pathname;
+  const mainRef = useRef<HTMLElement>(null);
+  // Cards rise gently into place as you scroll (not inside lessons and quizzes).
+  useReveal(mainRef, !focus, router.asPath);
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[260px_1fr]">
@@ -100,7 +104,7 @@ export function AppShell({ children, focus }: { children: ReactNode; focus?: boo
 
       <div className="min-w-0">
         <TopBar />
-        <main className={cx("mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6 lg:px-8 lg:pt-2", focus ? "pb-10" : "pb-28 lg:pb-12")}>{children}</main>
+        <main ref={mainRef} className={cx("mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6 lg:px-8 lg:pt-2", focus ? "pb-10" : "pb-28 lg:pb-12")}>{children}</main>
       </div>
 
       {/* Phone tabs */}

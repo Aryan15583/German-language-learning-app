@@ -49,14 +49,16 @@ export default function Home() {
   const journeyDay = Math.max(1, daysLearned(me));
   const linked = couple.isLinked(state);
   const name = partnerName(state, who);
-  const greet = both && theirs ? `Hallo, ${name} & ${theirs.name}!` : `Hallo, ${name}!`;
+  const h = new Date().getHours();
+  const hello = h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend";
+  const greet = both && theirs ? `${hello}, ${name} & ${theirs.name}` : `${hello}, ${name}`;
 
   return (
     <AppShell>
       {/* Phone greeting */}
       <div className="mb-4 lg:hidden">
-        <Script className="text-[34px] leading-tight">{greet} ♡</Script>
-        <p className="text-muted">Let’s continue your journey.</p>
+        <Script className="text-[34px] leading-tight">{greet} ❤️</Script>
+        <p className="text-muted">Bereit für Berlin? 🇩🇪</p>
       </div>
 
       {!state.welcomeDone ? <HowItWorks linked={linked || !accountMode} onDone={dismissWelcome} /> : null}
@@ -163,7 +165,7 @@ export default function Home() {
             <p className="mt-3 text-sm text-muted">
               {(() => {
                 const n = nextStop(trip.points);
-                return n ? `Next stop: ${n.stop.emoji} ${n.stop.title} — ${n.toGo} more ${n.toGo === 1 ? "lesson" : "lessons"}${trip.together ? " (together)" : ""}.` : "You made it to Berlin! 🇩🇪❤️";
+                return n ? `Next stop: 📍 ${n.stop.city} (${n.stop.title}) — ${n.toGo} more ${n.toGo === 1 ? "lesson" : "lessons"}${trip.together ? " (together)" : ""}.` : "You made it to Berlin! 🇩🇪❤️";
               })()}
             </p>
           </Card>
@@ -227,9 +229,12 @@ export default function Home() {
               <p className="mt-1 flex items-baseline gap-1">
                 <Flame className="self-center text-rose" fill="currentColor" size={26} />
                 <span className="text-4xl font-extrabold text-plum">{streak}</span>
-                <span className="text-muted">{streak === 1 ? "day" : "days"}</span>
+                <span className="text-muted">
+                  {streak === 1 ? "day" : "days"}
+                  {both ? " together" : ""}
+                </span>
               </p>
-              <p className="text-sm text-muted">{streak ? "Keep it going! ✨" : "Learn today to start one!"}</p>
+              <p className="text-sm text-muted">{streak ? "Keep it going! ✨" : both ? "❤️ Berlin is waiting for you two." : "Learn today to start one!"}</p>
             </div>
             <Mascot size={78} className={cx(streak ? "anim-beat" : "")} />
           </div>

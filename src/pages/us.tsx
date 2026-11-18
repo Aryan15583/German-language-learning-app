@@ -17,7 +17,7 @@ const VANISH_OPTIONS: { id: "off" | "seen" | "1d" | "30d"; label: string; hint: 
   { id: "30d", label: "30 days", hint: "Deleted on both phones 30 days after sending." },
 ];
 
-const QUICK = ["Guten Morgen, Schatz! ☀️", "Ich vermisse dich 💞", "Ich liebe dich", "Schlaf gut! 🌙", "Ich bin stolz auf dich", "Du fehlst mir"];
+const QUICK = ["Gut gemacht! 👏", "Ich bin stolz auf dich ❤️", "Du schaffst das! 💪", "Lass uns lernen! 📚", "Guten Morgen, Schatz! ☀️", "Ich vermisse dich 💞", "Ich liebe dich", "Schlaf gut! 🌙"];
 
 /** Our journey: link phones with a code, then chat, battle and share. */
 export default function Us() {

@@ -4,10 +4,14 @@ import type { LevelId, Topic, Word } from "./levels";
 
 export type Text2 = { en: string; mr: string };
 
-export type Postcard = { place: string; line: string; emoji: string; art: string };
+export type Postcard = { place: string; line: string; emoji: string; art?: string };
 
 export type JourneyStop = {
   id: string;
+  /** The German city this stop is in. */
+  city: string;
+  /** Where the city sits on the little Germany map (longitude, latitude). */
+  lonLat: [number, number];
   emoji: string;
   title: string;
   /** Lessons passed (on average, as a couple) needed to reach this stop. */
@@ -23,11 +27,13 @@ export type JourneyStop = {
 export const JOURNEY: JourneyStop[] = [
   {
     id: "flughafen",
+    city: "München",
+    lonLat: [11.58, 48.14],
     emoji: "✈️",
     title: "Airport German",
     need: 1,
     level: "A1",
-    about: { en: "You land at BER. Find your way out of the airport.", mr: "तुम्ही BER विमानतळावर उतरलात. विमानतळातून बाहेर पडायचा मार्ग शोधा." },
+    about: { en: "You land in München. Find your way out of the airport.", mr: "Du landest in München. विमानतळातून बाहेर पडायचा मार्ग शोधा." },
     tip: { title: "Wo ist …?", body: "\"Wo ist …?\" (Where is …?) gets you almost anywhere: Wo ist der Ausgang? Wo ist das Taxi?" },
     words: [
       { de: "der Flughafen", en: "the airport", mr: "विमानतळ" },
@@ -37,15 +43,17 @@ export const JOURNEY: JourneyStop[] = [
       { de: "Wo ist der Ausgang?", en: "Where is the exit?", mr: "बाहेर जाण्याचा मार्ग कुठे आहे?" },
       { de: "Ich bin hier im Urlaub.", en: "I'm here on holiday.", mr: "मी इथे सुट्टीवर आलो/आले आहे." },
     ],
-    postcard: { place: "Fernsehturm", line: "Our first look at Berlin from the sky.", emoji: "🗼", art: "/art/tower.jpg" },
+    postcard: { place: "Frauenkirche, München", line: "Liebe Grüße aus München! ❤️", emoji: "⛪" },
   },
   {
     id: "cafe",
+    city: "Nürnberg",
+    lonLat: [11.08, 49.45],
     emoji: "☕",
     title: "Café",
     need: 2,
     level: "A1",
-    about: { en: "Your first German coffee. Order, pay, and enjoy.", mr: "तुमची पहिली जर्मन कॉफी. ऑर्डर द्या, पैसे द्या आणि आनंद घ्या." },
+    about: { en: "Your first German coffee in Nürnberg. Order, pay, and enjoy.", mr: "न्युर्नबर्गमध्ये तुमची पहिली जर्मन कॉफी. ऑर्डर द्या, पैसे द्या आणि आनंद घ्या." },
     tip: { title: "bitte = please", body: "Add \"bitte\" to anything and it becomes a polite request: Zwei Kaffee, bitte. Die Rechnung, bitte." },
     words: [
       { de: "bestellen", en: "to order", mr: "ऑर्डर देणे" },
@@ -55,15 +63,17 @@ export const JOURNEY: JourneyStop[] = [
       { de: "Zwei Kaffee, bitte.", en: "Two coffees, please.", mr: "दोन कॉफी, प्लीज." },
       { de: "Die Rechnung, bitte.", en: "The bill, please.", mr: "बिल द्या, प्लीज." },
     ],
-    postcard: { place: "Potsdamer Platz", line: "Coffee for two in the middle of the city.", emoji: "☕", art: "/art/skyline.jpg" },
+    postcard: { place: "Kaiserburg, Nürnberg", line: "Lebkuchen and coffee for two.", emoji: "🏰" },
   },
   {
     id: "wohnung",
+    city: "Frankfurt",
+    lonLat: [8.68, 50.11],
     emoji: "🏠",
     title: "Apartment",
     need: 4,
     level: "A2",
-    about: { en: "Viewing your first Berlin flat together.", mr: "बर्लिनमधला तुमचा पहिला फ्लॅट एकत्र बघताय." },
+    about: { en: "Viewing your first flat together in Frankfurt.", mr: "फ्रँकफर्टमध्ये तुमचा पहिला फ्लॅट एकत्र बघताय." },
     tip: { title: "mein / meinen", body: "\"mein Schlüssel\" becomes \"meinen Schlüssel\" when it's the thing you forget, buy or have: Ich habe meinen Schlüssel vergessen." },
     words: [
       { de: "die Wohnung", en: "the apartment", mr: "फ्लॅट" },
@@ -73,15 +83,17 @@ export const JOURNEY: JourneyStop[] = [
       { de: "Wie hoch ist die Miete?", en: "How much is the rent?", mr: "भाडं किती आहे?" },
       { de: "Ich habe meinen Schlüssel vergessen.", en: "I forgot my key.", mr: "मी माझी किल्ली विसरलो/विसरले." },
     ],
-    postcard: { place: "East Side Gallery", line: "Painting our own little corner of Berlin.", emoji: "🎨", art: "/art/skyline.jpg" },
+    postcard: { place: "Römerberg, Frankfurt", line: "Our first little home in Germany.", emoji: "🏠" },
   },
   {
     id: "bahnhof",
+    city: "Köln",
+    lonLat: [6.96, 50.94],
     emoji: "🚆",
     title: "Train Station",
     need: 6,
     level: "A2",
-    about: { en: "Berlin Hauptbahnhof: tickets, platforms and directions.", mr: "बर्लिन हाउप्टबानहोफ: तिकीट, फलाट आणि रस्ता." },
+    about: { en: "Köln Hauptbahnhof, right next to the cathedral: tickets, platforms and directions.", mr: "कोलोन हाउप्टबानहोफ, कॅथेड्रलच्या शेजारी: तिकीट, फलाट आणि रस्ता." },
     tip: { title: "Directions", body: "geradeaus = straight on, links = left, rechts = right. \"Geradeaus und dann links\" will take you far." },
     words: [
       { de: "der Bahnsteig", en: "the platform", mr: "फलाट" },
@@ -91,15 +103,17 @@ export const JOURNEY: JourneyStop[] = [
       { de: "Wo fährt der Zug nach Potsdam ab?", en: "Where does the train to Potsdam leave from?", mr: "पॉट्सडॅमची गाडी कुठून सुटते?" },
       { de: "Geradeaus und dann links.", en: "Straight ahead and then left.", mr: "सरळ जा आणि मग डावीकडे." },
     ],
-    postcard: { place: "Berlin Hauptbahnhof", line: "All trains lead to you.", emoji: "🚉", art: "/art/skyline.jpg" },
+    postcard: { place: "Kölner Dom", line: "All trains lead to you.", emoji: "⛪" },
   },
   {
     id: "einkaufen",
+    city: "Leipzig",
+    lonLat: [12.37, 51.34],
     emoji: "🛍️",
     title: "Shopping",
     need: 8,
     level: "A2",
-    about: { en: "Prices, sizes and trying things on.", mr: "किंमती, मापं आणि कपडे घालून बघणं." },
+    about: { en: "Shopping in Leipzig's old arcades: prices, sizes and trying things on.", mr: "लाइपझिगच्या जुन्या पॅसेजमध्ये खरेदी: किंमती, मापं आणि कपडे घालून बघणं." },
     tip: { title: "Kann ich …?", body: "\"Kann ich …?\" (Can I …?) puts the second verb at the very end: Kann ich das anprobieren?" },
     words: [
       { de: "Was kostet das?", en: "How much is that?", mr: "याची किंमत किती?" },
@@ -109,15 +123,17 @@ export const JOURNEY: JourneyStop[] = [
       { de: "Kann ich das anprobieren?", en: "Can I try this on?", mr: "मी हे घालून बघू शकतो/शकते का?" },
       { de: "Ich schaue nur.", en: "I'm just looking.", mr: "मी फक्त बघतोय/बघतेय." },
     ],
-    postcard: { place: "Museumsinsel", line: "Five museums, one island, two of us.", emoji: "🏛️", art: "/art/skyline.jpg" },
+    postcard: { place: "Mädler-Passage, Leipzig", line: "Window shopping, hand in hand.", emoji: "🛍️" },
   },
   {
     id: "leute",
+    city: "Dresden",
+    lonLat: [13.74, 51.05],
     emoji: "💬",
     title: "Meeting Locals",
     need: 10,
     level: "B1",
-    about: { en: "Small talk with neighbours and new friends.", mr: "शेजारी आणि नवीन मित्रांशी गप्पा." },
+    about: { en: "Small talk with new neighbours and friends in Dresden.", mr: "ड्रेस्डेनमध्ये नवीन शेजारी आणि मित्रांशी गप्पा." },
     tip: { title: "Langsamer, bitte!", body: "Didn't catch it? \"Langsamer, bitte\" (slower, please) and \"Noch einmal, bitte\" (once more, please) are your best friends." },
     words: [
       { de: "Woher kommst du?", en: "Where are you from?", mr: "तू कुठून आहेस?" },
@@ -127,15 +143,17 @@ export const JOURNEY: JourneyStop[] = [
       { de: "Sprechen Sie Englisch?", en: "Do you speak English?", mr: "तुम्ही इंग्रजी बोलता का?" },
       { de: "Langsamer, bitte.", en: "Slower, please.", mr: "जरा हळू, प्लीज." },
     ],
-    postcard: { place: "Berliner Dom", line: "New friends, same old us.", emoji: "⛪", art: "/art/skyline.jpg" },
+    postcard: { place: "Frauenkirche, Dresden", line: "New friends, same old us.", emoji: "⛪" },
   },
   {
     id: "date",
+    city: "Potsdam",
+    lonLat: [13.06, 52.39],
     emoji: "❤️",
     title: "Date Night",
     need: 13,
     level: "B1",
-    about: { en: "Compliments, feelings and a little romance.", mr: "कौतुक, भावना आणि थोडासा रोमान्स." },
+    about: { en: "A date night in Potsdam: compliments, feelings and a little romance.", mr: "पॉट्सडॅममध्ये डेट नाईट: कौतुक, भावना आणि थोडासा रोमान्स." },
     tip: { title: "Darf ich …?", body: "\"Darf ich …?\" (May I …?) is the sweetest polite question. Like \"Kann ich\", the second verb goes to the end." },
     words: [
       { de: "Du siehst wunderschön aus.", en: "You look beautiful.", mr: "तू खूप सुंदर दिसतेस/दिसतोस." },
@@ -145,15 +163,17 @@ export const JOURNEY: JourneyStop[] = [
       { de: "Tanzen wir?", en: "Shall we dance?", mr: "आपण नाचूया का?" },
       { de: "Ich denke nur an dich.", en: "I only think of you.", mr: "मी फक्त तुझाच विचार करतो/करते." },
     ],
-    postcard: { place: "Tiergarten", line: "A walk in the park, hand in hand.", emoji: "🌳", art: "/art/couple.jpg" },
+    postcard: { place: "Schloss Sanssouci, Potsdam", line: "A walk in the park, hand in hand.", emoji: "🌳", art: "/art/couple.jpg" },
   },
   {
     id: "berlin",
+    city: "Berlin",
+    lonLat: [13.4, 52.52],
     emoji: "🇩🇪",
     title: "Berlin!",
     need: 16,
     level: "B2",
-    about: { en: "You made it. Welcome home.", mr: "तुम्ही पोहोचलात. घरी स्वागत आहे." },
+    about: { en: "You made it to Berlin. Welcome home.", mr: "तुम्ही बर्लिनला पोहोचलात. घरी स्वागत आहे." },
     tip: { title: "geschafft!", body: "\"Wir haben es geschafft!\" — we did it! \"Gemeinsam\" means together, side by side." },
     words: [
       { de: "Wir sind da!", en: "We're here!", mr: "आपण पोहोचलो!" },
@@ -163,7 +183,7 @@ export const JOURNEY: JourneyStop[] = [
       { de: "Willkommen in Berlin!", en: "Welcome to Berlin!", mr: "बर्लिनमध्ये स्वागत आहे!" },
       { de: "Gemeinsam geschafft.", en: "We made it together.", mr: "आपण मिळून करून दाखवलं." },
     ],
-    postcard: { place: "Brandenburger Tor", line: "One step closer — and then we were there.", emoji: "🏛️", art: "/art/gate.jpg" },
+    postcard: { place: "Brandenburger Tor, Berlin", line: "One step closer — and then we were there.", emoji: "🏛️", art: "/art/gate.jpg" },
   },
 ];
 

@@ -7,7 +7,27 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { accountsEnabled, fetchAuthSettings, supabase, type AuthSettings } from "./supabase";
 import { cloudIsNewer, deriveVaultKey, newSalt, openBackup, sealBackup } from "../core/lib/vault";
 
-export type Phase = "loading" | "off" | "signed-out" | "unlock" | "recovery" | "ready";
+export type Phase = "loading" | "off" | "signed-out" | "unlock" | "recovery" | "ready" | "error";
+
+/** Never wait forever for the network: give up after this long and offer "Try again". */
+export const LOAD_TIMEOUT_MS = 10_000;
+
+/** Resolve with the promise, or reject after `ms` milliseconds. */
+export function withTimeout<T>(p: Promise<T>, ms = LOAD_TIMEOUT_MS): Promise<T> {
+  return new Promise((res, rej) => {
+    const t = setTimeout(() => rej(new Error("timeout")), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        res(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        rej(e);
+      },
+    );
+  });
+}
 export type Provider = "email" | "google";
 export type Account = { id: string; email: string; provider: Provider };
 
@@ -160,7 +180,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     if (!sb) return;
     let alive = true;
     (async () => {
-      const { data } = await sb.auth.getSession();
+      let data: Awaited<ReturnType<typeof sb.auth.getSession>>["data"];
+      try {
+        ({ data } = await withTimeout(sb.auth.getSession()));
+      } catch {
+        if (alive) setPhase("error");
+        return;
+      }
       const user = data.session?.user;
       if (!alive) return;
       if (!user) return setPhase((p) => (p === "recovery" ? p : "signed-out"));
@@ -170,7 +196,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       if (!saved) {
         // Google accounts unlock with a backup passphrase: choose one, or enter the existing one?
         if (acct.provider === "google") {
-          const row = await fetchRow(user.id).catch(() => null);
+          const row = await withTimeout(fetchRow(user.id)).catch(() => null);
           if (alive) setHasBackup(!!row);
         }
         return setPhase((p) => (p === "recovery" ? p : "unlock"));
@@ -179,7 +205,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       // Use whichever copy is newer: the cloud's (e.g. changes from another phone) or this phone's
       // (e.g. changes made just before the app was closed). Offline: this phone's copy.
       try {
-        const row = await fetchRow(user.id);
+        const row = await withTimeout(fetchRow(user.id));
         if (row && row.salt === vault.current.salt) {
           const cloud = openBackup(vault.current.key, row.blob);
           const local = await AsyncStorage.getItem(stateKey(user.id)).catch(() => null);
