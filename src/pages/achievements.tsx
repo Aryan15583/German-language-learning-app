@@ -19,7 +19,7 @@ export default function Achievements() {
       <p className="text-muted">{both ? `Collect them together — who gets more, ${partnerName(state, 0)} or ${partnerName(state, 1)}?` : "Collect them all!"}</p>
       <div className="mt-3 flex gap-3">
         {people.map((i) => (
-          <span key={i} className={cx("rounded-full px-4 py-1.5 text-sm font-bold text-white", i ? "bg-partner" : "bg-plum")}>
+          <span key={i} className={cx("rounded-full px-4 py-1.5 text-sm font-bold text-white", i ? "bg-them" : "bg-me")}>
             {partnerName(state, i)}: {count(i)} / {ACHIEVEMENTS.length}
           </span>
         ))}
@@ -40,7 +40,7 @@ export default function Achievements() {
                   <span
                     key={i}
                     aria-label={`${got[k] ? "Earned" : "Not yet"} by ${partnerName(state, i)}`}
-                    className={cx("grid h-6 w-6 place-items-center rounded-full text-[11px] font-extrabold text-white", got[k] ? (i ? "bg-partner" : "bg-plum") : "bg-line")}
+                    className={cx("grid h-6 w-6 place-items-center rounded-full text-[11px] font-extrabold text-white", got[k] ? (i ? "bg-them" : "bg-me") : "bg-line")}
                   >
                     {partnerName(state, i).slice(0, 1).toUpperCase()}
                   </span>

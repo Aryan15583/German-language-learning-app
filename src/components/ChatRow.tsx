@@ -23,7 +23,7 @@ export function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; n
   const [confirmDelete, setConfirmDelete] = useState(false);
   if (m.kind === "system") return <p className="py-1 text-center text-xs text-muted">{m.text}</p>;
   const mine = m.from === 0;
-  const bubble = cx("cv-auto max-w-[86%] rounded-3xl px-4 py-3", mine ? "ml-auto rounded-br-md bg-blush" : "mr-auto rounded-bl-md bg-partner-soft");
+  const bubble = cx("cv-auto max-w-[86%] rounded-3xl px-4 py-3", mine ? "ml-auto rounded-br-md bg-me-soft" : "mr-auto rounded-bl-md bg-them-soft");
   const time = new Date(m.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   if (m.kind === "duel") {

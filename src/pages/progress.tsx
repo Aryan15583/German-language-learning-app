@@ -30,9 +30,9 @@ export default function Progress() {
         <Card className="lg:col-span-2">
           <h2 className="text-lg font-bold">{theirs ? "Side by side" : "You"}</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <PersonCard s={mine} color="var(--color-plum)" />
+            <PersonCard s={mine} color="var(--color-me)" />
             {theirs ? (
-              <PersonCard s={theirs} color="var(--color-partner)" />
+              <PersonCard s={theirs} color="var(--color-them)" />
             ) : (
               <Link href="/us" className="grid place-items-center rounded-3xl border-2 border-dashed border-rose-soft p-6 text-center text-muted hover:text-plum">
                 💞 Link your partner to see them here

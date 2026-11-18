@@ -51,7 +51,7 @@ function Duel({ raw, info }: { raw: string; info: NonNullable<ReturnType<typeof 
             raw={raw}
             seed={seed}
             lang={state.partners[player].lang}
-            color={player ? "bg-partner" : "bg-plum"}
+            color={player ? "bg-them" : "bg-me"}
             label={`${partnerName(state, player)}’s turn`}
             onFinish={(correct) => {
               const next: [number, number] = player === 0 ? [correct, 0] : [scores[0], correct];
@@ -88,7 +88,7 @@ function Result({ scores, onRematch }: { scores: [number, number]; onRematch: ()
       <Card className="mt-5 flex justify-around">
         {([0, 1] as const).map((i) => (
           <div key={i}>
-            <p className={i ? "text-4xl font-extrabold text-partner" : "text-4xl font-extrabold text-plum"}>{scores[i]}</p>
+            <p className={i ? "text-4xl font-extrabold text-them" : "text-4xl font-extrabold text-me"}>{scores[i]}</p>
             <p className="text-muted">{partnerName(state, i)}</p>
           </div>
         ))}

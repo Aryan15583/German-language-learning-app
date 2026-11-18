@@ -7,4 +7,9 @@
   } catch (e) {}
   var dark = pref === "dark" || (pref === "system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
   document.documentElement.classList.toggle("dark", dark);
+  // My colour (blue or pink) for the two of us.
+  try {
+    var prefs = JSON.parse(localStorage.getItem("zh-prefs") || "{}");
+    document.documentElement.classList.toggle("me-blue", prefs && prefs.myColor === "blue");
+  } catch (e) {}
 })();

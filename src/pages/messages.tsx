@@ -27,7 +27,7 @@ export default function Messages() {
 }
 
 function Avatar({ name, size = "h-10 w-10 text-base" }: { name: string; size?: string }) {
-  return <span className={cx("grid shrink-0 place-items-center rounded-full bg-partner font-bold text-white", size)}>{name.slice(0, 1).toUpperCase()}</span>;
+  return <span className={cx("grid shrink-0 place-items-center rounded-full bg-them font-bold text-white", size)}>{name.slice(0, 1).toUpperCase()}</span>;
 }
 
 function Chat({ onInfo }: { onInfo: () => void }) {

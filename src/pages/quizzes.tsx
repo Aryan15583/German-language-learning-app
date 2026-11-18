@@ -63,7 +63,7 @@ export default function Quizzes() {
                 <Card key={d.id} className="p-4">
                   <div className="flex items-center gap-2">
                     <p className="flex-1 font-bold">{duelInfo(d.topic)?.title ?? d.topic}</p>
-                    <span className="font-extrabold text-plum">{d.scores[0] ?? "–"}</span>:<span className="font-extrabold text-partner">{d.scores[1] ?? "–"}</span>
+                    <span className="font-extrabold text-me">{d.scores[0] ?? "–"}</span>:<span className="font-extrabold text-them">{d.scores[1] ?? "–"}</span>
                   </div>
                   <p className="text-sm text-muted">
                     {{ "your-turn": "Your turn!", "their-turn": `Waiting for ${partnerName(state, 1)}…`, won: "You won 🏆", lost: "They won 💪", tie: "Tie 🤝" }[status]}
@@ -117,7 +117,7 @@ export default function Quizzes() {
             {recent.map((d, k) => (
               <div key={k} className="flex items-center gap-2 py-2">
                 <span className="flex-1">{d.title}</span>
-                <span className="font-extrabold text-plum">{d.scores[0]}</span>:<span className="font-extrabold text-partner">{d.scores[1]}</span>
+                <span className="font-extrabold text-me">{d.scores[0]}</span>:<span className="font-extrabold text-them">{d.scores[1]}</span>
               </div>
             ))}
           </Card>

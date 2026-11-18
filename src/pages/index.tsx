@@ -196,11 +196,11 @@ export default function Home() {
             </Link>
           </div>
           <div className="mt-4 flex items-center justify-around gap-2">
-            <Person stats={mine} color="var(--color-plum)" />
+            <Person stats={mine} color="var(--color-me)" />
             {theirs ? (
               <>
                 <Heart className="text-rose" fill="currentColor" size={22} />
-                <Person stats={theirs} color="var(--color-partner)" />
+                <Person stats={theirs} color="var(--color-them)" />
               </>
             ) : (
               <Link href="/us" className="flex flex-col items-center gap-2 text-center text-sm text-muted hover:text-plum">
@@ -210,8 +210,8 @@ export default function Home() {
             )}
           </div>
           <div className="mt-4 space-y-2 text-sm">
-            <Bar label={`${mine.name} · ${mine.levelId}`} value={mine.levelShare} color="bg-plum" />
-            {theirs ? <Bar label={`${theirs.name} · ${theirs.levelId}`} value={theirs.levelShare} color="bg-partner" /> : null}
+            <Bar label={`${mine.name} · ${mine.levelId}`} value={mine.levelShare} color="bg-me" />
+            {theirs ? <Bar label={`${theirs.name} · ${theirs.levelId}`} value={theirs.levelShare} color="bg-them" /> : null}
             {theirs ? <Bar label={`❤️ Together · ${togetherLevel} → ${nextLevel}`} value={togetherShare} color="bg-rose" /> : null}
           </div>
           {theirs ? (
@@ -322,12 +322,12 @@ export default function Home() {
             <>
               <div className="mt-3 flex items-end justify-around text-center">
                 <div>
-                  <p className="text-3xl font-extrabold text-plum">{mine.weekXp}</p>
+                  <p className="text-3xl font-extrabold text-me">{mine.weekXp}</p>
                   <p className="text-xs text-muted">{mine.name}</p>
                 </div>
                 <p className="pb-4 text-sm text-muted">vs</p>
                 <div>
-                  <p className="text-3xl font-extrabold text-partner">{theirs.weekXp}</p>
+                  <p className="text-3xl font-extrabold text-them">{theirs.weekXp}</p>
                   <p className="text-xs text-muted">{theirs.name}</p>
                 </div>
               </div>

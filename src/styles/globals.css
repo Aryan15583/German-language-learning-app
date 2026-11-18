@@ -22,6 +22,12 @@
   --color-bad: #c84a5a;
   --color-partner: #5a7fc4;
   --color-partner-soft: #e6eefb;
+  /* Each person's colour (Me → Appearance → My colour). Default: me pink, my partner blue. */
+  --color-pink: #d4417f;
+  --color-me: var(--color-pink);
+  --color-me-soft: var(--color-blush);
+  --color-them: var(--color-partner);
+  --color-them-soft: var(--color-partner-soft);
 
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-script: "Dancing Script", "Brush Script MT", cursive;
@@ -41,6 +47,7 @@
 
 /* Berlin at night */
 :root.dark {
+  --color-pink: #e0629a;
   color-scheme: dark;
   --color-plum: #c9477f;
   --color-plum-dark: #9d2f5e;
@@ -247,4 +254,12 @@ a.card-premium { transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-
   .desk-scroll::-webkit-scrollbar-thumb { background: var(--color-rose-soft); border-radius: 999px; }
   .desk-scroll::-webkit-scrollbar-thumb:hover { background: var(--color-rose); }
   .desk-scroll::-webkit-scrollbar-track { background: transparent; }
+}
+
+/* "My colour: blue" — I'm blue, my partner is pink. */
+:root.me-blue {
+  --color-me: var(--color-partner);
+  --color-me-soft: var(--color-partner-soft);
+  --color-them: var(--color-pink);
+  --color-them-soft: var(--color-blush);
 }
