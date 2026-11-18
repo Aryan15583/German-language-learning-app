@@ -111,12 +111,16 @@ async function encrypt(payload: Uint8Array, p256dh: string, auth: string): Promi
 // ---------- sending ----------
 type Sub = { endpoint: string; p256dh: string; auth: string };
 
+/** Only real push services (the database checks this too), so this function can't be aimed at other sites. */
+const PUSH_HOST = /^https:\/\/(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[a-z0-9-]+\.notify\.windows\.com|web\.push\.apple\.com|[a-z0-9-]+\.push\.apple\.com)\//;
+const endpointOk = (e: string) => PUSH_HOST.test(e) || (Deno.env.get("NOTIFY_TEST_ENDPOINTS") === "1" && e.startsWith("https://127.0.0.1:"));
+
 async function sendAll(subs: Sub[], payload: { t: string }): Promise<number> {
   const k = await keys();
   const remind = payload.t === "remind";
   let sent = 0;
   await Promise.all(
-    subs.map(async (s) => {
+    subs.filter((s) => endpointOk(s.endpoint)).map(async (s) => {
       try {
         const body = await encrypt(utf8(JSON.stringify(payload)), s.p256dh, s.auth);
         const res = await fetch(s.endpoint, {
@@ -173,8 +177,8 @@ Deno.serve(async (req) => {
     const subs = (await rest(`push_subs?mailbox=eq.${q(mailbox)}&select=endpoint,p256dh,auth`)) as Sub[];
     return json({ sent: subs.length ? await sendAll(subs, { t: "msg" }) : 0 });
   } catch (e) {
+    // The reason goes to the function's Logs only (Supabase → Edge Functions → notify → Logs), not to the public.
     console.error("notify failed", String(e));
-    // Say why (no secrets in here), so setup problems are easy to fix.
-    return json({ error: "server", detail: String(e instanceof Error ? e.message : e).slice(0, 300) }, 500);
+    return json({ error: "server" }, 500);
   }
 });

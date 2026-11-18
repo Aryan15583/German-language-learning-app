@@ -24,12 +24,16 @@ export function openBackup(key: string, blob: string): unknown {
   return data.state;
 }
 
-export const MIN_PASSWORD = 8;
+export const MIN_PASSWORD = 10;
+
+/** A few passwords everyone tries first. */
+const COMMON = new Set(["password12", "passwort12", "1234567890", "qwertyuiop", "iloveyou12", "password123", "passwort123", "qwertz1234", "abcdefghij", "0987654321", "ichliebedich", "iloveyou123"]);
 
 export function passwordProblem(password: string): string | null {
-  if (password.length < MIN_PASSWORD) return `Use at least ${MIN_PASSWORD} characters.`;
-  if (/^\d+$/.test(password)) return "Mix in some letters, not only numbers.";
   if (password.length > 128) return "That's a bit long — 128 characters max.";
+  if (/^\d+$/.test(password)) return "Mix in some letters, not only numbers.";
+  if (password.length < MIN_PASSWORD) return `Use at least ${MIN_PASSWORD} characters.`;
+  if (/^(.)\1+$/.test(password) || COMMON.has(password.toLowerCase())) return "That one is too easy to guess — try a short sentence, like “Berlin2027mitDir!”.";
   return null;
 }
 

@@ -82,3 +82,38 @@ describe("memory book", () => {
     expect(migrate({ memories: [null, { id: "y", at: 2, title: "ok" }] }).memories).toHaveLength(1);
   });
 });
+
+describe("edit and delete messages", () => {
+  const linked = (): AppState => ({
+    ...freshState(),
+    couple: { id: couple.id, key: couple.key, status: "linked", since: now, role: "creator" },
+    chat: [
+      { id: "mine", from: 0, kind: "msg", text: "Halo", at: 1 },
+      { id: "theirs", from: 1, kind: "msg", text: "Hallo!", at: 2 },
+      { id: "sys", from: 0, kind: "system", text: "linked", at: 0 },
+    ],
+  });
+  it("I can edit and delete only my own messages", () => {
+    let s = recordOutgoing(linked(), "e1", { kind: "edit", to: "mine", text: "Hallo ❤️" }, now);
+    expect(s.chat[0]).toMatchObject({ text: "Hallo ❤️", edited: now });
+    expect(recordOutgoing(s, "e2", { kind: "edit", to: "theirs", text: "hacked" }, now).chat[1].text).toBe("Hallo!");
+    expect(recordOutgoing(s, "e3", { kind: "edit", to: "sys", text: "x" }, now)).toBe(s);
+    s = recordOutgoing(s, "e4", { kind: "unsend", to: "mine" }, now);
+    expect(s.chat.map((m) => m.id)).toEqual(["theirs", "sys"]);
+    expect(recordOutgoing(s, "e5", { kind: "unsend", to: "theirs" }, now).chat).toHaveLength(2);
+  });
+  it("my partner's edit and delete arrive encrypted and only touch their messages", () => {
+    const edit = roundTrip({ kind: "edit", to: "theirs", text: "Hallo, Schatz!" });
+    let s = receive(linked(), edit, now).state;
+    expect(s.chat[1]).toMatchObject({ text: "Hallo, Schatz!" });
+    expect(s.chat[1].edited).toBeGreaterThan(0);
+    // They can't change what I wrote.
+    s = receive(s, roundTrip({ kind: "edit", to: "mine", text: "nope" }), now).state;
+    expect(s.chat[0].text).toBe("Halo");
+    s = receive(s, roundTrip({ kind: "unsend", to: "mine" }), now).state;
+    expect(s.chat.some((m) => m.id === "mine")).toBe(true);
+    s = receive(s, roundTrip({ kind: "unsend", to: "theirs" }), now).state;
+    expect(s.chat.some((m) => m.id === "theirs")).toBe(false);
+    expect(() => roundTrip({ kind: "edit", to: "theirs", text: "" })).toThrow();
+  });
+});

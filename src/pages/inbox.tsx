@@ -35,9 +35,13 @@ export default function Inbox() {
   const yourTurn = duel && couple.duelStatus(duel) === "your-turn";
   const what = {
     hello: "linked your phones 💞",
+    offer: "made a partner code 💞",
+    join: "linked your phones 💞",
     stats: "shared their progress 📈",
     viewed: "saw your disappearing messages 👁",
     react: "reacted to your message ❤️",
+    edit: "edited a message ✏️",
+    unsend: "deleted a message 🗑",
     msg: "sent you a message 💬",
     note: "sent you a love note 💌",
     secret: "sent you a secret 🔒",

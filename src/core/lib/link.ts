@@ -5,6 +5,7 @@
 // strictly validated.
 import { pbkdf2 } from "@noble/hashes/pbkdf2.js";
 import { isReaction } from "./couplelife";
+import { isDhPub } from "./pair";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { LEVEL_IDS, type Lang, type LevelId } from "../content/levels";
 import { fromBase64Url, newId, open, randomBytes, seal, toBase64Url } from "./crypto";
@@ -40,6 +41,10 @@ export const VANISH_MODES: readonly Vanish[] = ["seen", "1d", "30d"];
 
 export type Payload =
   | { kind: "hello"; key: string }
+  /** Safe pairing v2: the code maker's public key (left in the offer mailbox). */
+  | { kind: "offer"; pub: string }
+  /** Safe pairing v2: the partner's public key (sent back to the code maker). */
+  | { kind: "join"; pub: string }
   | { kind: "stats" }
   | { kind: "duel"; duel: DuelMove }
   | { kind: "msg"; text: string; vanish?: Vanish }
@@ -49,7 +54,11 @@ export type Payload =
   | { kind: "secret"; text: string; unlockAt: number }
   | { kind: "word"; word: SharedWord }
   /** An emoji reaction on one message ("" removes it). */
-  | { kind: "react"; to: string; emoji: string };
+  | { kind: "react"; to: string; emoji: string }
+  /** Change the text of one of my own messages. */
+  | { kind: "edit"; to: string; text: string }
+  /** Delete one of my own messages on both phones. */
+  | { kind: "unsend"; to: string };
 
 export type Envelope = {
   v: 1;
@@ -113,6 +122,9 @@ function payload(x: Record<string, unknown>): Payload {
   switch (x.kind) {
     case "hello":
       return { kind: "hello", key: keyStr(x.key) };
+    case "offer":
+    case "join":
+      return { kind: x.kind, pub: isDhPub(x.pub) ? x.pub : fail("public key invalid") };
     case "stats":
       return { kind: "stats" };
     case "duel": {
@@ -133,6 +145,10 @@ function payload(x: Record<string, unknown>): Payload {
     }
     case "note":
       return { kind: x.kind, text: str(x.text, LIMITS.text, "message") };
+    case "edit":
+      return { kind: "edit", to: idStr(x.to, "message id"), text: str(x.text, LIMITS.text, "message") };
+    case "unsend":
+      return { kind: "unsend", to: idStr(x.to, "message id") };
     case "react":
       return { kind: "react", to: idStr(x.to, "message id"), emoji: isReaction(x.emoji) ? x.emoji : fail("reaction invalid") };
     case "secret":

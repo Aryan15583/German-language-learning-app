@@ -16,7 +16,7 @@ begin
   set role anon;
 
   -- A phone subscribes; its next message triggers exactly one ping, with no message content.
-  perform public.push_subscribe(box, 'https://push.example/1', repeat('k', 87), repeat('a', 22));
+  perform public.push_subscribe(box, 'https://fcm.googleapis.com/fcm/send/1', repeat('k', 87), repeat('a', 22));
   perform public.relay_send(box, repeat('y', 40));
   perform public.relay_send(other, repeat('z', 40));
   reset role;
@@ -28,14 +28,14 @@ begin
   -- Bad input is refused.
   begin perform public.push_subscribe(box, 'http://insecure', repeat('k', 87), repeat('a', 22)); raise exception 'accepted http endpoint';
   exception when sqlstate '22023' then null; end;
-  begin perform public.push_subscribe('short', 'https://push.example/2', repeat('k', 87), repeat('a', 22)); raise exception 'accepted bad mailbox';
+  begin perform public.push_subscribe('short', 'https://fcm.googleapis.com/fcm/send/2', repeat('k', 87), repeat('a', 22)); raise exception 'accepted bad mailbox';
   exception when sqlstate '22023' then null; end;
-  begin perform public.push_subscribe(box, 'https://push.example/2', 'bad keys!', repeat('a', 22)); raise exception 'accepted bad keys';
+  begin perform public.push_subscribe(box, 'https://fcm.googleapis.com/fcm/send/2', 'bad keys!', repeat('a', 22)); raise exception 'accepted bad keys';
   exception when sqlstate '22023' then null; end;
 
   -- At most 5 phones per mailbox; re-subscribing the same phone moves it.
-  for i in 2..8 loop perform public.push_subscribe(box, 'https://push.example/' || i, repeat('k', 87), repeat('a', 22)); end loop;
-  perform public.push_subscribe(other, 'https://push.example/8', repeat('k', 87), repeat('a', 22));
+  for i in 2..8 loop perform public.push_subscribe(box, 'https://fcm.googleapis.com/fcm/send/' || i, repeat('k', 87), repeat('a', 22)); end loop;
+  perform public.push_subscribe(other, 'https://fcm.googleapis.com/fcm/send/8', repeat('k', 87), repeat('a', 22));
   reset role;
   select count(*) into n from public.push_subs where mailbox = box;
   if n <> 5 then raise exception 'expected 5 phones, got %', n; end if;
@@ -44,9 +44,9 @@ begin
   set role anon;
 
   -- Unsubscribe.
-  perform public.push_unsubscribe('https://push.example/8');
+  perform public.push_unsubscribe('https://fcm.googleapis.com/fcm/send/8');
   reset role;
-  select count(*) into n from public.push_subs where endpoint = 'https://push.example/8';
+  select count(*) into n from public.push_subs where endpoint = 'https://fcm.googleapis.com/fcm/send/8';
   if n <> 0 then raise exception 'unsubscribe failed'; end if;
 
   -- The API roles can't read subscriptions, keys or settings directly.

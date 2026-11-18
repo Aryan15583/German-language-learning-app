@@ -8,6 +8,7 @@ import { heartLevel, isoWeek, weeklyLeader } from "../core/lib/game";
 import { CODE_TTL_MS, formatCode } from "../core/lib/link";
 import { couple, partnerName, today, useProgress } from "../web/progress";
 import { appBaseUrl, shareText } from "../web/share";
+import { usePrefs } from "../web/prefs";
 
 export default function Us() {
   const { state } = useProgress();
@@ -191,6 +192,7 @@ function CoupleChat() {
   const hl = heartLevel(them.xp);
   const last = [...state.chat].reverse().find((m) => m.kind !== "system");
   const unread = useUnread();
+  const [prefs] = usePrefs();
   const preview = !last
     ? "Say hallo! 👋"
     : last.kind === "duel"
@@ -231,7 +233,7 @@ function CoupleChat() {
       <Button href="/messages" full size="lg" className="mt-3">
         <MessageCircle size={20} /> Open chat
       </Button>
-      <Nudge name={name} learnedToday={them.remote?.streakDay === today()} />
+      {prefs.nudge ? <Nudge name={name} learnedToday={them.remote?.streakDay === today()} /> : null}
 
       {waitingForConfirm ? (
         <Card className="mt-4 border-rose-soft">

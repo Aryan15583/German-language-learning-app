@@ -1,15 +1,17 @@
-import { ArrowLeft, Bell, BookHeart, ChevronRight, Lock, Mail, Plus, RefreshCw, Send, Swords, Timer, X } from "lucide-react";
+import { ArrowLeft, Bell, BookHeart, ShieldCheck, ChevronRight, Lock, Mail, Plus, RefreshCw, Send, Swords, Timer, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChatRow, QUICK, VANISH_OPTIONS } from "../components/ChatRow";
 import { useFallback } from "../components/Fallback";
-import { Button, Chip, cx, Spinner } from "../components/ui";
+import { Button, Chip, cx, Spinner, Toggle } from "../components/ui";
+import { safetyCode } from "../core/lib/pair";
 import { heartLevel } from "../core/lib/game";
 import { couple, currentStreak, partnerName, useProgress, type ChatItem } from "../web/progress";
 import { markChatSeen } from "../components/AppShell";
 import { NotifyCard } from "../components/NotifyCard";
 import { notifyStatus } from "../web/notify";
+import { usePrefs } from "../web/prefs";
 
 /** The couple chat on its own full screen, like a messenger. Tap the name for chat settings. */
 export default function Messages() {
@@ -67,6 +69,7 @@ function Chat({ onInfo }: { onInfo: () => void }) {
   const name = partnerName(state, 1);
   const myStreak = currentStreak(state);
   const vanish = VANISH_OPTIONS.find((o) => o.id === state.vanish)!;
+  const [prefs] = usePrefs();
   // Ask once (gently) about notifications.
   const [askNotify, setAskNotify] = useState(() => {
     try {
@@ -186,6 +189,7 @@ function Chat({ onInfo }: { onInfo: () => void }) {
       {/* Composer */}
       <footer className="glass sticky bottom-0 z-20 border-t border-line/60 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
         {fallback.view}
+        {prefs.quickPhrases ? (
         <div
           className="desk-scroll mb-2 flex gap-1.5 overflow-x-auto pb-0.5"
           onWheel={(e) => {
@@ -199,6 +203,7 @@ function Chat({ onInfo }: { onInfo: () => void }) {
             </Chip>
           ))}
         </div>
+        ) : null}
         {secret ? (
           <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-rose">
             🔒 Secret message — opens when {name} reaches a 7-day streak
@@ -310,6 +315,7 @@ function ChatInfo({ onBack }: { onBack: () => void }) {
   const router = useRouter();
   const { state, setVanish, unlink, relayOn, syncStatus } = useProgress();
   const [confirmUnlink, setConfirmUnlink] = useState(false);
+  const [prefs, setPrefs] = usePrefs();
   const them = state.partners[1];
   const name = partnerName(state, 1);
   const hl = heartLevel(them.xp);
@@ -340,11 +346,36 @@ function ChatInfo({ onBack }: { onBack: () => void }) {
         </div>
       </div>
 
+      {state.couple?.proto !== 2 ? (
+        <section className="mx-4 mt-5 rounded-3xl bg-blush p-4 ring-1 ring-rose-soft">
+          <p className="font-bold text-ink">🔒 Security upgrade available</p>
+          <p className="mt-1 text-sm text-muted">
+            You linked before the safer pairing existed. Re-link once to get it: tap “Unlink phones” below, then make a new code on one phone and type it on the other. Your chat history stays.
+          </p>
+        </section>
+      ) : null}
+
       <Section title="Notifications" icon={<Bell size={16} />}>
-        <div className="px-4 pb-4 pt-1">
+        <div className="px-4 pb-2 pt-1">
           <NotifyCard compact />
+          <Toggle on={prefs.notifyPreview} onChange={(on) => setPrefs({ notifyPreview: on })} title="Show message text" hint="Off: notifications only say “New message 💌”." />
         </div>
       </Section>
+
+      <Section title="Chat">
+        <div className="px-4 pb-2">
+          <Toggle on={prefs.quickPhrases} onChange={(on) => setPrefs({ quickPhrases: on })} title="Quick phrases" hint="Little German phrases above the message box." />
+        </div>
+      </Section>
+
+      {state.couple?.proto === 2 ? (
+        <Section title="Safety code" icon={<ShieldCheck size={16} />}>
+          <p className="px-4 text-sm text-muted">Compare this with {name}’s phone (in person or on a call). If both show the same numbers, nobody could have listened in when you linked.</p>
+          <p className="px-4 pb-4 pt-2 text-center font-mono text-2xl font-bold tracking-wider text-plum" aria-label="Safety code">
+            {safetyCode(state.couple.key)}
+          </p>
+        </Section>
+      ) : null}
 
       <Section title="Disappearing messages" icon={<Timer size={16} />}>
         <p className="px-4 pb-2 text-sm text-muted">New messages you send disappear from both phones after the time you choose.</p>

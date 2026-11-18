@@ -31,6 +31,9 @@ export const inboxFor = (coupleId: string, key: string, recipient: Role) => hash
 
 /** Where the joiner's first message goes while the creator waits. */
 export const helloBox = (coupleId: string, codeKey: string) => hash(`zh-hello-v1|${coupleId}|${codeKey}`);
+/** Where the code maker leaves their public key for the partner (safe pairing v2). */
+export const offerBox = (coupleId: string, codeKey: string) => hash(`zh-offer-v2|${coupleId}|${codeKey}`);
+
 
 export const otherRole = (r: Role): Role => (r === "creator" ? "joiner" : "creator");
 
@@ -110,3 +113,6 @@ export function minuteOfDay(time: string): number | null {
   const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 }
+
+/** Empty a pairing mailbox once it's done its job (see 0006_security.sql). */
+export const relayClear = (cfg: RelayConfig, mailbox: string, fetchImpl: typeof fetch = fetch) => call<null>(cfg, "relay_clear", { p_mailbox: mailbox }, fetchImpl);

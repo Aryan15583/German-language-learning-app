@@ -15,8 +15,11 @@ import {
   type Payload,
   type SharedWord,
 } from "../core/lib/link";
-import { helloBox, inboxFor, otherRole, RelayError, relayConfig, relayFetch, relaySend } from "../core/lib/relay";
+import { helloBox, inboxFor, offerBox, otherRole, RelayError, relayClear, relayConfig, relayFetch, relaySend } from "../core/lib/relay";
+import { newDhPair } from "../core/lib/pair";
 import { messageLink } from "./share";
+import { getPrefs } from "./prefs";
+import { pinWaitSeconds, recordPinTry } from "./pinGuard";
 import { disableNotifications, enableNotifications, ensurePush, localReminderCheck, reportLearned, setReminder, type Reminder, notifyStatus, notifyWanted, rememberPartnerName, showMessageNotification, type NotifyStatus } from "./notify";
 import { archiveDiff, type ArchiveStats } from "../core/lib/archive";
 import { archiveName, askToKeepData, ChatArchive } from "./chatStore";
@@ -71,6 +74,9 @@ type Ctx = {
   disableNotify: () => Promise<void>;
   /** Daily learning reminder at a time of day. */
   saveReminder: (r: Reminder) => Promise<{ ok: boolean; push: boolean; status: NotifyStatus }>;
+  /** Edit or delete one of my own chat messages (on both phones). */
+  editMessage: (msgId: string, text: string) => void;
+  unsendMessage: (msgId: string) => void;
   /** React to a chat message with an emoji ("" removes my reaction). */
   react: (msgId: string, emoji: string) => void;
   /** Our memory book. */
@@ -255,6 +261,11 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
       }
       if (rows.length) update((x) => ({ ...x, relayCursor: { ...x.relayCursor, [box]: rows[rows.length - 1].id } }));
       setSyncStatus("ok");
+      // Just linked as the code maker: empty the pairing mailboxes so nothing about it stays on the server.
+      if (c.status === "invited" && stateRef.current.couple?.status === "linked") {
+        relayClear(relay, helloBox(c.id, c.key)).catch(() => {});
+        relayClear(relay, offerBox(c.id, c.key)).catch(() => {});
+      }
       // The app is open but not on screen (or not on the chat): show a phone notification.
       const shown = fresh.filter((e) => ["msg", "note", "secret", "word", "duel"].includes(e.kind));
       const onChat = typeof window !== "undefined" && window.location.pathname.startsWith("/messages") && document.visibilityState === "visible";
@@ -324,6 +335,25 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
       localReminderCheck(t.date === today() && t.xp > 0, today());
     }, 60_000);
     return () => clearInterval(id);
+  }, [ready]);
+
+  // App lock: with a PIN, lock again after the app was in the background a while (Me → Privacy).
+  useEffect(() => {
+    if (!ready) return;
+    let hiddenAt = 0;
+    const onVis = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+        return;
+      }
+      const s = stateRef.current;
+      const after = getPrefs().lockAfter;
+      if (!hiddenAt || after === "never" || !s.partners[s.learner].pin) return;
+      if (Date.now() - hiddenAt >= Number(after) * 60_000) setLocked(true);
+      hiddenAt = 0;
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
   }, [ready]);
 
   // ---- chat archive (IndexedDB): the full history, saved in the background ----
@@ -412,6 +442,15 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
       },
       disableNotify: () => disableNotifications(relay),
       saveReminder: (r) => setReminder(relay, r),
+      editMessage: (msgId, text) => {
+        if (C.isLinked(stateRef.current)) send({ kind: "edit", to: msgId, text }).catch(() => {});
+        else update((s) => L.editMessage(s, msgId, 0, text, Date.now()));
+      },
+      unsendMessage: (msgId) => {
+        if (C.isLinked(stateRef.current)) send({ kind: "unsend", to: msgId }).catch(() => {});
+        else update((s) => L.unsendMessage(s, msgId, 0));
+        archive?.apply([], [msgId]).catch(() => {});
+      },
       react: (msgId, emoji) => {
         if (C.isLinked(stateRef.current)) send({ kind: "react", to: msgId, emoji }).catch(() => {});
         else update((s) => L.setReaction(s, msgId, 0, emoji));
@@ -442,8 +481,10 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
           setLocked(false);
           return true;
         }
+        if (pinWaitSeconds() > 0) return false;
         await nextFrame();
         const ok = verifyPin(pin, p.pin);
+        recordPinTry(ok);
         if (ok) setLocked(false);
         return ok;
       },
@@ -464,7 +505,16 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
         const code = newPairCode();
         await nextFrame();
         const couple = coupleFromCode(code);
-        update((s) => C.startPairing(s, code, couple, Date.now()));
+        if (!relay) {
+          // Without the in-app relay, pairing uses links (older method).
+          update((s) => C.startPairing(s, code, couple, Date.now()));
+          return code;
+        }
+        // Safe pairing: leave my one-time public key for my partner, encrypted with the code key.
+        const dh = newDhPair();
+        update((s) => C.startPairing(s, code, couple, Date.now(), dh));
+        const offer = envelopeFor({ kind: "offer", pub: dh.pub });
+        await deliver(offerBox(couple.id, couple.key), sealEnvelope(couple.key, offer));
         return code;
       },
       joinCode: async (input) => {
@@ -472,6 +522,30 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
         if (!code) return { ok: false, error: "A code has 6 letters and numbers, like K7M-2QX." };
         await nextFrame();
         const couple = coupleFromCode(code);
+        if (relay) {
+          // Safe pairing: find my partner's public key for this code.
+          let creatorPub: string | null = null;
+          try {
+            const rows = await relayFetch(relay, offerBox(couple.id, couple.key), 0);
+            for (const row of rows) {
+              try {
+                const env = openEnvelope(couple.key, couple.id, row.payload);
+                if (env.kind === "offer") creatorPub = env.pub;
+              } catch {
+                // not a valid offer: skip
+              }
+            }
+          } catch {
+            return { ok: false, error: "Can’t reach the internet right now. Try again in a moment." };
+          }
+          if (!creatorPub) return { ok: false, error: "That code wasn’t found. Check it, or ask your partner for a new one (codes last 24 hours, and both phones need the latest app)." };
+          const { state: joined, codeKey, pub } = C.joinSafely(stateRef.current, couple, creatorPub, Date.now());
+          update(() => joined);
+          const join = envelopeFor({ kind: "join", pub });
+          const result = await deliver(helloBox(couple.id, codeKey), sealEnvelope(codeKey, join));
+          relayClear(relay, offerBox(couple.id, codeKey)).catch(() => {});
+          return { ok: true, result };
+        }
         const { state: joined, codeKey, freshKey } = C.joinWithCode(stateRef.current, couple, Date.now());
         update(() => joined);
         const hello = envelopeFor({ kind: "hello", key: freshKey });
@@ -481,7 +555,7 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
       resendHello: async () => {
         const c = stateRef.current.couple;
         if (!c || c.role !== "joiner" || !c.previousKey) return null;
-        const hello = envelopeFor({ kind: "hello", key: c.key });
+        const hello = c.proto === 2 && c.myPub ? envelopeFor({ kind: "join", pub: c.myPub }) : envelopeFor({ kind: "hello", key: c.key });
         return deliver(helloBox(c.id, c.previousKey), sealEnvelope(c.previousKey, hello));
       },
       send,
