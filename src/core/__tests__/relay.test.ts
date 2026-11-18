@@ -1,4 +1,4 @@
-import { helloBox, inboxFor, otherRole, RelayError, relayConfig, relayFetch, relaySend } from "../lib/relay";
+import { helloBox, inboxFor, otherRole, pushPublicKey, pushSubscribe, RelayError, relayConfig, relayFetch, relaySend } from "../lib/relay";
 
 const cfg = { url: "https://abc.supabase.co", key: "aaa.bbb.ccc" };
 
@@ -73,5 +73,32 @@ describe("relay calls", () => {
     });
     await expect(relayFetch(cfg, "b", 0, offline as unknown as typeof fetch)).rejects.toThrow(/Can't reach/);
     await expect(relayFetch(cfg, "b", 0, fakeFetch(200, { not: "an array" }))).rejects.toThrow(RelayError);
+  });
+});
+
+describe("message notifications (push)", () => {
+  const cfg = { url: "https://example.supabase.co", key: "sb_publishable_x" };
+  it("subscribes through the push_subscribe function", async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    const fake = (async (url: string, init?: RequestInit) => {
+      calls.push({ url, body: JSON.parse(String(init?.body)) });
+      return new Response("null", { status: 200 });
+    }) as unknown as typeof fetch;
+    await pushSubscribe(cfg, "a".repeat(43), { endpoint: "https://push.example/1", p256dh: "k".repeat(87), auth: "a".repeat(22) }, fake);
+    expect(calls[0].url).toBe("https://example.supabase.co/rest/v1/rpc/push_subscribe");
+    expect(calls[0].body).toEqual({ p_mailbox: "a".repeat(43), p_endpoint: "https://push.example/1", p_p256dh: "k".repeat(87), p_auth: "a".repeat(22) });
+  });
+  it("reads the public key, or null when notify isn't set up", async () => {
+    const key = "B" + "x".repeat(86);
+    const ok = (async () => new Response(JSON.stringify({ publicKey: key }), { status: 200 })) as unknown as typeof fetch;
+    const missing = (async () => new Response("not found", { status: 404 })) as unknown as typeof fetch;
+    const junk = (async () => new Response(JSON.stringify({ publicKey: "<script>" }), { status: 200 })) as unknown as typeof fetch;
+    const offline = (async () => {
+      throw new Error("offline");
+    }) as unknown as typeof fetch;
+    expect(await pushPublicKey(cfg, ok)).toBe(key);
+    expect(await pushPublicKey(cfg, missing)).toBeNull();
+    expect(await pushPublicKey(cfg, junk)).toBeNull();
+    expect(await pushPublicKey(cfg, offline)).toBeNull();
   });
 });

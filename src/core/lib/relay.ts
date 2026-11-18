@@ -76,3 +76,20 @@ export async function relayFetch(
     .filter((r): r is { id: number; payload: string } => typeof r?.id === "number" && typeof r?.payload === "string")
     .map((r) => ({ id: r.id, payload: r.payload }));
 }
+
+// ---- message notifications (Web Push; see supabase/migrations/0004_push_notifications.sql) ----
+export const pushSubscribe = (cfg: RelayConfig, mailbox: string, sub: { endpoint: string; p256dh: string; auth: string }, fetchImpl: typeof fetch = fetch) =>
+  call<null>(cfg, "push_subscribe", { p_mailbox: mailbox, p_endpoint: sub.endpoint, p_p256dh: sub.p256dh, p_auth: sub.auth }, fetchImpl);
+export const pushUnsubscribe = (cfg: RelayConfig, endpoint: string, fetchImpl: typeof fetch = fetch) => call<null>(cfg, "push_unsubscribe", { p_endpoint: endpoint }, fetchImpl);
+
+/** The server's public Web Push key, or null when the notify function isn't set up. */
+export async function pushPublicKey(cfg: RelayConfig, fetchImpl: typeof fetch = fetch): Promise<string | null> {
+  try {
+    const res = await fetchImpl(`${cfg.url}/functions/v1/notify`, { headers: { apikey: cfg.key } });
+    if (!res.ok) return null;
+    const j = (await res.json()) as { publicKey?: unknown };
+    return typeof j.publicKey === "string" && /^[A-Za-z0-9_-]{80,100}$/.test(j.publicKey) ? j.publicKey : null;
+  } catch {
+    return null;
+  }
+}

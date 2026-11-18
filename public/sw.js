@@ -1,6 +1,6 @@
 // Zwei Herzen ♡ — offline support. Caches only this app's own files.
 // Never touches other origins (e.g. the encrypted message relay).
-const CACHE = "zh-v4";
+const CACHE = "zh-v5";
 const SHELL = ["/", "/theme-init.js", "/manifest.json", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -11,7 +11,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== "zh-meta").map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -51,4 +51,48 @@ self.addEventListener("fetch", (event) => {
       ),
     );
   }
+});
+
+// ---- Message notifications ----
+// The server can't read messages (end-to-end encrypted), so a push only means "something arrived".
+self.addEventListener("push", (event) => {
+  event.waitUntil(
+    (async () => {
+      const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      // The chat is open on screen: no need to buzz.
+      if (wins.some((w) => w.visibilityState === "visible" && new URL(w.url).pathname.startsWith("/messages"))) return;
+      let name = "";
+      try {
+        const hit = await (await caches.open("zh-meta")).match("/__zh-meta");
+        if (hit) name = String((await hit.json()).name || "");
+      } catch (e) {
+        // no saved name
+      }
+      await self.registration.showNotification(name ? `${name} 💌` : "Zwei Herzen ♡", {
+        body: name ? `New message from ${name}` : "You have a new message 💌",
+        tag: "zh-chat",
+        renotify: true,
+        icon: "/icons/icon-192.png",
+        badge: "/icons/icon-192.png",
+        data: { url: "/messages" },
+      });
+    })(),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/messages";
+  event.waitUntil(
+    (async () => {
+      const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const win = wins.find((w) => new URL(w.url).origin === self.location.origin);
+      if (win) {
+        await win.focus();
+        if ("navigate" in win) await win.navigate(url).catch(() => {});
+        return;
+      }
+      await self.clients.openWindow(url);
+    })(),
+  );
 });
