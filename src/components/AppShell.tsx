@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { allTopics, levelOfTopic } from "../core/content/levels";
-import { partnerName, useProgress } from "../web/progress";
+import { couple, partnerName, useProgress } from "../web/progress";
 import { useReveal } from "../web/reveal";
 import { useTheme } from "../web/theme";
 import { BrandTitle, SecretHeart } from "./BrandTitle";
@@ -152,7 +152,7 @@ function TopBar() {
         </div>
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
-          <Link href="/us" aria-label={unread ? `${unread} new messages` : "Messages"} className="card-premium relative grid h-11 w-11 place-items-center rounded-full text-plum hover:bg-blush">
+          <Link href={couple.isLinked(state) ? "/messages" : "/us"} aria-label={unread ? `${unread} new messages` : "Messages"} className="card-premium relative grid h-11 w-11 place-items-center rounded-full text-plum hover:bg-blush">
             <Bell size={20} />
             {unread ? <span className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-rose px-1 text-[10px] font-bold text-white">{unread}</span> : null}
           </Link>

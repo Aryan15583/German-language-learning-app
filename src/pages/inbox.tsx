@@ -59,7 +59,7 @@ export default function Inbox() {
             Play your turn
           </Button>
         ) : (
-          <Button size="lg" full className="mt-5" href="/us">
+          <Button size="lg" full className="mt-5" href="/messages">
             Open chat
           </Button>
         )}

@@ -44,7 +44,7 @@ export default function Note() {
       log("💌", `Sent a love note to ${partnerName(state, 1)}`);
       if (r.delivered) {
         setStatus("Sent to your partner’s app 💌");
-        setTimeout(() => router.push("/us"), 900);
+        setTimeout(() => router.push("/messages"), 900);
       } else {
         await shareText(`💌 Zwei Herzen ♡ — a love note for you:\n${r.link}`);
         setStatus("Shared as a secure link 💌");

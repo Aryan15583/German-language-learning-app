@@ -131,7 +131,7 @@ function RemoteDuel({ id, topic }: { id: string; topic: string }) {
             {shareNote ? <p className="mt-2 text-sm text-muted">{shareNote}</p> : null}
           </Card>
         ) : null}
-        <Button variant="soft" href="/us" className="mt-2">
+        <Button variant="soft" href="/messages" className="mt-2">
           Back to chat
         </Button>
       </div>
