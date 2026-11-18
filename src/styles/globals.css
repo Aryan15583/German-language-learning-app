@@ -231,3 +231,9 @@ html { scroll-behavior: smooth; }
   html { scroll-behavior: auto; }
   .reveal { opacity: 1; transform: none; filter: none; transition: none; }
 }
+
+/* Tappable cards lift a little on hover. */
+a.card-premium { transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease, border-color 0.2s ease; }
+@media (hover: hover) {
+  a.card-premium:not(.reveal):hover { transform: translateY(-2px); }
+}

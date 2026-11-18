@@ -3,6 +3,7 @@ import { Card, ProgressBar, Script } from "../components/ui";
 import { SECRET_PHRASES } from "../core/content/berlin";
 import { LEVELS, meaning } from "../core/content/levels";
 import { Speak } from "../components/ui";
+import { teamLevel } from "../core/lib/couplelife";
 import { DAILY_GOAL } from "../core/lib/game";
 import { currentStreak, today, useProgress } from "../web/progress";
 import { hasPartner, personStats } from "../web/stats";
@@ -19,6 +20,7 @@ export default function Goals() {
   const me = state.partners[who];
   const next = LEVELS[Math.min(me.unlocked + 1, LEVELS.length - 1)];
   const together = mine.weekXp + (theirs?.weekXp ?? 0);
+  const team = teamLevel(mine.xp, theirs?.xp ?? 0);
   const weekTarget = theirs ? WEEK_GOAL * 2 : WEEK_GOAL;
   const goals = [
     { emoji: "🎯", title: "Today’s goal", text: `${DAILY_GOAL} XP each day`, value: mine.todayXp / DAILY_GOAL, label: `${mine.todayXp} / ${DAILY_GOAL} XP` },
@@ -38,6 +40,17 @@ export default function Goals() {
       <div className="mx-auto max-w-3xl">
         <Script className="text-4xl">Couple goals 🎯</Script>
         <p className="mb-5 text-muted">Little targets to chase together. They fill up as you learn.</p>
+        <Card className="mb-4 flex items-center gap-4 bg-gradient-to-br from-card to-blush">
+          <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-plum text-2xl font-extrabold text-white shadow-soft">{team.level}</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-rose">💞 Together XP</p>
+            <p className="font-script text-3xl text-plum">{team.title}</p>
+            <ProgressBar value={team.progress} className="mt-1" color="bg-rose" />
+            <p className="mt-1 text-xs text-muted">
+              {team.xp} XP together · {team.span - team.into} XP to level {team.level + 1}
+            </p>
+          </div>
+        </Card>
         <div className="grid gap-4 sm:grid-cols-2">
           {goals.map((g) => {
             const done = g.value >= 1;

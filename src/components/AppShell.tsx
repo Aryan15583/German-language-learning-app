@@ -1,4 +1,4 @@
-import { BarChart3, Bell, BookOpen, BookText, Dumbbell, Gamepad2, Heart, Home, Map, Moon, Search, Settings, Sun, Trophy, User } from "lucide-react";
+import { BarChart3, Bell, BookHeart, BookOpen, BookText, Gamepad2, Swords, Heart, Home, Map, Moon, Search, Settings, Sun, Trophy, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useMemo, useRef, useState, type ReactNode } from "react";
@@ -14,20 +14,21 @@ const SIDEBAR = [
   { href: "/learn", label: "Learn Together", icon: BookOpen },
   { href: "/vocab", label: "My Words", icon: BookText },
   { href: "/journey", label: "Berlin Map", icon: Map },
-  { href: "/train", label: "Practice", icon: Dumbbell },
-  { href: "/quizzes", label: "Couple Quizzes", icon: Gamepad2 },
+  { href: "/play", label: "Play & Practice", icon: Gamepad2 },
+  { href: "/quizzes", label: "Couple Quizzes", icon: Swords },
   { href: "/progress", label: "Progress", icon: BarChart3 },
   { href: "/achievements", label: "Achievements", icon: Trophy },
   { href: "/us", label: "Our Journey", icon: Heart },
+  { href: "/memories", label: "Memory Book", icon: BookHeart },
   { href: "/profile", label: "Settings", icon: Settings },
 ];
 
 const TABS = [
   { href: "/", label: "Home", icon: Home },
   { href: "/learn", label: "Learn", icon: BookOpen },
-  { href: "/us", label: "Couple", icon: Heart },
-  { href: "/progress", label: "Progress", icon: BarChart3 },
-  { href: "/profile", label: "Profile", icon: User },
+  { href: "/play", label: "Play", icon: Gamepad2 },
+  { href: "/us", label: "Us", icon: Heart },
+  { href: "/profile", label: "Me", icon: User },
 ];
 
 const SEEN_KEY = "zh-seen-chat";
