@@ -164,7 +164,7 @@ function WaitingForPartner() {
 
 function CoupleChat() {
   const router = useRouter();
-  const { state, send, resendHello, relayOn, syncStatus, syncNow, unlink, setVanish, viewMessages, leaveChat } = useProgress();
+  const { state, send, resendHello, relayOn, syncStatus, syncNow, unlink, setVanish, viewMessages, leaveChat, archive } = useProgress();
   const [text, setText] = useState("");
   const [secret, setSecret] = useState(false);
   const [sending, setSending] = useState(false);
@@ -177,6 +177,26 @@ function CoupleChat() {
     const t = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(t);
   }, []);
+  // Long chats stay fast: show the newest messages, and load older ones on request.
+  const PAGE = 60;
+  const [shown, setShown] = useState(PAGE);
+  const [older, setOlder] = useState<ChatItem[]>([]);
+  const [noMore, setNoMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const recent = state.chat.slice(-shown);
+  const recentIds = new Set(state.chat.map((m) => m.id));
+  const visible = [...older.filter((m) => !recentIds.has(m.id) && !couple.isExpired(m, now)), ...recent];
+  const canLoadMore = shown < state.chat.length || (!!archive && !noMore && state.chat.length > 0);
+  const loadEarlier = async () => {
+    if (shown < state.chat.length) return setShown(shown + PAGE);
+    if (!archive || loadingOlder) return;
+    setLoadingOlder(true);
+    const oldestAt = (older[0] ?? state.chat[0])?.at ?? Date.now();
+    const page = await archive.before(oldestAt, PAGE).catch(() => []);
+    setOlder((o) => [...page, ...o]);
+    if (page.length < PAGE) setNoMore(true);
+    setLoadingOlder(false);
+  };
   const me = state.partners[0];
   const them = state.partners[1];
   const myStreak = currentStreak(state);
@@ -237,7 +257,16 @@ function CoupleChat() {
 
           <div className="flex-1 space-y-2 overflow-y-auto px-4 py-4" aria-live="polite">
             {state.chat.length === 0 ? <p className="py-8 text-center text-muted">Say hallo! Every message also shares your progress for the weekly battle.</p> : null}
-            {state.chat.map((m) => (
+            {canLoadMore ? (
+              <div className="py-2 text-center">
+                <button type="button" onClick={loadEarlier} disabled={loadingOlder} className="rounded-full bg-blush px-4 py-1.5 text-xs font-semibold text-plum hover:bg-rose-soft/60 disabled:opacity-50">
+                  {loadingOlder ? "Loading…" : "↑ Show earlier messages"}
+                </button>
+              </div>
+            ) : state.chat.length > PAGE ? (
+              <p className="py-2 text-center text-xs text-muted">That’s the very beginning of your chat 💞</p>
+            ) : null}
+            {visible.map((m) => (
               <ChatRow key={m.id + m.from} m={m} myStreak={myStreak} now={now} />
             ))}
             <div ref={endRef} />
@@ -386,7 +415,7 @@ function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; now: num
   const { state } = useProgress();
   if (m.kind === "system") return <p className="py-1 text-center text-xs text-muted">{m.text}</p>;
   const mine = m.from === 0;
-  const bubble = cx("max-w-[86%] rounded-3xl px-4 py-3", mine ? "ml-auto rounded-br-md bg-blush" : "mr-auto rounded-bl-md bg-partner-soft");
+  const bubble = cx("cv-auto max-w-[86%] rounded-3xl px-4 py-3", mine ? "ml-auto rounded-br-md bg-blush" : "mr-auto rounded-bl-md bg-partner-soft");
   const time = new Date(m.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   if (m.kind === "duel") {

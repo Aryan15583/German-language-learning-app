@@ -17,9 +17,11 @@ import {
 } from "../core/lib/link";
 import { helloBox, inboxFor, otherRole, RelayError, relayConfig, relayFetch, relaySend } from "../core/lib/relay";
 import { messageLink } from "./share";
+import { archiveDiff, type ArchiveStats } from "../core/lib/archive";
+import { archiveName, askToKeepData, ChatArchive } from "./chatStore";
 import * as C from "../core/state/couple";
 import * as L from "../core/state/logic";
-import type { AppState, DuelResult, PartnerIndex } from "../core/state/logic";
+import type { AppState, ChatItem, DuelResult, PartnerIndex } from "../core/state/logic";
 
 export * from "../core/state/logic";
 
@@ -67,6 +69,8 @@ type Ctx = {
   viewMessages: () => void;
   /** I left the chat: "after seen" messages I've read disappear now. */
   leaveChat: () => void;
+  /** The full chat history on this phone (null where the browser has no database). */
+  archive: { before: (at: number, limit: number) => Promise<ChatItem[]>; stats: () => Promise<ArchiveStats> } | null;
   finishReadyDay: (i: PartnerIndex, day: number) => void;
   reset: () => void;
 
@@ -258,14 +262,35 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
     return () => clearInterval(id);
   }, [ready, relay, coupleKey, syncNow]);
 
+  // ---- chat archive (IndexedDB): the full history, saved in the background ----
+  const [archive] = useState(() => (typeof indexedDB === "undefined" ? null : new ChatArchive(archiveName(storageKey))));
+  const archived = useRef<AppState["chat"] | null>(null);
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  useEffect(() => {
+    if (!ready || !archive) return;
+    const prev = archived.current ?? [];
+    const next = state.chat;
+    archived.current = next;
+    const { put, del } = archiveDiff(prev, next);
+    if (!put.length && !del.length) return;
+    queue.current = queue.current
+      .then(() => archive.apply(put, del))
+      .then(() => archive.trim())
+      .catch(() => {}); // a full or blocked database must never break the app
+    if (prev.length === 0 && next.length) askToKeepData();
+  }, [ready, archive, state.chat]);
+
   // Disappearing messages: clear out anything whose time is up (now, and every 30 s).
   useEffect(() => {
     if (!ready) return;
-    const purge = () => update((s) => C.purgeExpired(s, Date.now()));
+    const purge = () => {
+      update((s) => C.purgeExpired(s, Date.now()));
+      if (archive) queue.current = queue.current.then(() => archive.purgeExpired(Date.now())).catch(() => {});
+    };
     purge();
     const id = setInterval(purge, 30_000);
     return () => clearInterval(id);
-  }, [ready, update]);
+  }, [ready, update, archive]);
 
   const value = useMemo<Ctx>(
     () => ({
@@ -324,9 +349,12 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
         if (relay && C.isLinked(stateRef.current)) send({ kind: "viewed", ids: ids.slice(0, 50) }).catch(() => {});
       },
       leaveChat: () => update((s) => C.leaveChat(s)),
+      archive: archive ? { before: (at, limit) => archive.before(at, limit), stats: () => archive.stats() } : null,
       finishReadyDay: (i, day) => update((s) => L.finishReadyDay(s, i, day)),
       reset: () => {
         setLocked(false);
+        archived.current = [];
+        if (archive) queue.current = queue.current.then(() => archive.clear()).catch(() => {});
         update(() => L.freshState());
       },
 
@@ -393,7 +421,7 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
       dismissWelcome: () => update((s) => ({ ...s, welcomeDone: true })),
       syncNow,
     }),
-    [state, ready, accountMode, locked, relay, syncStatus, update, envelopeFor, deliver, send, openLink, syncNow],
+    [state, ready, accountMode, locked, relay, syncStatus, update, envelopeFor, deliver, send, openLink, syncNow, archive],
   );
 
   return <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>;
