@@ -1,4 +1,4 @@
-import { ArrowLeft, Bell, BookHeart, ShieldCheck, ChevronRight, Lock, Mail, Plus, RefreshCw, Send, Swords, Timer, X } from "lucide-react";
+import { ArrowLeft, Bell, BookHeart, ShieldCheck, Trash2, ChevronRight, Lock, Mail, Plus, RefreshCw, Send, Swords, Timer, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -53,7 +53,7 @@ function Chat({ onInfo }: { onInfo: () => void }) {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const recent = state.chat.slice(-shown);
   const recentIds = new Set(state.chat.map((m) => m.id));
-  const visible = [...older.filter((m) => !recentIds.has(m.id) && !couple.isExpired(m, now)), ...recent];
+  const visible = [...older.filter((m) => !recentIds.has(m.id) && !couple.isExpired(m, now) && m.at > state.chatClearedAt), ...recent];
   const canLoadMore = shown < state.chat.length || (!!archive && !noMore && state.chat.length > 0);
   const loadEarlier = async () => {
     if (shown < state.chat.length) return setShown(shown + PAGE);
@@ -313,8 +313,10 @@ function MenuItem({ icon, title, sub, onClick, href, active }: { icon: string; t
 /** Chat settings, like a messenger's contact page: disappearing messages, shortcuts, unlink. */
 function ChatInfo({ onBack }: { onBack: () => void }) {
   const router = useRouter();
-  const { state, setVanish, unlink, relayOn, syncStatus } = useProgress();
+  const { state, setVanish, unlink, relayOn, syncStatus, clearChat } = useProgress();
   const [confirmUnlink, setConfirmUnlink] = useState(false);
+  const [clearAsk, setClearAsk] = useState<"mine" | "both" | null>(null);
+  const [cleared, setCleared] = useState("");
   const [prefs, setPrefs] = usePrefs();
   const them = state.partners[1];
   const name = partnerName(state, 1);
@@ -413,6 +415,47 @@ function ChatInfo({ onBack }: { onBack: () => void }) {
           Messages are end-to-end encrypted on your phones. {relayOn ? "The mailbox only ever sees scrambled data." : "They travel as secure links you send each other."} Status:{" "}
           {syncStatus === "ok" ? "🟢 live" : syncStatus === "offline" ? "🟠 offline — will retry" : "🔗 links"}.
         </p>
+      </Section>
+
+      <Section title="Clear chat" icon={<Trash2 size={16} />}>
+        <div className="px-4 pb-4">
+          <p className="text-sm text-muted">Deletes the messages. Your memory book, shared words and progress stay.</p>
+          {clearAsk ? (
+            <div className="mt-3 rounded-2xl bg-blush p-3">
+              <p className="text-sm font-semibold text-ink">{clearAsk === "both" ? `Delete the whole chat on both phones — yours and ${name}’s? This can’t be undone.` : "Delete the whole chat on this phone? This can’t be undone."}</p>
+              <div className="mt-2 flex gap-2">
+                <Button
+                  size="sm"
+                  className="!bg-bad !text-white"
+                  onClick={async () => {
+                    await clearChat(clearAsk === "both");
+                    setClearAsk(null);
+                    setCleared(clearAsk === "both" ? "Chat cleared on both phones 🧹" : "Chat cleared on this phone 🧹");
+                  }}
+                >
+                  Yes, clear
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setClearAsk(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" variant="soft" onClick={() => setClearAsk("mine")}>
+                Clear on my phone
+              </Button>
+              <Button size="sm" variant="soft" onClick={() => setClearAsk("both")}>
+                Clear for both of us
+              </Button>
+            </div>
+          )}
+          {cleared ? (
+            <p role="status" className="mt-2 text-sm text-plum">
+              {cleared}
+            </p>
+          ) : null}
+        </div>
       </Section>
 
       <div className="mt-4 px-4">

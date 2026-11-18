@@ -58,7 +58,9 @@ export type Payload =
   /** Change the text of one of my own messages. */
   | { kind: "edit"; to: string; text: string }
   /** Delete one of my own messages on both phones. */
-  | { kind: "unsend"; to: string };
+  | { kind: "unsend"; to: string }
+  /** Clear the whole chat (everything up to this time) on both phones. */
+  | { kind: "clear"; before: number };
 
 export type Envelope = {
   v: 1;
@@ -147,6 +149,8 @@ function payload(x: Record<string, unknown>): Payload {
       return { kind: x.kind, text: str(x.text, LIMITS.text, "message") };
     case "edit":
       return { kind: "edit", to: idStr(x.to, "message id"), text: str(x.text, LIMITS.text, "message") };
+    case "clear":
+      return { kind: "clear", before: int(x.before, 0, 8_640_000_000_000_000, "time") };
     case "unsend":
       return { kind: "unsend", to: idStr(x.to, "message id") };
     case "react":

@@ -74,6 +74,8 @@ type Ctx = {
   disableNotify: () => Promise<void>;
   /** Daily learning reminder at a time of day. */
   saveReminder: (r: Reminder) => Promise<{ ok: boolean; push: boolean; status: NotifyStatus }>;
+  /** Clear the chat on this phone, or on both phones. */
+  clearChat: (forBoth: boolean) => Promise<void>;
   /** Edit or delete one of my own chat messages (on both phones). */
   editMessage: (msgId: string, text: string) => void;
   unsendMessage: (msgId: string) => void;
@@ -374,6 +376,12 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
     if (prev.length === 0 && next.length) askToKeepData();
   }, [ready, archive, state.chat]);
 
+  // "Clear chat" (mine or my partner's): also delete the older messages kept in the archive.
+  useEffect(() => {
+    if (!ready || !archive || !state.chatClearedAt) return;
+    queue.current = queue.current.then(() => archive.deleteUpTo(state.chatClearedAt)).catch(() => {});
+  }, [ready, archive, state.chatClearedAt]);
+
   // Disappearing messages: clear out anything whose time is up (now, and every 30 s).
   useEffect(() => {
     if (!ready) return;
@@ -442,6 +450,11 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
       },
       disableNotify: () => disableNotifications(relay),
       saveReminder: (r) => setReminder(relay, r),
+      clearChat: async (forBoth) => {
+        const at = Date.now();
+        if (forBoth && C.isLinked(stateRef.current)) await send({ kind: "clear", before: at }).catch(() => undefined);
+        else update((s) => L.clearChat(s, at, "You cleared this chat on your phone 🧹", at));
+      },
       editMessage: (msgId, text) => {
         if (C.isLinked(stateRef.current)) send({ kind: "edit", to: msgId, text }).catch(() => {});
         else update((s) => L.editMessage(s, msgId, 0, text, Date.now()));

@@ -127,6 +127,31 @@ export class ChatArchive {
     return out.reverse();
   }
 
+  /** Delete every message sent at or before `at` (after "clear chat"). */
+  async deleteUpTo(at: number): Promise<number> {
+    const db = await this.db;
+    const tx = db.transaction(["msgs", "meta"], "readwrite");
+    const meta = tx.objectStore("meta");
+    const stats = ((await req(meta.get("stats"))) as ArchiveStats | undefined) ?? { count: 0, bytes: 0 };
+    let removed = 0;
+    const cursorReq = tx.objectStore("msgs").index("at").openCursor(IDBKeyRange.upperBound(at));
+    await new Promise<void>((res, rej) => {
+      cursorReq.onerror = () => rej(cursorReq.error);
+      cursorReq.onsuccess = () => {
+        const c = cursorReq.result;
+        if (!c) return res();
+        stats.bytes -= (c.value as Stored).size;
+        stats.count--;
+        removed++;
+        c.delete();
+        c.continue();
+      };
+    });
+    meta.put({ count: Math.max(0, stats.count), bytes: Math.max(0, stats.bytes) }, "stats");
+    await done(tx);
+    return removed;
+  }
+
   async clear(): Promise<void> {
     const db = await this.db;
     const tx = db.transaction(["msgs", "meta"], "readwrite");
