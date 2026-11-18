@@ -85,6 +85,13 @@ function Chat({ onInfo }: { onInfo: () => void }) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- once per visit
 
+  useEffect(() => {
+    if (!tray) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setTray(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [tray]);
+
   const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     const t = text.trim();
@@ -149,31 +156,13 @@ function Chat({ onInfo }: { onInfo: () => void }) {
       {/* Composer */}
       <footer className="glass sticky bottom-0 z-20 border-t border-line/60 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
         {fallback.view}
-        {tray ? (
-          <div className="mb-2 grid grid-cols-4 gap-2 anim-fade-up">
-            <TrayButton
-              icon="🔒"
-              label={secret ? "Secret on" : "Secret"}
-              active={secret}
-              onClick={() => {
-                setSecret(!secret);
-                setTray(false);
-                inputRef.current?.focus();
-              }}
-            />
-            <TrayButton icon="💌" label="Love note" href="/note" />
-            <TrayButton icon="📖" label="Our words" href="/words" />
-            <TrayButton icon="⚔️" label="Duel" href="/quizzes" />
-          </div>
-        ) : (
-          <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
-            {QUICK.map((q) => (
-              <Chip key={q} className="shrink-0 !py-1 text-sm" onClick={() => setText(q)}>
-                {q}
-              </Chip>
-            ))}
-          </div>
-        )}
+        <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
+          {QUICK.map((q) => (
+            <Chip key={q} className="shrink-0 !py-1 text-sm" onClick={() => setText(q)}>
+              {q}
+            </Chip>
+          ))}
+        </div>
         {secret ? (
           <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-rose">
             🔒 Secret message — opens when {name} reaches a 7-day streak
@@ -186,15 +175,42 @@ function Chat({ onInfo }: { onInfo: () => void }) {
             <Timer size={13} /> Disappearing: {vanish.label}
           </p>
         ) : null}
-        <form onSubmit={submit} className="flex items-end gap-2">
+        <form onSubmit={submit} className="relative flex items-end gap-2">
+          {tray ? (
+            <>
+              <button type="button" aria-label="Close menu" tabIndex={-1} className="fixed inset-0 z-30 cursor-default" onClick={() => setTray(false)} />
+              <div role="menu" aria-label="More options" className="absolute bottom-[calc(100%+0.6rem)] left-0 z-40 w-[min(19rem,calc(100vw-1.5rem))] overflow-hidden rounded-3xl bg-card p-1.5 shadow-soft ring-1 ring-line/70 anim-fade-up">
+                <MenuItem
+                  icon="🔒"
+                  title={secret ? "Secret is on" : "Secret message"}
+                  sub={`Opens when ${name} hits a 7-day streak`}
+                  active={secret}
+                  onClick={() => {
+                    setSecret(!secret);
+                    setTray(false);
+                    inputRef.current?.focus();
+                  }}
+                />
+                <MenuItem icon="⏱️" title="Disappearing messages" sub={state.vanish === "off" ? "Off" : vanish.label} onClick={() => { setTray(false); onInfo(); }} />
+                <MenuItem icon="💌" title="Love note" sub="A pretty note in German" href="/note" />
+                <MenuItem icon="📖" title="Share a word" sub="Add to your shared words" href="/words" />
+                <MenuItem icon="⚔️" title="Quiz duel" sub={`Challenge ${name}`} href="/quizzes" />
+                <MenuItem icon="📸" title="Memory book" sub="Your saved moments" href="/memories" />
+              </div>
+            </>
+          ) : null}
           <button
             type="button"
-            aria-label={tray ? "Close extras" : "More: secret, love note, words, duel"}
+            aria-label={tray ? "Close menu" : "More: secret, love note, words, duel"}
+            aria-haspopup="menu"
             aria-expanded={tray}
             onClick={() => setTray(!tray)}
-            className={cx("grid h-12 w-12 shrink-0 place-items-center rounded-full text-plum transition hover:bg-blush", tray && "rotate-45 bg-blush")}
+            className={cx(
+              "relative z-40 grid h-12 w-12 shrink-0 place-items-center rounded-full border border-line bg-card text-plum shadow-card transition duration-300 hover:bg-blush active:scale-95",
+              (tray || secret) && "border-rose bg-blush",
+            )}
           >
-            <Plus size={24} />
+            <Plus size={22} className={cx("transition-transform duration-300", tray && "rotate-45")} />
           </button>
           <textarea
             ref={inputRef}
@@ -230,20 +246,24 @@ function Chat({ onInfo }: { onInfo: () => void }) {
   );
 }
 
-function TrayButton({ icon, label, onClick, href, active }: { icon: string; label: string; onClick?: () => void; href?: string; active?: boolean }) {
-  const cls = cx("flex flex-col items-center gap-1 rounded-2xl py-2.5 text-xs font-semibold text-ink transition hover:bg-blush", active ? "bg-blush ring-2 ring-rose" : "bg-card");
+function MenuItem({ icon, title, sub, onClick, href, active }: { icon: string; title: string; sub: string; onClick?: () => void; href?: string; active?: boolean }) {
+  const cls = cx("flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition hover:bg-blush", active && "bg-blush");
   const body = (
     <>
-      <span className="text-2xl">{icon}</span>
-      {label}
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blush text-xl">{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-bold text-ink">{title}</span>
+        <span className="block truncate text-xs text-muted">{sub}</span>
+      </span>
+      {active ? <span className="text-xs font-bold text-rose">ON</span> : null}
     </>
   );
   return href ? (
-    <Link href={href} className={cls}>
+    <Link href={href} role="menuitem" className={cls}>
       {body}
     </Link>
   ) : (
-    <button type="button" onClick={onClick} aria-pressed={active} className={cls}>
+    <button type="button" role={active === undefined ? "menuitem" : "menuitemcheckbox"} aria-checked={active} onClick={onClick} className={cls}>
       {body}
     </button>
   );
