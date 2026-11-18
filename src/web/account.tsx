@@ -2,6 +2,7 @@
 // on the phone with a key derived from the password before it is uploaded.
 // One person per phone: signing out removes that person's data from the device.
 import AsyncStorage from "./storage";
+import { archiveName, deleteArchive } from "./chatStore";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { accountsEnabled, fetchAuthSettings, supabase, type AuthSettings } from "./supabase";
 import { cloudIsNewer, deriveVaultKey, newSalt, openBackup, sealBackup } from "../core/lib/vault";
@@ -301,6 +302,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         if (uid) {
           // One person per phone: leave nothing of theirs behind.
           await AsyncStorage.multiRemove([vaultKey(uid), stateKey(uid)]).catch(() => {});
+          await deleteArchive(archiveName(stateKey(uid)));
         }
         vault.current = null;
         setAccount(null);

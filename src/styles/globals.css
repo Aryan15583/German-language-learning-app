@@ -87,6 +87,8 @@ body {
 }
 
 h1, h2, h3 { letter-spacing: -0.015em; }
+/* Long lists: the browser skips drawing items that are off screen. */
+.cv-auto { content-visibility: auto; contain-intrinsic-size: auto 72px; }
 .tabular { font-variant-numeric: tabular-nums; }
 
 ::selection { background: var(--color-plum); color: #fff; }

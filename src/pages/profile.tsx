@@ -1,14 +1,15 @@
 import { ChevronRight, LogOut, Shield } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
 import { InstallCard } from "../components/InstallCard";
 import { useTheme, type ThemePref } from "../web/theme";
 import { LangPicker } from "../components/pickers";
-import { Button, Card, Chip, fieldClass, Script, Spinner } from "../components/ui";
+import { Button, Card, Chip, fieldClass, ProgressBar, Script, Spinner } from "../components/ui";
 import { LEVELS } from "../core/content/levels";
 import { ACHIEVEMENTS, earnedAchievements, heartLevel } from "../core/lib/game";
+import { CHAT_LIMITS, formatMB, type ArchiveStats } from "../core/lib/archive";
 import { useAccount } from "../web/account";
 import { couple, currentStreak, partnerName, useProgress, type PartnerIndex } from "../web/progress";
 
@@ -45,6 +46,7 @@ export default function Profile() {
 
         <InstallCard />
         <Appearance />
+        <ChatStorage />
 
         <Section title="My language 🌐">
           {people.map((i) => (
@@ -244,6 +246,35 @@ function Appearance() {
           </button>
         ))}
       </div>
+    </Section>
+  );
+}
+
+function ChatStorage() {
+  const { archive, state } = useProgress();
+  const [stats, setStats] = useState<ArchiveStats | null>(null);
+  useEffect(() => {
+    let alive = true;
+    archive
+      ?.stats()
+      .then((s) => alive && setStats(s))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [archive, state.chat.length]);
+  if (!archive) return null;
+  const used = stats?.bytes ?? 0;
+  return (
+    <Section title="Chat storage 💬">
+      <p className="text-ink">
+        <b>{(stats?.count ?? 0).toLocaleString()}</b> messages · <b>{formatMB(used)}</b> of {CHAT_LIMITS.maxBytes / 1024 / 1024} MB
+      </p>
+      <ProgressBar value={used / CHAT_LIMITS.maxBytes} className="mt-2" />
+      <p className="mt-2 text-xs text-muted">
+        Your whole chat history is kept on this device — up to {CHAT_LIMITS.maxMessages.toLocaleString()} messages. If it ever passes {CHAT_LIMITS.maxBytes / 1024 / 1024} MB, the
+        oldest messages are removed automatically until it’s back to {CHAT_LIMITS.targetBytes / 1024 / 1024} MB. The newest 500 are also in your encrypted cloud backup.
+      </p>
     </Section>
   );
 }
