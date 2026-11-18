@@ -24,8 +24,11 @@ export default function Review() {
   const due = dueKeys(p.memory, today()).filter((k) => index.has(k));
   const known = Object.keys(p.memory).filter((k) => index.has(k));
 
-  const start = () => {
-    const words = due.slice(0, ROUND).map((k) => index.get(k)!);
+  // "Wiederholen": the words you've missed, most-missed first (until you know them well again).
+  const tricky = known.filter((k) => p.memory[k].w > 0 && p.memory[k].b < 4).sort((a, b) => p.memory[b].w - p.memory[a].w);
+
+  const start = (keys: string[] = due) => {
+    const words = keys.slice(0, ROUND).map((k) => index.get(k)!);
     setQuestions(reviewSet(words, allWords(), p.lang));
     setPhase("quiz");
   };
@@ -75,10 +78,29 @@ export default function Review() {
         <Card className="mt-5 flex flex-col items-center bg-gradient-to-br from-card to-blush text-center">
           <p className="text-5xl font-extrabold text-plum">{due.length}</p>
           <p className="text-muted">{due.length === 1 ? "word needs" : "words need"} your attention</p>
-          <Button size="lg" className="mt-4" disabled={!due.length} onClick={start}>
+          <Button size="lg" className="mt-4" disabled={!due.length} onClick={() => start()}>
             {due.length ? `Review ${Math.min(ROUND, due.length)} words · 3 min` : "All fresh — come back tomorrow 🌱"}
           </Button>
         </Card>
+
+        {tricky.length ? (
+          <>
+            <h2 className="mb-2 mt-6 text-lg font-bold">Wiederholen 🔁</h2>
+            <Card>
+              <p className="text-sm text-muted">Words you found tricky. A little extra practice and they’ll stick.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {tricky.slice(0, 12).map((k) => (
+                  <span key={k} className="rounded-full bg-blush px-3 py-1 text-sm font-semibold text-plum">
+                    {k}
+                  </span>
+                ))}
+              </div>
+              <Button variant="soft" className="mt-4" onClick={() => start(tricky)}>
+                Practice these {Math.min(ROUND, tricky.length)} words
+              </Button>
+            </Card>
+          </>
+        ) : null}
 
         <h2 className="mb-2 mt-6 text-lg font-bold">Your relationship with each word ❤️</h2>
         {sorted.length ? (
