@@ -1,6 +1,6 @@
 // Zwei Herzen ♡ — offline support. Caches only this app's own files.
 // Never touches other origins (e.g. the encrypted message relay).
-const CACHE = "zh-v3";
+const CACHE = "zh-v4";
 const SHELL = ["/", "/theme-init.js", "/manifest.json", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
