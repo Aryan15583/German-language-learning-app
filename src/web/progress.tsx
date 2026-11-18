@@ -17,6 +17,7 @@ import {
 } from "../core/lib/link";
 import { helloBox, inboxFor, otherRole, RelayError, relayConfig, relayFetch, relaySend } from "../core/lib/relay";
 import { messageLink } from "./share";
+import { disableNotifications, enableNotifications, ensurePush, notifyStatus, notifyWanted, rememberPartnerName, showMessageNotification, type NotifyStatus } from "./notify";
 import { archiveDiff, type ArchiveStats } from "../core/lib/archive";
 import { archiveName, askToKeepData, ChatArchive } from "./chatStore";
 import * as C from "../core/state/couple";
@@ -65,6 +66,9 @@ type Ctx = {
   claimMission: (i: PartnerIndex) => void;
   /** Timer for new chat messages. */
   setVanish: (v: AppState["vanish"]) => void;
+  /** Message notifications: turn on (asks permission) or off. `push` = also when the app is closed. */
+  enableNotify: () => Promise<{ status: NotifyStatus; push: boolean }>;
+  disableNotify: () => Promise<void>;
   /** React to a chat message with an emoji ("" removes my reaction). */
   react: (msgId: string, emoji: string) => void;
   /** Our memory book. */
@@ -237,9 +241,11 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
     const box = c.status === "invited" ? helloBox(c.id, c.key) : inboxFor(c.id, c.key, c.role ?? "joiner");
     try {
       const rows = await relayFetch(relay, box, s.relayCursor[box] ?? 0);
+      const fresh: Envelope[] = [];
       for (const row of rows) {
         try {
           const env = tryOpen(stateRef.current, row.payload);
+          if (!stateRef.current.seen.includes(env.id)) fresh.push(env);
           update((x) => C.receive(x, env, Date.now()).state);
         } catch {
           // Not for us or damaged: skip it, but don't get stuck on it.
@@ -247,6 +253,27 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
       }
       if (rows.length) update((x) => ({ ...x, relayCursor: { ...x.relayCursor, [box]: rows[rows.length - 1].id } }));
       setSyncStatus("ok");
+      // The app is open but not on screen (or not on the chat): show a phone notification.
+      const shown = fresh.filter((e) => ["msg", "note", "secret", "word", "duel"].includes(e.kind));
+      const onChat = typeof window !== "undefined" && window.location.pathname.startsWith("/messages") && document.visibilityState === "visible";
+      if (shown.length && !onChat && (typeof document === "undefined" || document.visibilityState !== "visible")) {
+        const last = shown[shown.length - 1];
+        const body =
+          shown.length > 1
+            ? `${shown.length} new messages 💌`
+            : last.kind === "msg"
+              ? last.vanish
+                ? "⏱ Disappearing message"
+                : last.text
+              : last.kind === "note"
+                ? `💌 ${last.text}`
+                : last.kind === "secret"
+                  ? "🔒 Sent you a secret"
+                  : last.kind === "word"
+                    ? `📖 New word: ${last.word.de}`
+                    : "⚔️ New duel move";
+        showMessageNotification(last.from.name || "Zwei Herzen ♡", body.slice(0, 180));
+      }
     } catch {
       setSyncStatus("offline");
     }
@@ -256,8 +283,14 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
   useEffect(() => {
     if (!ready || !relay || !coupleKey) return;
     let busy = false;
+    let lastHidden = 0;
     const tick = async () => {
-      if (busy || (typeof document !== "undefined" && document.visibilityState !== "visible")) return;
+      if (busy) return;
+      // In the background, check every 30 s for notifications (phones may slow this down further).
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        if (!notifyWanted() || Date.now() - lastHidden < 30_000) return;
+        lastHidden = Date.now();
+      }
       busy = true;
       await syncNow();
       busy = false;
@@ -266,6 +299,15 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
     const id = setInterval(tick, POLL_MS);
     return () => clearInterval(id);
   }, [ready, relay, coupleKey, syncNow]);
+
+  // Keep closed-app pings pointed at my current mailbox (after linking or re-linking).
+  const linkedBox = state.couple?.status === "linked" ? inboxFor(state.couple.id, state.couple.key, state.couple.role ?? "joiner") : null;
+  const partnerShown = L.partnerName(state, 1);
+  useEffect(() => {
+    if (!ready || !linkedBox || notifyStatus() !== "on") return;
+    rememberPartnerName(partnerShown);
+    ensurePush(relay, linkedBox);
+  }, [ready, relay, linkedBox, partnerShown]);
 
   // ---- chat archive (IndexedDB): the full history, saved in the background ----
   const [archive] = useState(() => (typeof indexedDB === "undefined" ? null : new ChatArchive(archiveName(storageKey))));
@@ -346,6 +388,12 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
         ),
       claimMission: (i) => update((s) => L.claimMission(s, i, today())),
       setVanish: (v) => update((s) => (s.vanish === v ? s : { ...s, vanish: v })),
+      enableNotify: () => {
+        const c = stateRef.current.couple;
+        const box = c && c.status === "linked" ? inboxFor(c.id, c.key, c.role ?? "joiner") : null;
+        return enableNotifications(relay, box, L.partnerName(stateRef.current, 1));
+      },
+      disableNotify: () => disableNotifications(relay),
       react: (msgId, emoji) => {
         if (C.isLinked(stateRef.current)) send({ kind: "react", to: msgId, emoji }).catch(() => {});
         else update((s) => L.setReaction(s, msgId, 0, emoji));

@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { useEffect, useState, type ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
 import { InstallCard } from "../components/InstallCard";
+import { NotifyCard } from "../components/NotifyCard";
 import { useTheme, type ThemePref } from "../web/theme";
 import { LangPicker } from "../components/pickers";
 import { Button, Card, Chip, fieldClass, ProgressBar, Script, Spinner } from "../components/ui";
@@ -47,6 +48,7 @@ export default function Profile() {
         </div>
 
         <InstallCard />
+        {couple.isLinked(state) ? <NotifyCard /> : null}
         <Appearance />
         <ChatStorage />
 

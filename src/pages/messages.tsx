@@ -1,4 +1,4 @@
-import { ArrowLeft, BookHeart, ChevronRight, Lock, Mail, Plus, RefreshCw, Send, Swords, Timer, X } from "lucide-react";
+import { ArrowLeft, Bell, BookHeart, ChevronRight, Lock, Mail, Plus, RefreshCw, Send, Swords, Timer, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -8,6 +8,8 @@ import { Button, Chip, cx, Spinner } from "../components/ui";
 import { heartLevel } from "../core/lib/game";
 import { couple, currentStreak, partnerName, useProgress, type ChatItem } from "../web/progress";
 import { markChatSeen } from "../components/AppShell";
+import { NotifyCard } from "../components/NotifyCard";
+import { notifyStatus } from "../web/notify";
 
 /** The couple chat on its own full screen, like a messenger. Tap the name for chat settings. */
 export default function Messages() {
@@ -65,6 +67,22 @@ function Chat({ onInfo }: { onInfo: () => void }) {
   const name = partnerName(state, 1);
   const myStreak = currentStreak(state);
   const vanish = VANISH_OPTIONS.find((o) => o.id === state.vanish)!;
+  // Ask once (gently) about notifications.
+  const [askNotify, setAskNotify] = useState(() => {
+    try {
+      return notifyStatus() === "off" && window.localStorage.getItem("zh-notify-asked") !== "1";
+    } catch {
+      return false;
+    }
+  });
+  const dismissNotify = () => {
+    setAskNotify(false);
+    try {
+      window.localStorage.setItem("zh-notify-asked", "1");
+    } catch {
+      // fine
+    }
+  };
 
   useEffect(() => {
     markChatSeen();
@@ -134,6 +152,18 @@ function Chat({ onInfo }: { onInfo: () => void }) {
 
       {/* Messages */}
       <main className="flex-1 space-y-2 overflow-y-auto px-3 py-4 sm:px-5" aria-live="polite">
+        {askNotify ? (
+          <div className="mx-auto mb-3 flex max-w-md items-center gap-3 rounded-3xl bg-card p-3 shadow-card ring-1 ring-line/60">
+            <span className="text-2xl">🔔</span>
+            <p className="min-w-0 flex-1 text-sm text-ink">Get notified when {name} writes?</p>
+            <Button size="sm" onClick={onInfo}>
+              Turn on
+            </Button>
+            <button type="button" aria-label="Not now" onClick={dismissNotify} className="rounded-full p-1.5 text-muted hover:bg-blush">
+              <X size={16} />
+            </button>
+          </div>
+        ) : null}
         <p className="mx-auto mb-3 flex w-fit items-center gap-1.5 rounded-full bg-blush/70 px-3 py-1 text-[11px] text-muted">
           <Lock size={11} /> End-to-end encrypted · only you two can read this
         </p>
@@ -303,6 +333,12 @@ function ChatInfo({ onBack }: { onBack: () => void }) {
           <QuickAction icon={<BookHeart size={20} />} label="Memories" href="/memories" />
         </div>
       </div>
+
+      <Section title="Notifications" icon={<Bell size={16} />}>
+        <div className="px-4 pb-4 pt-1">
+          <NotifyCard compact />
+        </div>
+      </Section>
 
       <Section title="Disappearing messages" icon={<Timer size={16} />}>
         <p className="px-4 pb-2 text-sm text-muted">New messages you send disappear from both phones after the time you choose.</p>
