@@ -109,7 +109,7 @@ function RemoteDuel({ id, topic }: { id: string; topic: string }) {
           <Card className="mt-5 flex justify-around">
             {([0, 1] as const).map((i) => (
               <div key={i}>
-                <p className={i ? "text-4xl font-extrabold text-partner" : "text-4xl font-extrabold text-plum"}>{duel?.scores[i]}</p>
+                <p className={i ? "text-4xl font-extrabold text-them" : "text-4xl font-extrabold text-me"}>{duel?.scores[i]}</p>
                 <p className="text-muted">{partnerName(state, i)}</p>
               </div>
             ))}

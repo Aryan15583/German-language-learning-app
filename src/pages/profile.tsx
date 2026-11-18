@@ -32,7 +32,7 @@ export default function Profile() {
     <AppShell>
       <div className="mx-auto max-w-3xl">
         <Card className="flex flex-col items-center bg-gradient-to-br from-card to-blush py-7 text-center">
-          <span className="grid h-20 w-20 place-items-center rounded-full bg-plum text-3xl font-bold text-white shadow-soft">{partnerName(state, who).slice(0, 1).toUpperCase()}</span>
+          <span className={`grid h-20 w-20 place-items-center rounded-full ${who ? "bg-them" : "bg-me"} text-3xl font-bold text-white shadow-soft`}>{partnerName(state, who).slice(0, 1).toUpperCase()}</span>
           <Script as="h1" className="mt-3 text-4xl">
             {partnerName(state, who)}
           </Script>
@@ -290,11 +290,47 @@ function Appearance() {
           </button>
         ))}
       </div>
+      <MyColor />
       <div className="mt-3 border-t border-line/60 pt-2">
         <PrefToggle k="animations" title="Smooth animations" hint="Cards rise gently into view as you scroll." />
         <SoundToggle />
       </div>
     </Section>
+  );
+}
+
+/** Pink or blue for me; my partner gets the other colour (achievements, progress, chat…). */
+function MyColor() {
+  const { state } = useProgress();
+  const [prefs, setPrefs] = usePrefs();
+  const me = partnerName(state, 0);
+  const them = partnerName(state, 1);
+  const options = [
+    { id: "blue" as const, label: "💙 Blue", cls: "bg-partner" },
+    { id: "pink" as const, label: "💗 Pink", cls: "bg-pink" },
+  ];
+  return (
+    <div className="mt-4 border-t border-line/60 pt-3">
+      <p className="font-semibold text-ink">My colour</p>
+      <p className="text-xs text-muted">
+        {me} gets this colour, {them} gets the other — in achievements, progress, duels and the chat.
+      </p>
+      <div className="mt-2 flex gap-2" role="radiogroup" aria-label="My colour">
+        {options.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            role="radio"
+            aria-checked={prefs.myColor === o.id}
+            onClick={() => setPrefs({ myColor: o.id })}
+            className={`flex items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-semibold transition ${prefs.myColor === o.id ? "border-plum bg-blush" : "border-line bg-surface hover:border-rose"}`}
+          >
+            <span className={`h-4 w-4 rounded-full ${o.cls}`} />
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

@@ -211,7 +211,7 @@ function CoupleChat() {
 
       {/* The conversation: tap to open the full chat */}
       <Link href="/messages" className="card-premium mt-5 flex items-center gap-3 rounded-[26px] p-4 transition hover:border-rose">
-        <span className="relative grid h-14 w-14 shrink-0 place-items-center rounded-full bg-partner text-2xl font-bold text-white">
+        <span className="relative grid h-14 w-14 shrink-0 place-items-center rounded-full bg-them text-2xl font-bold text-white">
           {name.slice(0, 1).toUpperCase()}
           {unread ? <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-rose px-1 text-[11px] font-bold text-white ring-2 ring-surface">{unread}</span> : null}
         </span>
@@ -262,12 +262,12 @@ function CoupleChat() {
           </p>
           <div className="mt-3 flex items-end justify-around text-center">
             <div>
-              <p className="text-3xl font-extrabold text-plum">{mineWeek}</p>
+              <p className="text-3xl font-extrabold text-me">{mineWeek}</p>
               <p className="text-xs text-muted">You</p>
             </div>
             <p className="pb-4 text-sm text-muted">vs</p>
             <div>
-              <p className="text-3xl font-extrabold text-partner">{theirWeek}</p>
+              <p className="text-3xl font-extrabold text-them">{theirWeek}</p>
               <p className="text-xs text-muted">{name}</p>
             </div>
           </div>

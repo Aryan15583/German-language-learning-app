@@ -15,9 +15,11 @@ export type Prefs = {
   notifyPreview: boolean;
   /** With a PIN: lock again after the app was in the background this many minutes. */
   lockAfter: LockAfter;
+  /** My colour for the two of us: I'm pink and my partner blue, or the other way round. */
+  myColor: "pink" | "blue";
 };
 
-export const DEFAULT_PREFS: Prefs = { animations: true, quickPhrases: true, homeExtras: true, nudge: true, notifyPreview: true, lockAfter: "1" };
+export const DEFAULT_PREFS: Prefs = { animations: true, quickPhrases: true, homeExtras: true, nudge: true, notifyPreview: true, lockAfter: "1", myColor: "pink" };
 
 const KEY = "zh-prefs";
 const EVENT = "zh-prefs";
@@ -41,6 +43,7 @@ export function getPrefs(): Prefs {
       homeExtras: typeof p.homeExtras === "boolean" ? p.homeExtras : DEFAULT_PREFS.homeExtras,
       nudge: typeof p.nudge === "boolean" ? p.nudge : DEFAULT_PREFS.nudge,
       notifyPreview: typeof p.notifyPreview === "boolean" ? p.notifyPreview : DEFAULT_PREFS.notifyPreview,
+      myColor: p.myColor === "blue" ? "blue" : "pink",
       lockAfter: p.lockAfter === "0" || p.lockAfter === "1" || p.lockAfter === "5" || p.lockAfter === "never" ? p.lockAfter : DEFAULT_PREFS.lockAfter,
     };
   } catch {
@@ -57,6 +60,7 @@ export function setPrefs(patch: Partial<Prefs>) {
     cache = { ...cache, ...patch };
   }
   window.dispatchEvent(new Event(EVENT));
+  if (patch.myColor) document.documentElement.classList.toggle("me-blue", patch.myColor === "blue");
 }
 
 const subscribe = (fn: () => void) => {
