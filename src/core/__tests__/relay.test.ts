@@ -1,4 +1,4 @@
-import { helloBox, inboxFor, otherRole, pushPublicKey, pushSubscribe, RelayError, relayConfig, relayFetch, relaySend } from "../lib/relay";
+import { helloBox, inboxFor, minuteOfDay, otherRole, pushPublicKey, pushSubscribe, RelayError, relayConfig, relayFetch, relaySend } from "../lib/relay";
 
 const cfg = { url: "https://abc.supabase.co", key: "aaa.bbb.ccc" };
 
@@ -100,5 +100,14 @@ describe("message notifications (push)", () => {
     expect(await pushPublicKey(cfg, missing)).toBeNull();
     expect(await pushPublicKey(cfg, junk)).toBeNull();
     expect(await pushPublicKey(cfg, offline)).toBeNull();
+  });
+});
+
+describe("reminder times", () => {
+  it("turns HH:MM into minutes after midnight", () => {
+    expect(minuteOfDay("00:00")).toBe(0);
+    expect(minuteOfDay("20:30")).toBe(1230);
+    expect(minuteOfDay("23:59")).toBe(1439);
+    for (const bad of ["24:00", "7:30", "12:60", "", "noon"]) expect(minuteOfDay(bad)).toBeNull();
   });
 });

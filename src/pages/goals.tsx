@@ -1,4 +1,5 @@
 import { AppShell } from "../components/AppShell";
+import { ReminderCard } from "../components/ReminderCard";
 import { Card, ProgressBar, Script } from "../components/ui";
 import { SECRET_PHRASES } from "../core/content/berlin";
 import { LEVELS, meaning } from "../core/content/levels";
@@ -69,6 +70,8 @@ export default function Goals() {
             );
           })}
         </div>
+
+        <ReminderCard className="mt-4" />
 
         <h2 className="mb-1 mt-8 text-lg font-bold">🔐 Secret phrases</h2>
         <p className="mb-3 text-sm text-muted">Keep your shared streak alive to unlock them. Unlocked phrases appear in Love notes.</p>

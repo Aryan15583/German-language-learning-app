@@ -93,3 +93,20 @@ export async function pushPublicKey(cfg: RelayConfig, fetchImpl: typeof fetch = 
     return null;
   }
 }
+
+// ---- daily reminders (see supabase/migrations/0005_reminders.sql) ----
+export const pushSetReminder = (
+  cfg: RelayConfig,
+  sub: { endpoint: string; p256dh: string; auth: string },
+  minute: number | null,
+  tz: string | null,
+  fetchImpl: typeof fetch = fetch,
+) => call<null>(cfg, "push_set_reminder", { p_endpoint: sub.endpoint, p_p256dh: sub.p256dh, p_auth: sub.auth, p_minute: minute, p_tz: tz }, fetchImpl);
+export const pushLearned = (cfg: RelayConfig, endpoint: string, day: string, fetchImpl: typeof fetch = fetch) =>
+  call<null>(cfg, "push_learned", { p_endpoint: endpoint, p_day: day }, fetchImpl);
+
+/** "20:30" → 1230 (minutes after midnight); null when it isn't a valid time. */
+export function minuteOfDay(time: string): number | null {
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}

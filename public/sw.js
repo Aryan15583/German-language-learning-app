@@ -59,6 +59,24 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     (async () => {
       const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      let kind = "msg";
+      try {
+        kind = (event.data && event.data.json().t) || "msg";
+      } catch (e) {
+        // empty or old-style ping: a message
+      }
+      if (kind === "remind") {
+        // Already in the app: no need to remind.
+        if (wins.some((w) => w.visibilityState === "visible")) return;
+        await self.registration.showNotification("Zeit für Deutsch! 🇩🇪", {
+          body: "5 minutes today keeps your streak alive 🔥 Berlin is waiting for you two ❤️",
+          tag: "zh-remind",
+          icon: "/icons/icon-192.png",
+          badge: "/icons/icon-192.png",
+          data: { url: "/" },
+        });
+        return;
+      }
       // The chat is open on screen: no need to buzz.
       if (wins.some((w) => w.visibilityState === "visible" && new URL(w.url).pathname.startsWith("/messages"))) return;
       let name = "";

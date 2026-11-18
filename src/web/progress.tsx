@@ -17,7 +17,7 @@ import {
 } from "../core/lib/link";
 import { helloBox, inboxFor, otherRole, RelayError, relayConfig, relayFetch, relaySend } from "../core/lib/relay";
 import { messageLink } from "./share";
-import { disableNotifications, enableNotifications, ensurePush, notifyStatus, notifyWanted, rememberPartnerName, showMessageNotification, type NotifyStatus } from "./notify";
+import { disableNotifications, enableNotifications, ensurePush, localReminderCheck, reportLearned, setReminder, type Reminder, notifyStatus, notifyWanted, rememberPartnerName, showMessageNotification, type NotifyStatus } from "./notify";
 import { archiveDiff, type ArchiveStats } from "../core/lib/archive";
 import { archiveName, askToKeepData, ChatArchive } from "./chatStore";
 import * as C from "../core/state/couple";
@@ -69,6 +69,8 @@ type Ctx = {
   /** Message notifications: turn on (asks permission) or off. `push` = also when the app is closed. */
   enableNotify: () => Promise<{ status: NotifyStatus; push: boolean }>;
   disableNotify: () => Promise<void>;
+  /** Daily learning reminder at a time of day. */
+  saveReminder: (r: Reminder) => Promise<{ ok: boolean; push: boolean; status: NotifyStatus }>;
   /** React to a chat message with an emoji ("" removes my reaction). */
   react: (msgId: string, emoji: string) => void;
   /** Our memory book. */
@@ -309,6 +311,21 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
     ensurePush(relay, linkedBox);
   }, [ready, relay, linkedBox, partnerShown]);
 
+  // Reminders: tell the server once I've learned today; and remind from here while the app is open in the background.
+  const meToday = state.partners[state.learner].today;
+  const learnedToday = meToday.date === today() && meToday.xp > 0;
+  useEffect(() => {
+    if (ready && learnedToday) reportLearned(relay, today());
+  }, [ready, relay, learnedToday]);
+  useEffect(() => {
+    if (!ready) return;
+    const id = setInterval(() => {
+      const t = stateRef.current.partners[stateRef.current.learner].today;
+      localReminderCheck(t.date === today() && t.xp > 0, today());
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [ready]);
+
   // ---- chat archive (IndexedDB): the full history, saved in the background ----
   const [archive] = useState(() => (typeof indexedDB === "undefined" ? null : new ChatArchive(archiveName(storageKey))));
   const archived = useRef<AppState["chat"] | null>(null);
@@ -394,6 +411,7 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
         return enableNotifications(relay, box, L.partnerName(stateRef.current, 1));
       },
       disableNotify: () => disableNotifications(relay),
+      saveReminder: (r) => setReminder(relay, r),
       react: (msgId, emoji) => {
         if (C.isLinked(stateRef.current)) send({ kind: "react", to: msgId, emoji }).catch(() => {});
         else update((s) => L.setReaction(s, msgId, 0, emoji));
