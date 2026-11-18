@@ -9,13 +9,13 @@ import { AuthScreen } from "../components/AuthScreen";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { Lock } from "../components/Lock";
 import { Setup } from "../components/Setup";
-import { Spinner } from "../components/ui";
+import { LoadingScreen } from "../components/LoadingScreen";
 import { AccountProvider, stateKey, useAccount } from "../web/account";
 import { ProgressProvider, useProgress } from "../web/progress";
 
 function Ready({ children }: { children: React.ReactNode }) {
   const { ready, locked, state, accountMode } = useProgress();
-  if (!ready) return <Spinner />;
+  if (!ready) return <LoadingScreen />;
   const needsSetup = accountMode ? !state.partners[0].name : !state.partners[0].name || !state.partners[1].name;
   if (needsSetup) return <Setup />;
   // Locked: show only the PIN screen, so nothing private is on the page behind it.
@@ -26,7 +26,8 @@ function Ready({ children }: { children: React.ReactNode }) {
 /** Signed out → login. Signed in (or no accounts set up) → that person's progress. */
 function Gate({ children }: { children: React.ReactNode }) {
   const acct = useAccount();
-  if (acct.phase === "loading") return <Spinner />;
+  if (acct.phase === "loading") return <LoadingScreen />;
+  if (acct.phase === "error") return <LoadingScreen failed />;
   if (acct.phase !== "off" && acct.phase !== "ready") return <AuthScreen />;
   const uid = acct.account?.id;
   return (

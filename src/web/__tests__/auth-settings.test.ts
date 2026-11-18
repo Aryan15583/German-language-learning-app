@@ -21,3 +21,11 @@ describe("friendly auth errors", () => {
     ["Signups not allowed for this instance", "New sign-ups are closed for this app."],
   ])("%s", (raw, nice) => expect(friendlyAuthError(raw)).toBe(nice));
 });
+
+describe("never stuck loading", () => {
+  it("gives up on a hanging request after the time limit", async () => {
+    const { withTimeout } = await import("../account");
+    await expect(withTimeout(new Promise(() => {}), 20)).rejects.toThrow("timeout");
+    await expect(withTimeout(Promise.resolve(5), 20)).resolves.toBe(5);
+  });
+});
