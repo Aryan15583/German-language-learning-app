@@ -231,6 +231,7 @@ function CoupleChat() {
       <Button href="/messages" full size="lg" className="mt-3">
         <MessageCircle size={20} /> Open chat
       </Button>
+      <Nudge name={name} learnedToday={them.remote?.streakDay === today()} />
 
       {waitingForConfirm ? (
         <Card className="mt-4 border-rose-soft">
@@ -288,6 +289,35 @@ function CoupleChat() {
       <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs text-muted">
         <Lock size={14} /> End-to-end encrypted. Chat settings are in the chat — tap {name}’s name at the top.
       </p>
+    </div>
+  );
+}
+
+/** "Remind Shreya to learn": a sweet chat message (it also buzzes her phone if notifications are on). */
+function Nudge({ name, learnedToday }: { name: string; learnedToday: boolean }) {
+  const { send, state } = useProgress();
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "saved">("idle");
+  return (
+    <div className="card-premium mt-3 flex items-center gap-3 rounded-[26px] p-4">
+      <span className="text-3xl">{learnedToday ? "🌟" : "👋"}</span>
+      <p className="min-w-0 flex-1 text-sm text-ink">{learnedToday ? `${name} already learned today. Send some love?` : `${name} hasn’t learned yet today.`}</p>
+      <Button
+        size="sm"
+        variant="soft"
+        disabled={status !== "idle"}
+        onClick={async () => {
+          setStatus("sending");
+          const text = learnedToday ? "🌟 Ich bin so stolz auf dich! Weiter so ❤️" : "👋 Lass uns heute Deutsch lernen! Nur 5 Minuten — ich warte auf dich ❤️";
+          try {
+            const r = await send(state.vanish === "off" ? { kind: "msg", text } : { kind: "msg", text, vanish: state.vanish });
+            setStatus(r.delivered ? "sent" : "saved");
+          } catch {
+            setStatus("saved");
+          }
+        }}
+      >
+        {status === "sent" ? "Sent ❤️" : status === "saved" ? "In chat 💬" : status === "sending" ? "…" : learnedToday ? "Send love" : `Nudge ${name}`}
+      </Button>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
 import { InstallCard } from "../components/InstallCard";
 import { NotifyCard } from "../components/NotifyCard";
+import { ReminderCard } from "../components/ReminderCard";
 import { useTheme, type ThemePref } from "../web/theme";
 import { LangPicker } from "../components/pickers";
 import { Button, Card, Chip, fieldClass, ProgressBar, Script, Spinner } from "../components/ui";
@@ -47,8 +48,9 @@ export default function Profile() {
           <Row href="/goals" emoji="🎯" title="Couple goals" detail="Targets to chase together" />
         </div>
 
-        <InstallCard />
+        <ReminderCard className="mt-4" />
         {couple.isLinked(state) ? <NotifyCard /> : null}
+        <InstallCard />
         <Appearance />
         <ChatStorage />
 

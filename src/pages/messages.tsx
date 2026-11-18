@@ -186,7 +186,13 @@ function Chat({ onInfo }: { onInfo: () => void }) {
       {/* Composer */}
       <footer className="glass sticky bottom-0 z-20 border-t border-line/60 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
         {fallback.view}
-        <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
+        <div
+          className="desk-scroll mb-2 flex gap-1.5 overflow-x-auto pb-0.5"
+          onWheel={(e) => {
+            // Mouse wheel scrolls the phrases sideways on computers.
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
+          }}
+        >
           {QUICK.map((q) => (
             <Chip key={q} className="shrink-0 !py-1 text-sm" onClick={() => setText(q)}>
               {q}
@@ -209,7 +215,7 @@ function Chat({ onInfo }: { onInfo: () => void }) {
           {tray ? (
             <>
               <button type="button" aria-label="Close menu" tabIndex={-1} className="fixed inset-0 z-30 cursor-default" onClick={() => setTray(false)} />
-              <div role="menu" aria-label="More options" className="absolute bottom-[calc(100%+0.6rem)] left-0 z-40 w-[min(19rem,calc(100vw-1.5rem))] overflow-hidden rounded-3xl bg-card p-1.5 shadow-soft ring-1 ring-line/70 anim-fade-up">
+              <div role="menu" aria-label="More options" className="desk-scroll absolute bottom-[calc(100%+0.6rem)] left-0 z-40 max-h-[min(26rem,60vh)] w-[min(19rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-3xl bg-card p-1.5 shadow-soft ring-1 ring-line/70 anim-fade-up">
                 <MenuItem
                   icon="🔒"
                   title={secret ? "Secret is on" : "Secret message"}

@@ -1,4 +1,4 @@
-# Message notifications (like WhatsApp) — one-time setup
+# Message notifications & daily reminders — one-time setup
 
 Without this setup, notifications already work **while the app is open or in the background**.
 These 3 steps make them work **even when the app is closed**.
@@ -11,6 +11,8 @@ closed-app notification says “Shreya 💌 — New message from Shreya” (like
 1. Open your Supabase project → **SQL Editor** → **New query**.
 2. Copy everything in `supabase/migrations/0004_push_notifications.sql` and paste it.
 3. Click **Run**. You should see “Success”.
+
+Then do the same with `supabase/migrations/0005_reminders.sql` (daily reminders). Run it after 0004.
 
 ## 2. Create the “notify” function (3 minutes)
 
@@ -31,6 +33,14 @@ No keys or passwords to copy: the function makes its own notification key the fi
 
 **iPhone:** notifications only work for apps on the Home Screen. In Safari tap **Share → Add to Home Screen**,
 then open Zwei Herzen from the Home Screen and turn notifications on there (iOS 16.4 or newer).
+
+## 4. Daily reminder (each phone)
+
+Open **Me** → **Daily reminder** → pick a time (8:00, 13:00, 19:00, 21:30 or your own).
+You get “Zeit für Deutsch! 🇩🇪” at that time — only on days you haven’t learned yet.
+
+Already made the function before? Paste the newest `supabase/functions/notify/index.ts` again and deploy
+(it now also sends reminders).
 
 ## If it says “On while the app is open” only
 
