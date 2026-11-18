@@ -1,0 +1,383 @@
+import { ArrowLeft, BookHeart, ChevronRight, Lock, Mail, Plus, RefreshCw, Send, Swords, Timer, X } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ChatRow, QUICK, VANISH_OPTIONS } from "../components/ChatRow";
+import { useFallback } from "../components/Fallback";
+import { Button, Chip, cx, Spinner } from "../components/ui";
+import { heartLevel } from "../core/lib/game";
+import { couple, currentStreak, partnerName, useProgress, type ChatItem } from "../web/progress";
+import { markChatSeen } from "../components/AppShell";
+
+/** The couple chat on its own full screen, like a messenger. Tap the name for chat settings. */
+export default function Messages() {
+  const router = useRouter();
+  const { state } = useProgress();
+  const linked = couple.isLinked(state);
+  useEffect(() => {
+    if (!linked) router.replace("/us");
+  }, [linked, router]);
+  if (!linked) return null;
+  const info = router.query.info === "1";
+  return info ? <ChatInfo onBack={() => router.back()} /> : <Chat onInfo={() => router.push("/messages?info=1")} />;
+}
+
+function Avatar({ name, size = "h-10 w-10 text-base" }: { name: string; size?: string }) {
+  return <span className={cx("grid shrink-0 place-items-center rounded-full bg-partner font-bold text-white", size)}>{name.slice(0, 1).toUpperCase()}</span>;
+}
+
+function Chat({ onInfo }: { onInfo: () => void }) {
+  const { state, send, syncStatus, syncNow, viewMessages, leaveChat, archive } = useProgress();
+  const [text, setText] = useState("");
+  const [secret, setSecret] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [tray, setTray] = useState(false);
+  const fallback = useFallback();
+  const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  // A clock for the "23 h left" labels (ticks every minute).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  // Long chats stay fast: show the newest messages, and load older ones on request.
+  const PAGE = 60;
+  const [shown, setShown] = useState(PAGE);
+  const [older, setOlder] = useState<ChatItem[]>([]);
+  const [noMore, setNoMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const recent = state.chat.slice(-shown);
+  const recentIds = new Set(state.chat.map((m) => m.id));
+  const visible = [...older.filter((m) => !recentIds.has(m.id) && !couple.isExpired(m, now)), ...recent];
+  const canLoadMore = shown < state.chat.length || (!!archive && !noMore && state.chat.length > 0);
+  const loadEarlier = async () => {
+    if (shown < state.chat.length) return setShown(shown + PAGE);
+    if (!archive || loadingOlder) return;
+    setLoadingOlder(true);
+    const oldestAt = (older[0] ?? state.chat[0])?.at ?? Date.now();
+    const page = await archive.before(oldestAt, PAGE).catch(() => []);
+    setOlder((o) => [...page, ...o]);
+    if (page.length < PAGE) setNoMore(true);
+    setLoadingOlder(false);
+  };
+  const them = state.partners[1];
+  const name = partnerName(state, 1);
+  const myStreak = currentStreak(state);
+  const vanish = VANISH_OPTIONS.find((o) => o.id === state.vanish)!;
+
+  useEffect(() => {
+    markChatSeen();
+    endRef.current?.scrollIntoView({ block: "end" });
+    // Reading the chat starts the "after seen" countdown (and tells my partner's phone).
+    if (document.visibilityState === "visible") viewMessages();
+  }, [state.chat.length]); // eslint-disable-line react-hooks/exhaustive-deps -- run when messages change
+
+  // Leaving the chat (or hiding the app): "after seen" messages I've read are gone.
+  useEffect(() => {
+    const onHide = () => (document.visibilityState === "hidden" ? leaveChat() : viewMessages());
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", leaveChat);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", leaveChat);
+      leaveChat();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- once per visit
+
+  const submit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const t = text.trim();
+    if (!t || sending) return;
+    setSending(true);
+    const r = await send(secret ? { kind: "secret", text: t, unlockAt: 7 } : state.vanish === "off" ? { kind: "msg", text: t } : { kind: "msg", text: t, vanish: state.vanish });
+    setSending(false);
+    setText("");
+    setSecret(false);
+    fallback.handle(r);
+    inputRef.current?.focus();
+  };
+
+  return (
+    <div className="mx-auto flex h-dvh max-w-3xl flex-col bg-surface lg:border-x lg:border-line/60">
+      {/* Header: back, then the name — tap it for chat settings */}
+      <header className="glass sticky top-0 z-20 flex items-center gap-1 border-b border-line/60 px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
+        <Link href="/us" aria-label="Back" className="grid h-11 w-11 place-items-center rounded-full text-ink hover:bg-blush">
+          <ArrowLeft size={22} />
+        </Link>
+        <button type="button" onClick={onInfo} className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-1.5 py-1 text-left hover:bg-blush/60" aria-label={`${name} — chat settings`}>
+          <Avatar name={name} />
+          <span className="min-w-0">
+            <span className="block truncate font-bold text-ink">{name}</span>
+            <span className="block truncate text-xs text-muted">
+              {state.vanish !== "off" ? (
+                <span className="font-semibold text-plum">
+                  <Timer size={12} className="mr-0.5 inline" /> {vanish.label}
+                </span>
+              ) : (
+                <>🔥 {them.remote?.streak ?? 0} days · tap for settings</>
+              )}
+            </span>
+          </span>
+        </button>
+        <button type="button" onClick={syncNow} aria-label="Check for new messages" className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs text-muted hover:bg-blush">
+          <RefreshCw size={14} /> {syncStatus === "ok" ? "🟢" : syncStatus === "offline" ? "🟠" : "🔗"}
+        </button>
+      </header>
+
+      {/* Messages */}
+      <main className="flex-1 space-y-2 overflow-y-auto px-3 py-4 sm:px-5" aria-live="polite">
+        <p className="mx-auto mb-3 flex w-fit items-center gap-1.5 rounded-full bg-blush/70 px-3 py-1 text-[11px] text-muted">
+          <Lock size={11} /> End-to-end encrypted · only you two can read this
+        </p>
+        {state.chat.length === 0 ? <p className="py-8 text-center text-muted">Say hallo! 👋 Every message also shares your progress for the weekly battle.</p> : null}
+        {canLoadMore ? (
+          <div className="py-2 text-center">
+            <button type="button" onClick={loadEarlier} disabled={loadingOlder} className="rounded-full bg-blush px-4 py-1.5 text-xs font-semibold text-plum hover:bg-rose-soft/60 disabled:opacity-50">
+              {loadingOlder ? "Loading…" : "↑ Show earlier messages"}
+            </button>
+          </div>
+        ) : state.chat.length > PAGE ? (
+          <p className="py-2 text-center text-xs text-muted">That’s the very beginning of your chat 💞</p>
+        ) : null}
+        {visible.map((m) => (
+          <ChatRow key={m.id + m.from} m={m} myStreak={myStreak} now={now} />
+        ))}
+        <div ref={endRef} />
+      </main>
+
+      {/* Composer */}
+      <footer className="glass sticky bottom-0 z-20 border-t border-line/60 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
+        {fallback.view}
+        {tray ? (
+          <div className="mb-2 grid grid-cols-4 gap-2 anim-fade-up">
+            <TrayButton
+              icon="🔒"
+              label={secret ? "Secret on" : "Secret"}
+              active={secret}
+              onClick={() => {
+                setSecret(!secret);
+                setTray(false);
+                inputRef.current?.focus();
+              }}
+            />
+            <TrayButton icon="💌" label="Love note" href="/note" />
+            <TrayButton icon="📖" label="Our words" href="/words" />
+            <TrayButton icon="⚔️" label="Duel" href="/quizzes" />
+          </div>
+        ) : (
+          <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
+            {QUICK.map((q) => (
+              <Chip key={q} className="shrink-0 !py-1 text-sm" onClick={() => setText(q)}>
+                {q}
+              </Chip>
+            ))}
+          </div>
+        )}
+        {secret ? (
+          <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-rose">
+            🔒 Secret message — opens when {name} reaches a 7-day streak
+            <button type="button" aria-label="Cancel secret" onClick={() => setSecret(false)} className="ml-auto rounded-full p-1 hover:bg-blush">
+              <X size={14} />
+            </button>
+          </p>
+        ) : state.vanish !== "off" ? (
+          <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-plum">
+            <Timer size={13} /> Disappearing: {vanish.label}
+          </p>
+        ) : null}
+        <form onSubmit={submit} className="flex items-end gap-2">
+          <button
+            type="button"
+            aria-label={tray ? "Close extras" : "More: secret, love note, words, duel"}
+            aria-expanded={tray}
+            onClick={() => setTray(!tray)}
+            className={cx("grid h-12 w-12 shrink-0 place-items-center rounded-full text-plum transition hover:bg-blush", tray && "rotate-45 bg-blush")}
+          >
+            <Plus size={24} />
+          </button>
+          <textarea
+            ref={inputRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                submit();
+              }
+            }}
+            rows={1}
+            maxLength={1000}
+            aria-label="Message"
+            placeholder={secret ? "🔒 A secret…" : state.vanish !== "off" ? "⏱ Disappearing message…" : "Auf Deutsch, bitte… 💬"}
+            className={cx(
+              "max-h-32 min-h-12 flex-1 resize-none rounded-3xl border border-line bg-card px-4 py-3 text-ink outline-none placeholder:text-muted/80 focus:border-rose",
+              secret && "border-rose",
+            )}
+          />
+          {sending ? (
+            <span className="grid h-12 w-12 place-items-center">
+              <Spinner />
+            </span>
+          ) : (
+            <button type="submit" aria-label="Send" disabled={!text.trim()} className="btn-primary grid h-12 w-12 shrink-0 place-items-center rounded-full text-white shadow-soft transition active:scale-95 disabled:opacity-40">
+              <Send size={20} />
+            </button>
+          )}
+        </form>
+      </footer>
+    </div>
+  );
+}
+
+function TrayButton({ icon, label, onClick, href, active }: { icon: string; label: string; onClick?: () => void; href?: string; active?: boolean }) {
+  const cls = cx("flex flex-col items-center gap-1 rounded-2xl py-2.5 text-xs font-semibold text-ink transition hover:bg-blush", active ? "bg-blush ring-2 ring-rose" : "bg-card");
+  const body = (
+    <>
+      <span className="text-2xl">{icon}</span>
+      {label}
+    </>
+  );
+  return href ? (
+    <Link href={href} className={cls}>
+      {body}
+    </Link>
+  ) : (
+    <button type="button" onClick={onClick} aria-pressed={active} className={cls}>
+      {body}
+    </button>
+  );
+}
+
+/** Chat settings, like a messenger's contact page: disappearing messages, shortcuts, unlink. */
+function ChatInfo({ onBack }: { onBack: () => void }) {
+  const router = useRouter();
+  const { state, setVanish, unlink, relayOn, syncStatus } = useProgress();
+  const [confirmUnlink, setConfirmUnlink] = useState(false);
+  const them = state.partners[1];
+  const name = partnerName(state, 1);
+  const hl = heartLevel(them.xp);
+  const since = state.couple?.since ? new Date(state.couple.since).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" }) : null;
+  const media = state.chat.filter((m) => m.kind === "note").length;
+  const secrets = state.chat.filter((m) => m.kind === "secret").length;
+
+  return (
+    <div className="mx-auto min-h-dvh max-w-xl bg-surface pb-10">
+      <header className="glass sticky top-0 z-20 flex items-center gap-2 px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
+        <button type="button" onClick={onBack} aria-label="Back to chat" className="grid h-11 w-11 place-items-center rounded-full text-ink hover:bg-blush">
+          <ArrowLeft size={22} />
+        </button>
+        <p className="font-bold text-ink">Chat settings</p>
+      </header>
+
+      <div className="flex flex-col items-center px-4 pt-4 text-center anim-fade-up">
+        <Avatar name={name} size="h-24 w-24 text-4xl shadow-soft" />
+        <h1 className="mt-3 font-script text-4xl text-plum">{name}</h1>
+        <p className="text-sm text-muted">
+          ❤️ Lv {hl.level} {hl.title} · 🔥 {them.remote?.streak ?? 0} days · {them.remote?.wordsKnown ?? 0} words
+        </p>
+        {since ? <p className="mt-1 text-xs text-muted">Linked since {since} 💞</p> : null}
+        <div className="mt-4 grid w-full grid-cols-3 gap-2">
+          <QuickAction icon={<Mail size={20} />} label="Love note" href="/note" />
+          <QuickAction icon={<Swords size={20} />} label="Duel" href="/quizzes" />
+          <QuickAction icon={<BookHeart size={20} />} label="Memories" href="/memories" />
+        </div>
+      </div>
+
+      <Section title="Disappearing messages" icon={<Timer size={16} />}>
+        <p className="px-4 pb-2 text-sm text-muted">New messages you send disappear from both phones after the time you choose.</p>
+        <div role="radiogroup" aria-label="Disappearing messages">
+          {VANISH_OPTIONS.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              role="radio"
+              aria-checked={state.vanish === o.id}
+              onClick={() => setVanish(o.id)}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-blush/60"
+            >
+              <span className={cx("grid h-5 w-5 shrink-0 place-items-center rounded-full border-2", state.vanish === o.id ? "border-plum" : "border-line")}>
+                {state.vanish === o.id ? <span className="h-2.5 w-2.5 rounded-full bg-plum" /> : null}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold text-ink">{o.label}</span>
+                {o.hint ? <span className="block text-xs text-muted">{o.hint}</span> : <span className="block text-xs text-muted">Messages stay until you delete the chat.</span>}
+              </span>
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Shared with each other">
+        <Row href="/words" emoji="📖" title="Our words" detail={`${state.customWords.length} words`} />
+        <Row href="/memories" emoji="📸" title="Memory book" detail={`${state.memories.length} moments`} />
+        <Row href="/note" emoji="💌" title="Love notes" detail={`${media} in this chat`} />
+        <Row href="/goals" emoji="🔐" title="Secrets" detail={`${secrets} sent or received · open with your streak`} />
+      </Section>
+
+      <Section title="Privacy" icon={<Lock size={16} />}>
+        <p className="px-4 pb-3 text-sm text-muted">
+          Messages are end-to-end encrypted on your phones. {relayOn ? "The mailbox only ever sees scrambled data." : "They travel as secure links you send each other."} Status:{" "}
+          {syncStatus === "ok" ? "🟢 live" : syncStatus === "offline" ? "🟠 offline — will retry" : "🔗 links"}.
+        </p>
+      </Section>
+
+      <div className="mt-4 px-4">
+        {confirmUnlink ? (
+          <div className="card-premium rounded-3xl p-4">
+            <p className="text-sm text-muted">Unlinking keeps your chat history on this phone, but you’ll need a new code to link again.</p>
+            <div className="mt-3 flex gap-2">
+              <Button
+                variant="soft"
+                onClick={() => {
+                  unlink();
+                  router.replace("/us");
+                }}
+              >
+                Unlink
+              </Button>
+              <Button onClick={() => setConfirmUnlink(false)}>Keep linked</Button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setConfirmUnlink(true)} className="w-full rounded-3xl px-4 py-3 text-left font-semibold text-bad hover:bg-blush/60">
+            Unlink phones
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, icon, children }: { title: string; icon?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="mx-4 mt-5 overflow-hidden rounded-3xl bg-card shadow-card ring-1 ring-line/50">
+      <h2 className="flex items-center gap-2 px-4 pb-1 pt-4 text-sm font-bold text-plum">
+        {icon} {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function Row({ href, emoji, title, detail }: { href: string; emoji: string; title: string; detail: string }) {
+  return (
+    <Link href={href} className="flex items-center gap-3 px-4 py-3 hover:bg-blush/60">
+      <span className="text-xl">{emoji}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-semibold text-ink">{title}</span>
+        <span className="block truncate text-xs text-muted">{detail}</span>
+      </span>
+      <ChevronRight size={18} className="text-muted" />
+    </Link>
+  );
+}
+
+function QuickAction({ icon, label, href }: { icon: ReactNode; label: string; href: string }) {
+  return (
+    <Link href={href} className="flex flex-col items-center gap-1 rounded-2xl bg-card py-3 text-xs font-semibold text-plum shadow-card ring-1 ring-line/50 hover:bg-blush">
+      {icon}
+      {label}
+    </Link>
+  );
+}

@@ -1,26 +1,14 @@
-import { BookHeart, Crown, Lock, Mail, RefreshCw, Send, Sparkles, Swords, Timer } from "lucide-react";
-import { useRouter } from "next/router";
-import { useEffect, useRef, useState } from "react";
-import { AppShell, markChatSeen } from "../components/AppShell";
+import { BookHeart, ChevronRight, Crown, Lock, Mail, MessageCircle, Sparkles, Swords } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { AppShell, useUnread } from "../components/AppShell";
 import { useFallback } from "../components/Fallback";
-import { Button, Card, Chip, cx, fieldClass, Script, Speak, Spinner } from "../components/ui";
-import { findTopic } from "../core/content/levels";
-import { REACTIONS } from "../core/lib/couplelife";
+import { Button, Card, cx, fieldClass, Script, Spinner } from "../components/ui";
 import { heartLevel, isoWeek, weeklyLeader } from "../core/lib/game";
 import { CODE_TTL_MS, formatCode } from "../core/lib/link";
-import { couple, currentStreak, partnerName, today, useProgress, type ChatItem } from "../web/progress";
+import { couple, partnerName, today, useProgress } from "../web/progress";
 import { appBaseUrl, shareText } from "../web/share";
 
-const VANISH_OPTIONS: { id: "off" | "seen" | "1d" | "30d"; label: string; hint: string }[] = [
-  { id: "off", label: "Off", hint: "" },
-  { id: "seen", label: "👁 After seen", hint: "Deleted on both phones as soon as your partner has read it and leaves the chat." },
-  { id: "1d", label: "1 day", hint: "Deleted on both phones 24 hours after sending." },
-  { id: "30d", label: "30 days", hint: "Deleted on both phones 30 days after sending." },
-];
-
-const QUICK = ["Gut gemacht! 👏", "Ich bin stolz auf dich ❤️", "Du schaffst das! 💪", "Lass uns lernen! 📚", "Guten Morgen, Schatz! ☀️", "Ich vermisse dich 💞", "Ich liebe dich", "Schlaf gut! 🌙"];
-
-/** Our journey: link phones with a code, then chat, battle and share. */
 export default function Us() {
   const { state } = useProgress();
   return <AppShell>{!state.couple ? <LinkSetup /> : state.couple.status === "invited" ? <WaitingForPartner /> : <CoupleChat />}</AppShell>;
@@ -190,197 +178,81 @@ function WaitingForPartner() {
 }
 
 function CoupleChat() {
-  const router = useRouter();
-  const { state, send, resendHello, relayOn, syncStatus, syncNow, unlink, setVanish, viewMessages, leaveChat, archive } = useProgress();
-  const [text, setText] = useState("");
-  const [secret, setSecret] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [confirmUnlink, setConfirmUnlink] = useState(false);
+  const { state, resendHello, relayOn } = useProgress();
   const fallback = useFallback();
-  const endRef = useRef<HTMLDivElement>(null);
-  // A clock for the "23 h left" labels (ticks every minute).
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(t);
-  }, []);
-  // Long chats stay fast: show the newest messages, and load older ones on request.
-  const PAGE = 60;
-  const [shown, setShown] = useState(PAGE);
-  const [older, setOlder] = useState<ChatItem[]>([]);
-  const [noMore, setNoMore] = useState(false);
-  const [loadingOlder, setLoadingOlder] = useState(false);
-  const recent = state.chat.slice(-shown);
-  const recentIds = new Set(state.chat.map((m) => m.id));
-  const visible = [...older.filter((m) => !recentIds.has(m.id) && !couple.isExpired(m, now)), ...recent];
-  const canLoadMore = shown < state.chat.length || (!!archive && !noMore && state.chat.length > 0);
-  const loadEarlier = async () => {
-    if (shown < state.chat.length) return setShown(shown + PAGE);
-    if (!archive || loadingOlder) return;
-    setLoadingOlder(true);
-    const oldestAt = (older[0] ?? state.chat[0])?.at ?? Date.now();
-    const page = await archive.before(oldestAt, PAGE).catch(() => []);
-    setOlder((o) => [...page, ...o]);
-    if (page.length < PAGE) setNoMore(true);
-    setLoadingOlder(false);
-  };
   const me = state.partners[0];
   const them = state.partners[1];
-  const myStreak = currentStreak(state);
+  const name = partnerName(state, 1);
   const week = isoWeek(today());
   const mineWeek = me.week.id === week ? me.week.xp : 0;
   const theirWeek = them.week.id === week ? them.week.xp : 0;
   const leader = weeklyLeader(mineWeek, theirWeek);
   const waitingForConfirm = state.couple!.role === "joiner" && !them.remote;
   const hl = heartLevel(them.xp);
-
-  useEffect(() => {
-    markChatSeen();
-    endRef.current?.scrollIntoView({ block: "end" });
-    // Reading the chat starts the "after seen" countdown (and tells my partner's phone).
-    if (document.visibilityState === "visible") viewMessages();
-  }, [state.chat.length]); // eslint-disable-line react-hooks/exhaustive-deps -- run when messages change
-
-  // Leaving the chat (or hiding the app): "after seen" messages I've read are gone.
-  useEffect(() => {
-    const onHide = () => (document.visibilityState === "hidden" ? leaveChat() : viewMessages());
-    document.addEventListener("visibilitychange", onHide);
-    window.addEventListener("pagehide", leaveChat);
-    return () => {
-      document.removeEventListener("visibilitychange", onHide);
-      window.removeEventListener("pagehide", leaveChat);
-      leaveChat();
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- once per visit
-
-  const submit = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const t = text.trim();
-    if (!t || sending) return;
-    setSending(true);
-    const r = await send(secret ? { kind: "secret", text: t, unlockAt: 7 } : state.vanish === "off" ? { kind: "msg", text: t } : { kind: "msg", text: t, vanish: state.vanish });
-    setSending(false);
-    setText("");
-    setSecret(false);
-    fallback.handle(r);
-  };
+  const last = [...state.chat].reverse().find((m) => m.kind !== "system");
+  const unread = useUnread();
+  const preview = !last
+    ? "Say hallo! 👋"
+    : last.kind === "duel"
+      ? "⚔️ Duel"
+      : last.kind === "secret"
+        ? "🔒 Secret"
+        : last.kind === "note"
+          ? `💌 ${last.text}`
+          : `${last.from === 0 ? "You: " : ""}${last.text}`;
+  const when = last ? new Date(last.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="order-2 min-w-0 lg:order-1">
-        <Card className="flex min-h-[60vh] flex-col p-0">
-          <div className="flex items-center gap-3 border-b border-line/60 px-5 py-4">
-            <span className="grid h-11 w-11 place-items-center rounded-full bg-partner text-lg font-bold text-white">{partnerName(state, 1).slice(0, 1)}</span>
-            <div className="flex-1">
-              <p className="font-bold text-ink">{partnerName(state, 1)}</p>
-              <p className="text-xs text-muted">
-                ❤️ Lv {hl.level} {hl.title} · 🔥 {them.remote?.streak ?? 0} days
-              </p>
-            </div>
-            <button type="button" onClick={syncNow} aria-label="Check for new messages" className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-muted hover:bg-blush">
-              <RefreshCw size={14} /> {syncStatus === "ok" ? "🟢 live" : syncStatus === "offline" ? "🟠 offline" : "🔗 links"}
-            </button>
-          </div>
+    <div className="mx-auto max-w-3xl">
+      <Script className="text-4xl">Us 💞</Script>
+      <p className="text-muted">Your private space with {name}.</p>
 
-          <div className="flex-1 space-y-2 overflow-y-auto px-4 py-4" aria-live="polite">
-            {state.chat.length === 0 ? <p className="py-8 text-center text-muted">Say hallo! Every message also shares your progress for the weekly battle.</p> : null}
-            {canLoadMore ? (
-              <div className="py-2 text-center">
-                <button type="button" onClick={loadEarlier} disabled={loadingOlder} className="rounded-full bg-blush px-4 py-1.5 text-xs font-semibold text-plum hover:bg-rose-soft/60 disabled:opacity-50">
-                  {loadingOlder ? "Loading…" : "↑ Show earlier messages"}
-                </button>
-              </div>
-            ) : state.chat.length > PAGE ? (
-              <p className="py-2 text-center text-xs text-muted">That’s the very beginning of your chat 💞</p>
-            ) : null}
-            {visible.map((m) => (
-              <ChatRow key={m.id + m.from} m={m} myStreak={myStreak} now={now} />
-            ))}
-            <div ref={endRef} />
-          </div>
+      {/* The conversation: tap to open the full chat */}
+      <Link href="/messages" className="card-premium mt-5 flex items-center gap-3 rounded-[26px] p-4 transition hover:border-rose">
+        <span className="relative grid h-14 w-14 shrink-0 place-items-center rounded-full bg-partner text-2xl font-bold text-white">
+          {name.slice(0, 1).toUpperCase()}
+          {unread ? <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-rose px-1 text-[11px] font-bold text-white ring-2 ring-surface">{unread}</span> : null}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-baseline gap-2">
+            <span className="flex-1 truncate text-lg font-bold text-ink">{name}</span>
+            <span className={cx("shrink-0 text-xs", unread ? "font-bold text-rose" : "text-muted")}>{when}</span>
+          </span>
+          <span className={cx("block truncate text-sm", unread ? "font-semibold text-ink" : "text-muted")}>
+            {last?.vanish ? "⏱ " : ""}
+            {preview}
+          </span>
+          <span className="block text-xs text-muted">
+            ❤️ Lv {hl.level} {hl.title} · 🔥 {them.remote?.streak ?? 0} days
+          </span>
+        </span>
+        <ChevronRight className="shrink-0 text-muted" size={20} />
+      </Link>
+      <Button href="/messages" full size="lg" className="mt-3">
+        <MessageCircle size={20} /> Open chat
+      </Button>
 
-          <div className="border-t border-line/60 p-4">
-            {fallback.view}
-            <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
-              {QUICK.map((q) => (
-                <Chip key={q} className="shrink-0" onClick={() => setText(q)}>
-                  {q}
-                </Chip>
-              ))}
-            </div>
-            <form onSubmit={submit} className="flex items-end gap-2">
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    submit();
-                  }
-                }}
-                rows={1}
-                maxLength={1000}
-                aria-label="Message"
-                placeholder={secret ? "🔒 A secret (opens at their 7-day streak)…" : state.vanish !== "off" ? "⏱ Disappearing…" : "Auf Deutsch, bitte… 💬"}
-                className={cx(fieldClass, "max-h-32 resize-none", secret && "border-rose")}
-              />
-              {sending ? (
-                <Spinner />
-              ) : (
-                <button type="submit" aria-label="Send" disabled={!text.trim()} className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-plum text-white shadow-soft disabled:opacity-40">
-                  <Send size={20} />
-                </button>
-              )}
-            </form>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-2xl bg-blush/60 px-2.5 py-2" role="radiogroup" aria-label="Disappearing messages">
-              <span className="mr-1 flex items-center gap-1 text-xs font-semibold text-plum">
-                <Timer size={14} /> Disappearing:
-              </span>
-              {VANISH_OPTIONS.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={state.vanish === o.id}
-                  onClick={() => setVanish(o.id)}
-                  className={cx("rounded-full px-2.5 py-1 text-xs font-semibold transition", state.vanish === o.id ? "btn-primary text-white" : "text-ink hover:bg-surface")}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-            {state.vanish !== "off" && !secret ? <p className="mt-1 text-xs text-muted">{VANISH_OPTIONS.find((o) => o.id === state.vanish)!.hint}</p> : null}
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Chip selected={secret} onClick={() => setSecret(!secret)}>
-                🔒 Secret
-              </Chip>
-              <Chip onClick={() => router.push("/note")}>💌 Love note</Chip>
-              <Chip onClick={() => router.push("/words")}>📖 Our words</Chip>
-              <Chip onClick={() => router.push("/quizzes")}>⚔️ Duel</Chip>
-            </div>
-          </div>
+      {waitingForConfirm ? (
+        <Card className="mt-4 border-rose-soft">
+          <p className="font-bold">Almost there 💫</p>
+          <p className="my-1.5 text-sm text-muted">
+            {relayOn ? "Your hello is on its way. You’re linked as soon as your partner’s app picks it up." : "Send your hello link so your partner’s phone links too."}
+          </p>
+          {!relayOn ? (
+            <Button
+              onClick={async () => {
+                const r = await resendHello();
+                if (r) fallback.handle(r);
+              }}
+            >
+              Send hello link
+            </Button>
+          ) : null}
+          {fallback.view}
         </Card>
-      </div>
+      ) : null}
 
-      <aside className="order-1 flex flex-col gap-4 lg:order-2">
-        {waitingForConfirm ? (
-          <Card className="border-rose-soft">
-            <p className="font-bold">Almost there 💫</p>
-            <p className="my-1.5 text-sm text-muted">
-              {relayOn ? "Your hello is on its way. You’re linked as soon as your partner’s app picks it up." : "Send your hello link so your partner’s phone links too."}
-            </p>
-            {!relayOn ? (
-              <Button
-                onClick={async () => {
-                  const r = await resendHello();
-                  if (r) fallback.handle(r);
-                }}
-              >
-                Send hello link
-              </Button>
-            ) : null}
-          </Card>
-        ) : null}
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Card>
           <p className="flex items-center gap-2 font-bold text-ink">
             <Swords size={18} className="text-plum" /> This week’s battle
@@ -393,7 +265,7 @@ function CoupleChat() {
             <p className="pb-4 text-sm text-muted">vs</p>
             <div>
               <p className="text-3xl font-extrabold text-partner">{theirWeek}</p>
-              <p className="text-xs text-muted">{partnerName(state, 1)}</p>
+              <p className="text-xs text-muted">{name}</p>
             </div>
           </div>
           <p className="mt-2 flex items-center justify-center gap-1.5 text-sm font-semibold text-ink">
@@ -402,30 +274,20 @@ function CoupleChat() {
                 <Crown size={16} className="text-gold" /> You’re ahead
               </>
             ) : (
-              `${partnerName(state, 1)} leads 🔥`
+              `${name} leads 🔥`
             )}
           </p>
         </Card>
-        <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">
+        <div className="grid grid-cols-2 gap-2">
           <QuickLink href="/note" icon={<Mail size={18} />} label="Love note" />
           <QuickLink href="/words" icon={<BookHeart size={18} />} label="Our words" />
           <QuickLink href="/quizzes" icon={<Swords size={18} />} label="Duel" />
+          <QuickLink href="/memories" icon={<Sparkles size={18} />} label="Memories" />
         </div>
-        <button type="button" onClick={() => setConfirmUnlink(true)} className="text-xs text-muted underline">
-          Unlink phones
-        </button>
-        {confirmUnlink ? (
-          <Card>
-            <p className="text-sm text-muted">Unlinking keeps your chat history here, but you’ll need a new code to link again.</p>
-            <div className="mt-2 flex gap-2">
-              <Button variant="soft" onClick={unlink}>
-                Unlink
-              </Button>
-              <Button onClick={() => setConfirmUnlink(false)}>Keep linked</Button>
-            </div>
-          </Card>
-        ) : null}
-      </aside>
+      </div>
+      <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs text-muted">
+        <Lock size={14} /> End-to-end encrypted. Chat settings are in the chat — tap {name}’s name at the top.
+      </p>
     </div>
   );
 }
@@ -438,123 +300,3 @@ function QuickLink({ href, icon, label }: { href: string; icon: React.ReactNode;
   );
 }
 
-function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; now: number }) {
-  const { state, react, addMemory } = useProgress();
-  const [open, setOpen] = useState(false);
-  const [saved, setSaved] = useState(false);
-  if (m.kind === "system") return <p className="py-1 text-center text-xs text-muted">{m.text}</p>;
-  const mine = m.from === 0;
-  const bubble = cx("cv-auto max-w-[86%] rounded-3xl px-4 py-3", mine ? "ml-auto rounded-br-md bg-blush" : "mr-auto rounded-bl-md bg-partner-soft");
-  const time = new Date(m.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-  if (m.kind === "duel") {
-    const d = state.remoteDuels.find((x) => x.id === m.duelId);
-    const status = d ? couple.duelStatus(d) : "their-turn";
-    const topic = d ? (d.topic.startsWith("mix-") ? `${d.topic.slice(4)} mix` : (findTopic(d.topic)?.title ?? d.topic)) : "Duel";
-    const label = {
-      "your-turn": "Your turn! ⚔️",
-      "their-turn": `Waiting for ${partnerName(state, 1)}…`,
-      won: "You won 🏆",
-      lost: `${partnerName(state, 1)} won 💪`,
-      tie: "Tie 🤝",
-    }[status];
-    return (
-      <div className={bubble}>
-        <p className="font-bold">⚔️ Remote duel · {topic}</p>
-        {d && d.scores[0] !== null && d.scores[1] !== null ? (
-          <p>
-            {d.scores[0]} : {d.scores[1]}
-          </p>
-        ) : null}
-        <p className="text-sm text-muted">{label}</p>
-        {status === "your-turn" ? (
-          <Button size="sm" className="mt-2" href={`/remote-duel?id=${m.duelId}`}>
-            Play now
-          </Button>
-        ) : null}
-      </div>
-    );
-  }
-
-  if (m.kind === "secret" && !couple.secretOpen(m, myStreak)) {
-    return (
-      <div className={cx(bubble, "border border-dashed border-rose")}>
-        <p className="font-bold">🔒 A secret from {partnerName(state, 1)}</p>
-        <p className="text-sm text-muted">
-          Opens at a {m.unlockAt}-day streak · you’re at {myStreak} 🔥
-        </p>
-      </div>
-    );
-  }
-
-  const reacts = [m.reacts?.[0], m.reacts?.[1]].filter(Boolean) as string[];
-  return (
-    <div className={cx("flex flex-col", mine ? "items-end" : "items-start")}>
-      <div
-        className={cx(bubble, "relative cursor-pointer", reacts.length > 0 && "mb-3")}
-        onClick={(e) => {
-          if ((e.target as HTMLElement).closest("button")) return;
-          if (window.getSelection()?.toString()) return;
-          setOpen((o) => !o);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && e.target === e.currentTarget) setOpen((o) => !o);
-        }}
-        tabIndex={0}
-        aria-label="Message, press to react"
-        aria-expanded={open}
-      >
-      {m.kind === "secret" ? <p className="text-xs font-bold text-rose">✨ Secret{mine ? " (sent)" : " unlocked"}</p> : null}
-      {m.kind === "note" ? <p className="text-xs font-bold text-rose">💌 Love note</p> : null}
-      {m.kind === "word" ? <p className="text-xs font-bold text-rose">📖 New shared word</p> : null}
-      <div className="flex items-center gap-2">
-        <p className={cx("flex-1 whitespace-pre-wrap break-words text-ink", m.kind === "note" && "font-script text-2xl")}>{m.text}</p>
-        {m.kind !== "word" ? <Speak text={m.text} /> : null}
-      </div>
-      <p className={cx("mt-0.5 text-[11px] text-muted", mine && "text-right")}>
-        {time}
-        {m.vanish ? <span className="ml-2 font-semibold text-plum">{couple.vanishLabel(m, now)}</span> : null}
-      </p>
-        {reacts.length ? (
-          <span className={cx("absolute -bottom-3 flex gap-0.5 rounded-full bg-surface px-1.5 py-0.5 text-sm shadow-card ring-1 ring-line/60 anim-pop", mine ? "left-3" : "right-3")}>
-            {reacts.map((r, k) => (
-              <span key={k}>{r}</span>
-            ))}
-          </span>
-        ) : null}
-      </div>
-      {open ? (
-        <div className="mt-1 flex flex-wrap items-center gap-1 rounded-full bg-surface px-2 py-1 shadow-card ring-1 ring-line/60 anim-fade-up" role="group" aria-label="React">
-          {REACTIONS.map((r) => (
-            <button
-              key={r}
-              type="button"
-              aria-label={`React ${r}`}
-              aria-pressed={m.reacts?.[0] === r}
-              onClick={() => {
-                react(m.id, m.reacts?.[0] === r ? "" : r);
-                setOpen(false);
-              }}
-              className={cx("grid h-9 w-9 place-items-center rounded-full text-lg transition hover:scale-110 hover:bg-blush", m.reacts?.[0] === r && "bg-blush")}
-            >
-              {r}
-            </button>
-          ))}
-          {!m.vanish ? (
-            <button
-              type="button"
-              disabled={saved}
-              onClick={() => {
-                addMemory({ emoji: "💬", title: mine ? "Something I said" : `${partnerName(state, 1)} said`, text: m.text, at: m.at });
-                setSaved(true);
-              }}
-              className="ml-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-plum hover:bg-blush disabled:opacity-60"
-            >
-              {saved ? "Saved 📖" : "📌 Memory book"}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  );
-}

@@ -310,7 +310,7 @@ export default function Home() {
             <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
               <Swords size={18} className="text-plum" /> This week
             </h2>
-            <Link href={linked ? "/us" : "/progress"} className="text-sm font-semibold text-plum hover:underline">
+            <Link href={linked ? "/messages" : "/progress"} className="text-sm font-semibold text-plum hover:underline">
               {linked ? "Chat" : "Details"}
             </Link>
           </div>
