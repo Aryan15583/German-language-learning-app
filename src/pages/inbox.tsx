@@ -24,7 +24,7 @@ export default function Inbox() {
           <Script className="mt-2 text-4xl">This link can’t be opened</Script>
           <p className="mt-2 text-muted">{result === "empty" ? "The link is incomplete. Ask your partner to send it again." : result.error}</p>
           <Button href="/us" className="mt-5">
-            Go to Couple
+            Go to Us
           </Button>
         </div>
       </AppShell>
@@ -37,6 +37,7 @@ export default function Inbox() {
     hello: "linked your phones 💞",
     stats: "shared their progress 📈",
     viewed: "saw your disappearing messages 👁",
+    react: "reacted to your message ❤️",
     msg: "sent you a message 💬",
     note: "sent you a love note 💌",
     secret: "sent you a secret 🔒",

@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
 import { Button, Card, cx, HeartPlane, Mascot, ProgressBar, Ring, Script, Speak } from "../components/ui";
 import { allTopics, LEVELS, levelWords, meaning } from "../core/content/levels";
+import { dailyConversation, dailySurprise, teamLevel } from "../core/lib/couplelife";
 import { DAILY_GOAL } from "../core/lib/game";
 import { nextStop, routeShare } from "../core/lib/journey";
 import { missionComplete, missionFor, missionTasks, MISSION_XP } from "../core/lib/missions";
@@ -39,12 +40,15 @@ export default function Home() {
   const due = dueKeys(me.memory, today()).length;
   const mission = missionFor(me.mission, today());
   const trip = couplePoints(state, accountMode);
+  const team = teamLevel(mine.xp, theirs?.xp ?? 0);
   const togetherLevel = theirs && LEVELS.findIndex((l) => l.id === theirs.levelId) < LEVELS.findIndex((l) => l.id === mine.levelId) ? theirs.levelId : mine.levelId;
   const togetherShare = theirs ? (mine.levelShare + theirs.levelShare) / 2 : mine.levelShare;
   const nextLevel = LEVELS[Math.min(LEVELS.findIndex((l) => l.id === togetherLevel) + 1, LEVELS.length - 1)].id;
   const label = stepLabel(step);
   const words = levelWords(LEVELS[me.unlocked]);
   const word = words[day % words.length];
+  const talk = dailyConversation(LEVELS[me.unlocked].id, today());
+  const surprise = dailySurprise(today());
   const quote = QUOTES[day % QUOTES.length];
   const journeyDay = Math.max(1, daysLearned(me));
   const linked = couple.isLinked(state);
@@ -175,7 +179,7 @@ export default function Home() {
         <div className="grid grid-cols-2 gap-3 lg:hidden">
           <Tile href="/learn" icon={<BookOpen />} title="Lessons" sub="Your path" />
           <Tile href="/journey" icon={<Map />} title="Berlin Map" sub="Mumbai → Berlin" />
-          <Tile href="/train" icon={<Dumbbell />} title="Practice" sub={due ? `${due} words to review` : "Review, listen, build"} />
+          <Tile href="/play" icon={<Dumbbell />} title="Play & Practice" sub={due ? `${due} words to review` : "Games, review, listen"} />
           <Tile href="/quizzes" icon={<Gamepad2 />} title="Couple Quizzes" sub="Duel each other" />
           <Tile href="/together" icon={<Users />} title="Learn Together" sub="Puzzles for two" />
           <Tile href="/talk" icon={<MessageCircle />} title="Challenges" sub="Chat & role-play" />
@@ -208,6 +212,18 @@ export default function Home() {
             {theirs ? <Bar label={`${theirs.name} · ${theirs.levelId}`} value={theirs.levelShare} color="bg-partner" /> : null}
             {theirs ? <Bar label={`❤️ Together · ${togetherLevel} → ${nextLevel}`} value={togetherShare} color="bg-rose" /> : null}
           </div>
+          {theirs ? (
+            <div className="mt-4 flex items-center gap-3 rounded-2xl bg-blush/70 px-3 py-2.5">
+              <span className="text-2xl">💞</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-ink">
+                  Together XP · Lv {team.level} <span className="font-script text-lg text-plum">{team.title}</span>
+                </p>
+                <ProgressBar value={team.progress} className="mt-1 h-1.5" color="bg-rose" />
+              </div>
+              <span className="shrink-0 text-sm font-extrabold text-plum">{team.xp} XP</span>
+            </div>
+          ) : null}
         </Card>
 
         {/* Quote */}
@@ -219,6 +235,23 @@ export default function Home() {
             <Speak text={quote.de} />
             <span className="text-sm text-muted">Listen</span>
           </div>
+        </Card>
+
+        {/* Today for the two of you */}
+        <Card>
+          <p className="text-xs font-bold uppercase tracking-wider text-rose">🎁 Heute für euch</p>
+          <p className="mt-1 text-lg font-bold text-ink">
+            {surprise.emoji} {surprise.title}
+          </p>
+          <p className="text-sm text-muted">{surprise.text}</p>
+          <Link href={`/dialogue?id=${talk.id}`} className="mt-3 flex items-center gap-3 rounded-2xl bg-blush/70 px-3 py-2.5 transition hover:bg-blush">
+            <span className="text-2xl">{talk.emoji}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-ink">Today’s conversation</span>
+              <span className="block truncate text-xs text-muted">{talk.title} · act it out together</span>
+            </span>
+            <ChevronRight size={18} className="text-muted" />
+          </Link>
         </Card>
 
         {/* Streak */}
@@ -268,6 +301,7 @@ export default function Home() {
             <Speak text={word.de} />
           </div>
           <p className="text-muted">{meaning(word, me.lang)}</p>
+          {linked ? <SendWord de={word.de} en={word.en} /> : null}
         </Card>
 
         {/* This week's battle */}
@@ -454,4 +488,30 @@ function continueLine(step: ReturnType<typeof nextStep>): string {
   const n = allTopics().findIndex((u) => u.id === step.unit.id) + 1;
   const part = step.kind === "learn" && step.parts > 1 ? ` • Lesson ${step.part}/${step.parts}` : step.kind === "quiz" ? " • Quiz" : "";
   return `Unit ${n} • ${step.unit.title}${part}`;
+}
+
+/** Send today's word to my partner, as a chat message. */
+function SendWord({ de, en }: { de: string; en: string }) {
+  const { send, state } = useProgress();
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "saved">("idle");
+  return (
+    <Button
+      variant="soft"
+      size="sm"
+      className="mt-3"
+      disabled={status !== "idle"}
+      onClick={async () => {
+        setStatus("sending");
+        try {
+          const text = `⭐ Wort des Tages: ${de} — ${en}. Kannst du einen Satz damit sagen? 😊`;
+          const r = await send(state.vanish === "off" ? { kind: "msg", text } : { kind: "msg", text, vanish: state.vanish });
+          setStatus(r.delivered ? "sent" : "saved");
+        } catch {
+          setStatus("saved");
+        }
+      }}
+    >
+      {status === "sent" ? "Sent ❤️" : status === "saved" ? "Saved in Us 💬" : status === "sending" ? "Sending…" : "❤️ Send to partner"}
+    </Button>
+  );
 }

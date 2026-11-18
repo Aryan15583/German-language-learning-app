@@ -30,8 +30,8 @@ export default function Quizzes() {
       {cantPlay ? (
         <Card className="mt-5 max-w-xl">
           <p className="text-lg font-bold">🌍 Duel your partner from anywhere</p>
-          <p className="my-2 text-muted">Link with your partner first: one of you gets a 6-character code in Couple, the other types it in.</p>
-          <Button href="/us">💞 Go to Couple</Button>
+          <p className="my-2 text-muted">Link with your partner first: one of you gets a 6-character code in Us, the other types it in.</p>
+          <Button href="/us">💞 Go to Us</Button>
         </Card>
       ) : null}
 

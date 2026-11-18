@@ -5,6 +5,7 @@ import { isLang, LEVELS, levelIndex, levelUnits, type Lang, type Level, type Lev
 import { newId, type PinHash } from "../lib/crypto";
 import { isoWeek } from "../lib/game";
 import type { SharedWord, Vanish } from "../lib/link";
+import { cleanMemory, isReaction, MAX_MEMORIES, type MemoryEntry } from "../lib/couplelife";
 
 export type PartnerIndex = 0 | 1;
 
@@ -91,6 +92,8 @@ export type ChatItem = {
   vanish?: Vanish;
   /** When I first saw a disappearing message from my partner. */
   viewedAt?: number;
+  /** Emoji reactions: 0 = mine, 1 = my partner's. */
+  reacts?: { 0?: string; 1?: string };
 };
 
 /** A duel played on two phones: same questions (same seed), one after the other. */
@@ -128,6 +131,8 @@ export type AppState = {
   log: LogEntry[];
   /** Timer for new chat messages I send ("off" = keep). */
   vanish: Vanish | "off";
+  /** Our memory book: moments we saved, newest last. */
+  memories: MemoryEntry[];
 };
 
 export type LogEntry = { at: number; icon: string; text: string };
@@ -180,6 +185,7 @@ export const freshState = (): AppState => ({
   updatedAt: 0,
   log: [],
   vanish: "off",
+  memories: [],
 });
 
 const clampLevel = (n: unknown) => (typeof n === "number" && n >= 0 ? Math.min(Math.floor(n), MAX_LEVEL) : 0);
@@ -225,7 +231,31 @@ export function migrate(raw: unknown): AppState {
     updatedAt: typeof r.updatedAt === "number" && r.updatedAt > 0 ? r.updatedAt : 0,
     log: Array.isArray(r.log) ? r.log.slice(-40) : [],
     vanish: r.vanish === "seen" || r.vanish === "1d" || r.vanish === "30d" ? r.vanish : "off",
+    memories: Array.isArray(r.memories) ? r.memories.map(cleanMemory).filter((m): m is MemoryEntry => m !== null).slice(-MAX_MEMORIES) : [],
   };
+}
+
+// ---- Memory book ----
+export const addMemory = (s: AppState, m: MemoryEntry): AppState => {
+  const clean = cleanMemory(m);
+  if (!clean || s.memories.some((x) => x.id === clean.id)) return s;
+  return { ...s, memories: [...s.memories, clean].sort((a, b) => a.at - b.at).slice(-MAX_MEMORIES) };
+};
+export const removeMemory = (s: AppState, id: string): AppState => ({ ...s, memories: s.memories.filter((m) => m.id !== id) });
+
+/** Set (or clear, with "") one person's reaction on a chat message. */
+export function setReaction(s: AppState, msgId: string, who: PartnerIndex, emoji: string): AppState {
+  if (!isReaction(emoji)) return s;
+  let hit = false;
+  const chat = s.chat.map((m) => {
+    if (m.id !== msgId) return m;
+    hit = true;
+    const reacts = { ...(m.reacts ?? {}) };
+    if (emoji) reacts[who] = emoji;
+    else delete reacts[who];
+    return { ...m, reacts };
+  });
+  return hit ? { ...s, chat } : s;
 }
 
 function withPartner(s: AppState, i: PartnerIndex, fn: (p: Partner) => Partner): AppState {

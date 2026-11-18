@@ -38,6 +38,8 @@ export default function Profile() {
         </Card>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <Row href="/progress" emoji="📈" title="My progress" detail="Streak, XP and words, day by day" />
+          <Row href="/memories" emoji="📖" title="Memory book" detail={`${state.memories.length} saved moments`} />
           <Row href="/achievements" emoji="🏅" title="My badges" detail={`${earned.length} of ${ACHIEVEMENTS.length}`} />
           <Row href="/placement" emoji="🧭" title="Find my level" detail="A short test that puts you in the right place" />
           <Row href="/setup" emoji="✏️" title="Change name or level" detail="Back to the start form" />

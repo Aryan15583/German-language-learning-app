@@ -37,7 +37,7 @@ function RemoteDuel({ id, topic }: { id: string; topic: string }) {
           <Script className="text-4xl">Link your phones first</Script>
           <p className="mt-2 text-muted">Duels on two phones need your phones linked. Open Couple to get or enter a partner code.</p>
           <Button href="/us" className="mt-4">
-            Go to Couple
+            Go to Us
           </Button>
         </div>
       </Wrap>

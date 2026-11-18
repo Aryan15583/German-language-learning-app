@@ -36,12 +36,12 @@ const SLIDES = [
   {
     art: <CoupleArt />,
     title: "Learn German together!",
-    text: "Step by step, hand in hand — until Berlin.",
+    text: "Step by step, hand in hand — from Mumbai through München, Köln and Dresden, all the way to Berlin. 🇩🇪",
   },
   {
     art: <PhotoArt src="/art/tower.jpg" />,
     title: "One big button",
-    text: "Tap ▶ Start every day. We pick your next words, quiz or big test — you never have to choose.",
+    text: "Tap ▶ Start every day. We pick your next words, quiz or big test — five minutes is enough.",
   },
   {
     art: (
@@ -50,7 +50,7 @@ const SLIDES = [
       </div>
     ),
     title: "Grow closer",
-    text: "Chat, duel and send love notes in German — end-to-end encrypted, just for you two.",
+    text: "Chat, play, react ❤️ and keep a memory book — end-to-end encrypted, just for you two.",
   },
 ];
 

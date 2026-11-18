@@ -5,6 +5,7 @@ import { AppShell, markChatSeen } from "../components/AppShell";
 import { useFallback } from "../components/Fallback";
 import { Button, Card, Chip, cx, fieldClass, Script, Speak, Spinner } from "../components/ui";
 import { findTopic } from "../core/content/levels";
+import { REACTIONS } from "../core/lib/couplelife";
 import { heartLevel, isoWeek, weeklyLeader } from "../core/lib/game";
 import { CODE_TTL_MS, formatCode } from "../core/lib/link";
 import { couple, currentStreak, partnerName, today, useProgress, type ChatItem } from "../web/progress";
@@ -104,6 +105,17 @@ function LinkSetup() {
         </Card>
       </div>
       {fallback.view}
+      <Card className="mt-4">
+        <p className="font-bold text-ink">Once you’re linked 💞</p>
+        <ul className="mt-2 grid gap-2 text-sm text-muted sm:grid-cols-2">
+          <li>💬 Private chat with ❤️ reactions</li>
+          <li>⚔️ Quiz duels on two phones</li>
+          <li>📈 See each other’s streak and progress</li>
+          <li>💞 Together XP and one shared journey</li>
+          <li>📖 Save sweet messages to your memory book</li>
+          <li>🔒 Secrets that open with your streak</li>
+        </ul>
+      </Card>
       <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs text-muted">
         <Lock size={14} /> End-to-end encrypted.{" "}
         {relayOn ? "Messages arrive inside the app; the mailbox only ever sees scrambled data." : "Messages travel as secure links you send each other."}
@@ -136,17 +148,32 @@ function WaitingForPartner() {
       ) : (
         <>
           <p className="my-4 text-ink">
-            Tell your partner this code. They open the app → <b>Couple</b> → enter the code.
+            Tell your partner this code. They open the app → <b>Us</b> → enter the code.
           </p>
           <Button
             size="lg"
             full
             onClick={async () => {
-              const r = await shareText(`💞 Let’s link our Zwei Herzen ♡ app!\nMy code: ${formatCode(cpl.code ?? "")}\n${appBaseUrl()}`);
+              const r = await shareText(`💞 Lass uns zusammen Deutsch lernen! Let’s link our Zwei Herzen ♡ app.\n\n1. Open ${appBaseUrl()}\n2. Go to Us → “Enter your partner’s code”\n3. Type: ${formatCode(cpl.code ?? "")}\n\nBis bald in Berlin! 🇩🇪`);
               setNote(r === "copied" ? "Copied — paste it to your partner." : "");
             }}
           >
-            Share the code
+            Share the invite
+          </Button>
+          <Button
+            variant="soft"
+            full
+            className="mt-2"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(formatCode(cpl.code ?? ""));
+                setNote("Code copied ✓");
+              } catch {
+                setNote("Couldn’t copy — just read the code out loud 😊");
+              }
+            }}
+          >
+            Copy just the code
           </Button>
           {note ? <p className="mt-2 text-sm text-muted">{note}</p> : null}
           <p className="mt-5 flex items-center justify-center gap-2 text-muted">
@@ -412,7 +439,9 @@ function QuickLink({ href, icon, label }: { href: string; icon: React.ReactNode;
 }
 
 function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; now: number }) {
-  const { state } = useProgress();
+  const { state, react, addMemory } = useProgress();
+  const [open, setOpen] = useState(false);
+  const [saved, setSaved] = useState(false);
   if (m.kind === "system") return <p className="py-1 text-center text-xs text-muted">{m.text}</p>;
   const mine = m.from === 0;
   const bubble = cx("cv-auto max-w-[86%] rounded-3xl px-4 py-3", mine ? "ml-auto rounded-br-md bg-blush" : "mr-auto rounded-bl-md bg-partner-soft");
@@ -458,8 +487,23 @@ function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; now: num
     );
   }
 
+  const reacts = [m.reacts?.[0], m.reacts?.[1]].filter(Boolean) as string[];
   return (
-    <div className={bubble}>
+    <div className={cx("flex flex-col", mine ? "items-end" : "items-start")}>
+      <div
+        className={cx(bubble, "relative cursor-pointer", reacts.length > 0 && "mb-3")}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest("button")) return;
+          if (window.getSelection()?.toString()) return;
+          setOpen((o) => !o);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && e.target === e.currentTarget) setOpen((o) => !o);
+        }}
+        tabIndex={0}
+        aria-label="Message, press to react"
+        aria-expanded={open}
+      >
       {m.kind === "secret" ? <p className="text-xs font-bold text-rose">✨ Secret{mine ? " (sent)" : " unlocked"}</p> : null}
       {m.kind === "note" ? <p className="text-xs font-bold text-rose">💌 Love note</p> : null}
       {m.kind === "word" ? <p className="text-xs font-bold text-rose">📖 New shared word</p> : null}
@@ -471,6 +515,46 @@ function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; now: num
         {time}
         {m.vanish ? <span className="ml-2 font-semibold text-plum">{couple.vanishLabel(m, now)}</span> : null}
       </p>
+        {reacts.length ? (
+          <span className={cx("absolute -bottom-3 flex gap-0.5 rounded-full bg-surface px-1.5 py-0.5 text-sm shadow-card ring-1 ring-line/60 anim-pop", mine ? "left-3" : "right-3")}>
+            {reacts.map((r, k) => (
+              <span key={k}>{r}</span>
+            ))}
+          </span>
+        ) : null}
+      </div>
+      {open ? (
+        <div className="mt-1 flex flex-wrap items-center gap-1 rounded-full bg-surface px-2 py-1 shadow-card ring-1 ring-line/60 anim-fade-up" role="group" aria-label="React">
+          {REACTIONS.map((r) => (
+            <button
+              key={r}
+              type="button"
+              aria-label={`React ${r}`}
+              aria-pressed={m.reacts?.[0] === r}
+              onClick={() => {
+                react(m.id, m.reacts?.[0] === r ? "" : r);
+                setOpen(false);
+              }}
+              className={cx("grid h-9 w-9 place-items-center rounded-full text-lg transition hover:scale-110 hover:bg-blush", m.reacts?.[0] === r && "bg-blush")}
+            >
+              {r}
+            </button>
+          ))}
+          {!m.vanish ? (
+            <button
+              type="button"
+              disabled={saved}
+              onClick={() => {
+                addMemory({ emoji: "💬", title: mine ? "Something I said" : `${partnerName(state, 1)} said`, text: m.text, at: m.at });
+                setSaved(true);
+              }}
+              className="ml-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-plum hover:bg-blush disabled:opacity-60"
+            >
+              {saved ? "Saved 📖" : "📌 Memory book"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

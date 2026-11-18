@@ -4,6 +4,7 @@
 // 256-bit key, and every later message uses that key. Everything received is
 // strictly validated.
 import { pbkdf2 } from "@noble/hashes/pbkdf2.js";
+import { isReaction } from "./couplelife";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { LEVEL_IDS, type Lang, type LevelId } from "../content/levels";
 import { fromBase64Url, newId, open, randomBytes, seal, toBase64Url } from "./crypto";
@@ -46,7 +47,9 @@ export type Payload =
   | { kind: "viewed"; ids: string[] }
   | { kind: "note"; text: string }
   | { kind: "secret"; text: string; unlockAt: number }
-  | { kind: "word"; word: SharedWord };
+  | { kind: "word"; word: SharedWord }
+  /** An emoji reaction on one message ("" removes it). */
+  | { kind: "react"; to: string; emoji: string };
 
 export type Envelope = {
   v: 1;
@@ -130,6 +133,8 @@ function payload(x: Record<string, unknown>): Payload {
     }
     case "note":
       return { kind: x.kind, text: str(x.text, LIMITS.text, "message") };
+    case "react":
+      return { kind: "react", to: idStr(x.to, "message id"), emoji: isReaction(x.emoji) ? x.emoji : fail("reaction invalid") };
     case "secret":
       return { kind: "secret", text: str(x.text, LIMITS.text, "secret"), unlockAt: int(x.unlockAt, 1, 365, "unlock") };
     case "word": {

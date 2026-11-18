@@ -1,7 +1,7 @@
 import AsyncStorage from "./storage";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Lang, LevelId } from "../core/content/levels";
-import { hashPin, isValidPin, verifyPin } from "../core/lib/crypto";
+import { hashPin, isValidPin, newId, verifyPin } from "../core/lib/crypto";
 import {
   coupleFromCode,
   LinkError,
@@ -65,6 +65,11 @@ type Ctx = {
   claimMission: (i: PartnerIndex) => void;
   /** Timer for new chat messages. */
   setVanish: (v: AppState["vanish"]) => void;
+  /** React to a chat message with an emoji ("" removes my reaction). */
+  react: (msgId: string, emoji: string) => void;
+  /** Our memory book. */
+  addMemory: (m: { emoji: string; title: string; text: string; at?: number }) => void;
+  removeMemory: (id: string) => void;
   /** I'm reading the chat: start "after seen" countdowns and tell my partner. */
   viewMessages: () => void;
   /** I left the chat: "after seen" messages I've read disappear now. */
@@ -341,6 +346,12 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
         ),
       claimMission: (i) => update((s) => L.claimMission(s, i, today())),
       setVanish: (v) => update((s) => (s.vanish === v ? s : { ...s, vanish: v })),
+      react: (msgId, emoji) => {
+        if (C.isLinked(stateRef.current)) send({ kind: "react", to: msgId, emoji }).catch(() => {});
+        else update((s) => L.setReaction(s, msgId, 0, emoji));
+      },
+      addMemory: (m) => update((s) => L.addMemory(s, { id: newId(), at: m.at ?? Date.now(), emoji: m.emoji, title: m.title, text: m.text })),
+      removeMemory: (id) => update((s) => L.removeMemory(s, id)),
       viewMessages: () => {
         const { state: next, ids } = C.markViewed(stateRef.current, Date.now());
         if (!ids.length) return;

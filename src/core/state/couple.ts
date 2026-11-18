@@ -3,7 +3,7 @@
 // other person. No React, no storage, no network — fully unit-tested.
 import { newId, newKey } from "../lib/crypto";
 import { CODE_TTL_MS, type Envelope, type Payload, type PartnerInfo, type SharedWord, type Stats } from "../lib/link";
-import { addXp, unitPassed, type AppState, type ChatItem, type Partner, type PartnerIndex, type RemoteDuel, XP } from "./logic";
+import { addXp, setReaction, unitPassed, type AppState, type ChatItem, type Partner, type PartnerIndex, type RemoteDuel, XP } from "./logic";
 import { LEVELS, levelUnits } from "../content/levels";
 import type { CoupleContext } from "../lib/game";
 
@@ -83,6 +83,8 @@ export function recordOutgoing(s: AppState, envId: string, p: Payload, at: numbe
     case "duel":
       next = mine("duel", "", { duelId: p.duel.id });
       break;
+    case "react":
+      return setReaction(s, p.to, 0, p.emoji);
     default:
       return s;
   }
@@ -155,6 +157,9 @@ export function receive(s: AppState, env: Envelope, now: number): ReceiveResult 
     case "duel":
       next = applyDuelMove(next, 1, env.duel, env.at);
       theirs("duel", "", { duelId: env.duel.id });
+      break;
+    case "react":
+      next = setReaction(next, env.to, 1, env.emoji);
       break;
     case "stats":
       break;
