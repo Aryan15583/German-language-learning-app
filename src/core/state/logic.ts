@@ -141,6 +141,8 @@ export type AppState = {
   vanish: Vanish | "off";
   /** Our memory book: moments we saved, newest last. */
   memories: MemoryEntry[];
+  /** The chat was cleared up to this time (older archived messages are deleted too). */
+  chatClearedAt: number;
 };
 
 export type LogEntry = { at: number; icon: string; text: string };
@@ -194,6 +196,7 @@ export const freshState = (): AppState => ({
   log: [],
   vanish: "off",
   memories: [],
+  chatClearedAt: 0,
 });
 
 const clampLevel = (n: unknown) => (typeof n === "number" && n >= 0 ? Math.min(Math.floor(n), MAX_LEVEL) : 0);
@@ -239,6 +242,7 @@ export function migrate(raw: unknown): AppState {
     updatedAt: typeof r.updatedAt === "number" && r.updatedAt > 0 ? r.updatedAt : 0,
     log: Array.isArray(r.log) ? r.log.slice(-40) : [],
     vanish: r.vanish === "seen" || r.vanish === "1d" || r.vanish === "30d" ? r.vanish : "off",
+    chatClearedAt: typeof r.chatClearedAt === "number" && r.chatClearedAt > 0 ? r.chatClearedAt : 0,
     memories: Array.isArray(r.memories) ? r.memories.map(cleanMemory).filter((m): m is MemoryEntry => m !== null).slice(-MAX_MEMORIES) : [],
   };
 }
@@ -265,6 +269,12 @@ export function editMessage(s: AppState, msgId: string, by: PartnerIndex, text: 
     return { ...m, text: t, edited: at };
   });
   return hit ? { ...s, chat } : s;
+}
+
+/** Empty the chat up to `before` (ms). Memories, words and progress stay. */
+export function clearChat(s: AppState, before: number, note: string, now: number): AppState {
+  const chat = s.chat.filter((m) => m.at > before);
+  return { ...s, chat: [...chat, { id: newId(), from: 0, kind: "system", text: note, at: now }], chatClearedAt: Math.max(s.chatClearedAt, before) };
 }
 
 /** Delete a message for both of us — only the person who sent it can. */

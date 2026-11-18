@@ -117,3 +117,33 @@ describe("edit and delete messages", () => {
     expect(() => roundTrip({ kind: "edit", to: "theirs", text: "" })).toThrow();
   });
 });
+
+describe("clear chat", () => {
+  const withChat = (): AppState => ({
+    ...freshState(),
+    couple: { id: couple.id, key: couple.key, status: "linked", since: now, role: "creator" },
+    memories: [{ id: "m", at: 1, emoji: "💞", title: "kept", text: "" }],
+    chat: [
+      { id: "a", from: 0, kind: "msg", text: "eins", at: now - 2000 },
+      { id: "b", from: 1, kind: "msg", text: "zwei", at: now - 1000 },
+    ],
+  });
+  it("clears everything up to the time, keeps memories, leaves a note", () => {
+    const s = recordOutgoing(withChat(), "c1", { kind: "clear", before: now }, now);
+    expect(s.chat.map((m) => m.kind)).toEqual(["system"]);
+    expect(s.chatClearedAt).toBe(now);
+    expect(s.memories).toHaveLength(1);
+  });
+  it("my partner's clear empties my copy too, but never messages from after they pressed it", () => {
+    const later: AppState = { ...withChat(), chat: [...withChat().chat, { id: "c", from: 0, kind: "msg", text: "später", at: now + 5000 }] };
+    // A clear claiming a future time only counts up to when it was sent.
+    const s = receive(later, roundTrip({ kind: "clear", before: now + 999_999 }), now).state;
+    expect(s.chat.filter((m) => m.kind !== "system").map((m) => m.id)).toEqual(["c"]);
+    expect(s.chatClearedAt).toBe(now);
+    expect(() => roundTrip({ kind: "clear", before: -5 })).toThrow();
+  });
+  it("survives a reload", () => {
+    const s = recordOutgoing(withChat(), "c1", { kind: "clear", before: now }, now);
+    expect(migrate(JSON.parse(JSON.stringify(s))).chatClearedAt).toBe(now);
+  });
+});

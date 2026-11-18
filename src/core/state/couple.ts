@@ -4,7 +4,7 @@
 import { newId, newKey } from "../lib/crypto";
 import { coupleKeyFromDh, newDhPair, PAIR_PROTO, type DhPair } from "../lib/pair";
 import { CODE_TTL_MS, type Envelope, type Payload, type PartnerInfo, type SharedWord, type Stats } from "../lib/link";
-import { addXp, editMessage, setReaction, unitPassed, unsendMessage, type AppState, type ChatItem, type Partner, type PartnerIndex, type RemoteDuel, XP } from "./logic";
+import { addXp, clearChat, editMessage, setReaction, unitPassed, unsendMessage, type AppState, type ChatItem, type Partner, type PartnerIndex, type RemoteDuel, XP } from "./logic";
 import { LEVELS, levelUnits } from "../content/levels";
 import type { CoupleContext } from "../lib/game";
 
@@ -105,6 +105,8 @@ export function recordOutgoing(s: AppState, envId: string, p: Payload, at: numbe
       return editMessage(s, p.to, 0, p.text, at);
     case "unsend":
       return unsendMessage(s, p.to, 0);
+    case "clear":
+      return clearChat(s, p.before, "You cleared the chat for both of you 🧹", at);
     default:
       return s;
   }
@@ -203,6 +205,10 @@ export function receive(s: AppState, env: Envelope, now: number): ReceiveResult 
       break;
     case "unsend":
       next = unsendMessage(next, env.to, 1);
+      break;
+    case "clear":
+      // Never in the future: only what existed when my partner pressed "clear".
+      next = clearChat(next, Math.min(env.before, env.at), `${env.from.name} cleared the chat for both of you 🧹`, now);
       break;
     case "stats":
       break;
