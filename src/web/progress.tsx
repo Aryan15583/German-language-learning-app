@@ -89,7 +89,7 @@ type Ctx = {
   /** I left the chat: "after seen" messages I've read disappear now. */
   leaveChat: () => void;
   /** The full chat history on this phone (null where the browser has no database). */
-  archive: { before: (at: number, limit: number) => Promise<ChatItem[]>; stats: () => Promise<ArchiveStats> } | null;
+  archive: { before: (at: number, limit: number) => Promise<ChatItem[]>; stats: () => Promise<ArchiveStats>; search: (term: string) => Promise<ChatItem[]> } | null;
   finishReadyDay: (i: PartnerIndex, day: number) => void;
   reset: () => void;
 
@@ -472,13 +472,18 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
       removeMemory: (id) => update((s) => L.removeMemory(s, id)),
       viewMessages: () => {
         const { state: next, ids } = C.markViewed(stateRef.current, Date.now());
-        if (!ids.length) return;
-        update(() => next);
-        // Let my partner's phone delete its copy too (only when it can arrive in-app).
-        if (relay && C.isLinked(stateRef.current)) send({ kind: "viewed", ids: ids.slice(0, 50) }).catch(() => {});
+        if (ids.length) {
+          update(() => next);
+          // Let my partner's phone delete its copy too (only when it can arrive in-app).
+          if (relay && C.isLinked(stateRef.current)) send({ kind: "viewed", ids: ids.slice(0, 50) }).catch(() => {});
+        }
+        // Read receipts (✓✓), once per batch of new messages.
+        const s = stateRef.current;
+        const latest = s.chat.reduce((t, m) => (m.from === 1 && m.kind !== "system" && m.at > t ? m.at : t), 0);
+        if (relay && C.isLinked(s) && getPrefs().readReceipts && latest > s.myReadSent) send({ kind: "read", upTo: latest }).catch(() => {});
       },
       leaveChat: () => update((s) => C.leaveChat(s)),
-      archive: archive ? { before: (at, limit) => archive.before(at, limit), stats: () => archive.stats() } : null,
+      archive: archive ? { before: (at, limit) => archive.before(at, limit), stats: () => archive.stats(), search: (term) => archive.search(term) } : null,
       finishReadyDay: (i, day) => update((s) => L.finishReadyDay(s, i, day)),
       reset: () => {
         setLocked(false);

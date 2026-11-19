@@ -263,3 +263,6 @@ a.card-premium { transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-
   --color-them: var(--color-pink);
   --color-them-soft: var(--color-blush);
 }
+
+/* A quoted or found message lights up briefly. */
+.flash-msg { background: var(--color-gold-soft); }

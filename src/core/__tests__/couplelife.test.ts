@@ -147,3 +147,31 @@ describe("clear chat", () => {
     expect(migrate(JSON.parse(JSON.stringify(s))).chatClearedAt).toBe(now);
   });
 });
+
+describe("replies and read receipts", () => {
+  const linkedChat = (): AppState => ({
+    ...freshState(),
+    couple: { id: couple.id, key: couple.key, status: "linked", since: now, role: "creator" },
+    chat: [{ id: "q", from: 1, kind: "msg", text: "Wie geht's?", at: now - 1000 }],
+  });
+  it("a reply keeps its quote, seen from each phone", () => {
+    const mine = recordOutgoing(linkedChat(), "r1", { kind: "msg", text: "Gut!", reply: { id: "q", text: "Wie geht's?", mine: false } }, now);
+    expect(mine.chat[1].reply).toEqual({ id: "q", text: "Wie geht's?", from: 1 });
+    // On my partner's phone, the quoted message is their own.
+    const env = roundTrip({ kind: "msg", text: "Gut!", reply: { id: "q", text: "Wie geht's?", mine: false } });
+    const theirs = receive({ ...freshState(), couple: linkedChat().couple }, env, now).state;
+    expect(theirs.chat[0].reply).toEqual({ id: "q", text: "Wie geht's?", from: 0 });
+    expect(() => roundTrip({ kind: "msg", text: "x", reply: { id: "<bad>", text: "", mine: true } })).toThrow();
+  });
+  it("read receipts move forward only, and never past when they were sent", () => {
+    let s = receive(linkedChat(), roundTrip({ kind: "read", upTo: now - 500 }), now).state;
+    expect(s.partnerReadAt).toBe(now - 500);
+    s = receive(s, roundTrip({ kind: "read", upTo: now - 900 }), now).state;
+    expect(s.partnerReadAt).toBe(now - 500);
+    s = receive(s, roundTrip({ kind: "read", upTo: now + 99_999 }), now).state;
+    expect(s.partnerReadAt).toBe(now);
+    const sent = recordOutgoing(linkedChat(), "x", { kind: "read", upTo: now - 1000 }, now);
+    expect(sent.myReadSent).toBe(now - 1000);
+    expect(sent.chat).toHaveLength(1);
+  });
+});

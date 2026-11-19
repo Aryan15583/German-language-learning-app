@@ -1,4 +1,4 @@
-import { ArrowLeft, Bell, BookHeart, ShieldCheck, Trash2, ChevronRight, Lock, Mail, Plus, RefreshCw, Send, Swords, Timer, X } from "lucide-react";
+import { ArrowLeft, Bell, BookHeart, Search, ShieldCheck, Trash2, ChevronRight, Lock, Mail, Plus, RefreshCw, Send, Swords, Timer, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -36,6 +36,10 @@ function Chat({ onInfo }: { onInfo: () => void }) {
   const [secret, setSecret] = useState(false);
   const [sending, setSending] = useState(false);
   const [tray, setTray] = useState(false);
+  const [replyTo, setReplyTo] = useState<ChatItem | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [term, setTerm] = useState("");
+  const [found, setFound] = useState<ChatItem[]>([]);
   const fallback = useFallback();
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -59,7 +63,7 @@ function Chat({ onInfo }: { onInfo: () => void }) {
     if (shown < state.chat.length) return setShown(shown + PAGE);
     if (!archive || loadingOlder) return;
     setLoadingOlder(true);
-    const oldestAt = (older[0] ?? state.chat[0])?.at ?? Date.now();
+    const oldestAt = (older[0] ?? state.chat[0])?.at ?? now;
     const page = await archive.before(oldestAt, PAGE).catch(() => []);
     setOlder((o) => [...page, ...o]);
     if (page.length < PAGE) setNoMore(true);
@@ -113,15 +117,49 @@ function Chat({ onInfo }: { onInfo: () => void }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [tray]);
 
+  // Search: messages on screen first, then the whole history on this phone.
+  useEffect(() => {
+    const t = term.trim().toLowerCase();
+    if (!searching || t.length < 2) return;
+    let alive = true;
+    const timer = setTimeout(async () => {
+      const here = [...state.chat].reverse().filter((m) => m.kind !== "system" && m.text.toLowerCase().includes(t));
+      const more = archive ? await archive.search(t).catch(() => []) : [];
+      const seen = new Set(here.map((m) => m.id));
+      if (alive) setFound([...here, ...more.filter((m) => !seen.has(m.id) && m.at > state.chatClearedAt)].slice(0, 50));
+    }, 200);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [term, searching, state.chat, state.chatClearedAt, archive]);
+
+  /** Show a found message: load older pages until it's on screen, then scroll to it. */
+  const goTo = async (m: ChatItem) => {
+    setSearching(false);
+    let el = document.getElementById(`msg-${m.id}`);
+    for (let i = 0; !el && i < 20; i++) {
+      await loadEarlier();
+      await new Promise((r) => setTimeout(r, 80));
+      el = document.getElementById(`msg-${m.id}`);
+    }
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.classList.add("flash-msg");
+    setTimeout(() => el?.classList.remove("flash-msg"), 1600);
+  };
+
   const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     const t = text.trim();
     if (!t || sending) return;
     setSending(true);
-    const r = await send(secret ? { kind: "secret", text: t, unlockAt: 7 } : state.vanish === "off" ? { kind: "msg", text: t } : { kind: "msg", text: t, vanish: state.vanish });
+    const reply = replyTo && !secret ? { reply: { id: replyTo.id, text: replyTo.text.slice(0, 120), mine: replyTo.from === 0 } } : {};
+    const r = await send(secret ? { kind: "secret", text: t, unlockAt: 7 } : state.vanish === "off" ? { kind: "msg", text: t, ...reply } : { kind: "msg", text: t, vanish: state.vanish, ...reply });
     setSending(false);
     setText("");
     setSecret(false);
+    setReplyTo(null);
     fallback.handle(r);
     inputRef.current?.focus();
   };
@@ -148,10 +186,43 @@ function Chat({ onInfo }: { onInfo: () => void }) {
             </span>
           </span>
         </button>
+        <button type="button" onClick={() => setSearching((v) => !v)} aria-label="Search the chat" aria-expanded={searching} className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-ink hover:bg-blush">
+          <Search size={19} />
+        </button>
         <button type="button" onClick={syncNow} aria-label="Check for new messages" className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs text-muted hover:bg-blush">
           <RefreshCw size={14} /> {syncStatus === "ok" ? "🟢" : syncStatus === "offline" ? "🟠" : "🔗"}
         </button>
       </header>
+
+      {searching ? (
+        <div className="glass sticky top-[60px] z-10 border-b border-line/60 px-3 py-2 anim-fade-up">
+          <input
+            autoFocus
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
+            onKeyDown={(e) => e.key === "Escape" && setSearching(false)}
+            placeholder="Search messages…"
+            aria-label="Search messages"
+            className="w-full rounded-full border border-line bg-card px-4 py-2 text-ink outline-none focus:border-rose"
+          />
+          {term.trim().length >= 2 ? (
+            <div className="desk-scroll mt-2 max-h-[45vh] overflow-y-auto rounded-2xl bg-card ring-1 ring-line/60">
+              {found.filter((m) => m.text.toLowerCase().includes(term.trim().toLowerCase())).length ? (
+                found.filter((m) => m.text.toLowerCase().includes(term.trim().toLowerCase())).map((m) => (
+                  <button key={m.id} type="button" onClick={() => goTo(m)} className="block w-full border-b border-line/40 px-3 py-2 text-left last:border-0 hover:bg-blush/60">
+                    <span className="block text-[11px] font-semibold text-muted">
+                      {m.from === 0 ? "You" : name} · {new Date(m.at).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    <span className="block truncate text-sm text-ink">{m.text}</span>
+                  </button>
+                ))
+              ) : (
+                <p className="px-3 py-3 text-sm text-muted">No messages found.</p>
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* Messages */}
       <main className="flex-1 space-y-2 overflow-y-auto px-3 py-4 sm:px-5" aria-live="polite">
@@ -181,7 +252,17 @@ function Chat({ onInfo }: { onInfo: () => void }) {
           <p className="py-2 text-center text-xs text-muted">That’s the very beginning of your chat 💞</p>
         ) : null}
         {visible.map((m) => (
-          <ChatRow key={m.id + m.from} m={m} myStreak={myStreak} now={now} />
+          <ChatRow
+            key={m.id + m.from}
+            m={m}
+            myStreak={myStreak}
+            now={now}
+            highlight={searching && term.trim().length >= 2 ? term.trim() : undefined}
+            onReply={(x) => {
+              setReplyTo(x);
+              inputRef.current?.focus();
+            }}
+          />
         ))}
         <div ref={endRef} />
       </main>
@@ -203,6 +284,17 @@ function Chat({ onInfo }: { onInfo: () => void }) {
             </Chip>
           ))}
         </div>
+        ) : null}
+        {replyTo ? (
+          <div className="mb-2 flex items-center gap-2 rounded-2xl border-l-4 border-rose bg-card px-3 py-2 anim-fade-up">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-plum">↩️ Replying to {replyTo.from === 0 ? "yourself" : name}</p>
+              <p className="truncate text-sm text-muted">{replyTo.text}</p>
+            </div>
+            <button type="button" aria-label="Cancel reply" onClick={() => setReplyTo(null)} className="rounded-full p-1.5 text-muted hover:bg-blush">
+              <X size={16} />
+            </button>
+          </div>
         ) : null}
         {secret ? (
           <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-rose">
@@ -367,6 +459,7 @@ function ChatInfo({ onBack }: { onBack: () => void }) {
       <Section title="Chat">
         <div className="px-4 pb-2">
           <Toggle on={prefs.quickPhrases} onChange={(on) => setPrefs({ quickPhrases: on })} title="Quick phrases" hint="Little German phrases above the message box." />
+          <Toggle on={prefs.readReceipts} onChange={(on) => setPrefs({ readReceipts: on })} title="Read receipts ✓✓" hint="Off: you don’t send them, and you don’t see your partner’s either." />
         </div>
       </Section>
 

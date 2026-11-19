@@ -43,6 +43,7 @@ export default function Inbox() {
     edit: "edited a message ✏️",
     unsend: "deleted a message 🗑",
     clear: "cleared the chat 🧹",
+    read: "read your messages ✓✓",
     msg: "sent you a message 💬",
     note: "sent you a love note 💌",
     secret: "sent you a secret 🔒",

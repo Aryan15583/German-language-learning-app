@@ -102,6 +102,8 @@ export type ChatItem = {
   reacts?: { 0?: string; 1?: string };
   /** When the sender last edited the text. */
   edited?: number;
+  /** The message this one answers (from: who wrote the quoted one, on this phone). */
+  reply?: { id: string; text: string; from: PartnerIndex };
 };
 
 /** A duel played on two phones: same questions (same seed), one after the other. */
@@ -143,6 +145,10 @@ export type AppState = {
   memories: MemoryEntry[];
   /** The chat was cleared up to this time (older archived messages are deleted too). */
   chatClearedAt: number;
+  /** My partner has read my messages up to this time (✓✓). */
+  partnerReadAt: number;
+  /** I told my partner I read up to this time. */
+  myReadSent: number;
 };
 
 export type LogEntry = { at: number; icon: string; text: string };
@@ -197,6 +203,8 @@ export const freshState = (): AppState => ({
   vanish: "off",
   memories: [],
   chatClearedAt: 0,
+  partnerReadAt: 0,
+  myReadSent: 0,
 });
 
 const clampLevel = (n: unknown) => (typeof n === "number" && n >= 0 ? Math.min(Math.floor(n), MAX_LEVEL) : 0);
@@ -243,6 +251,8 @@ export function migrate(raw: unknown): AppState {
     log: Array.isArray(r.log) ? r.log.slice(-40) : [],
     vanish: r.vanish === "seen" || r.vanish === "1d" || r.vanish === "30d" ? r.vanish : "off",
     chatClearedAt: typeof r.chatClearedAt === "number" && r.chatClearedAt > 0 ? r.chatClearedAt : 0,
+    partnerReadAt: typeof r.partnerReadAt === "number" && r.partnerReadAt > 0 ? r.partnerReadAt : 0,
+    myReadSent: typeof r.myReadSent === "number" && r.myReadSent > 0 ? r.myReadSent : 0,
     memories: Array.isArray(r.memories) ? r.memories.map(cleanMemory).filter((m): m is MemoryEntry => m !== null).slice(-MAX_MEMORIES) : [],
   };
 }

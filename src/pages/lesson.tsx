@@ -9,7 +9,8 @@ import { levelWords, type Level, type Topic, type Word } from "../core/content/l
 import { chunks, duoLesson, nextChunk } from "../core/lib/duo";
 import { shuffle } from "../core/lib/util";
 import { useId } from "../web/nav";
-import { couple, useProgress, XP } from "../web/progress";
+import { couple, partnerName, useProgress, XP } from "../web/progress";
+import { duelInfo, encodeDuel } from "../core/lib/duels";
 import { playDone } from "../web/sound";
 import { lessonById } from "../web/topics";
 
@@ -33,7 +34,7 @@ export default function LessonPage() {
 /** A super-easy lesson: the next 3–4 new words of this unit (or a quick review when you know them all). */
 function Lesson({ topic, others, onNext }: { topic: Topic; others: Word[]; level?: Level; onNext: () => void }) {
   const router = useRouter();
-  const { state, markKnown, practiced, remember, markPractised, log, send } = useProgress();
+  const { state, markKnown, practiced, remember, markPractised, log, send, accountMode } = useProgress();
   const [shared, setShared] = useState<"no" | "sending" | "yes" | "failed">("no");
   const learner = state.learner;
   const p = state.partners[learner];
@@ -81,6 +82,16 @@ function Lesson({ topic, others, onNext }: { topic: Topic; others: Word[]; level
               <KeepGoing />
             )}
           </div>
+          {topic.id !== "ours" && duelInfo(topic.id) && (couple.isLinked(state) || (!accountMode && state.partners[1].name)) ? (
+            <Button
+              variant="partner"
+              full
+              className="mt-3"
+              href={couple.isLinked(state) ? `/remote-duel?topic=${encodeDuel("classic", topic.id)}` : `/duel?id=${encodeDuel("classic", topic.id)}`}
+            >
+              ⚔️ Challenge {partnerName(state, learner === 0 ? 1 : 0)} on these words
+            </Button>
+          ) : null}
           {couple.isLinked(state) ? (
             <Button
               variant="soft"
