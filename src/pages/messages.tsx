@@ -1,4 +1,4 @@
-import { ArrowLeft, Bell, BookHeart, Search, ShieldCheck, Trash2, ChevronRight, Lock, Mail, Plus, RefreshCw, Send, Swords, Timer, X } from "lucide-react";
+import { ArrowLeft, Bell, BookHeart, Mic, Search, ShieldCheck, Trash2, ChevronRight, Lock, Mail, Plus, RefreshCw, Send, Swords, Timer, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -12,6 +12,7 @@ import { markChatSeen } from "../components/AppShell";
 import { NotifyCard } from "../components/NotifyCard";
 import { notifyStatus } from "../web/notify";
 import { usePrefs } from "../web/prefs";
+import { clock, mediaAvailable, MediaError, mediaLabel, preparePhoto, prepareVideo, prepareVoice, uploadMedia, type Prepared } from "../web/media";
 
 /** The couple chat on its own full screen, like a messenger. Tap the name for chat settings. */
 export default function Messages() {
@@ -37,6 +38,85 @@ function Chat({ onInfo }: { onInfo: () => void }) {
   const [sending, setSending] = useState(false);
   const [tray, setTray] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatItem | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [mediaNote, setMediaNote] = useState<{ text: string; error?: boolean } | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [recSeconds, setRecSeconds] = useState(0);
+  const rec = useRef<{ r: MediaRecorder; chunks: Blob[]; started: number; stream: MediaStream; timer: ReturnType<typeof setInterval>; send: boolean } | null>(null);
+  const canRecord = mediaAvailable() && typeof window !== "undefined" && typeof window.MediaRecorder !== "undefined" && !!navigator.mediaDevices?.getUserMedia;
+
+  /** Encrypt, upload and send one prepared file. */
+  const sendPrepared = async (p: Prepared, caption = "") => {
+    const media = await uploadMedia(p);
+    const r = await send({ kind: "media", media, text: caption });
+    fallback.handle(r);
+  };
+
+  const sendFiles = async (files: FileList | null) => {
+    const list = Array.from(files ?? []).slice(0, 10);
+    if (fileRef.current) fileRef.current.value = "";
+    if (!list.length) return;
+    const caption = text.trim();
+    setText("");
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      const what = f.type.startsWith("video/") ? "video" : "photo";
+      setMediaNote({ text: `🔒 Encrypting and sending ${what}${list.length > 1 ? ` ${i + 1} of ${list.length}` : ""}…` });
+      try {
+        await sendPrepared(f.type.startsWith("video/") ? await prepareVideo(f) : await preparePhoto(f), i === 0 ? caption : "");
+      } catch (e) {
+        setMediaNote({ text: e instanceof MediaError ? e.message : "Couldn’t send that file.", error: true });
+        return;
+      }
+    }
+    setMediaNote(null);
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const type = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/mp4"].find((t) => MediaRecorder.isTypeSupported?.(t));
+      const r = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+      const chunks: Blob[] = [];
+      r.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+      r.onstop = async () => {
+        const cur = rec.current;
+        rec.current = null;
+        stream.getTracks().forEach((t) => t.stop());
+        if (!cur?.send) return;
+        const seconds = (Date.now() - cur.started) / 1000;
+        setMediaNote({ text: "🔒 Encrypting and sending voice message…" });
+        try {
+          await sendPrepared(await prepareVoice(new Blob(chunks, { type: r.mimeType || "audio/webm" }), seconds));
+          setMediaNote(null);
+        } catch (e) {
+          setMediaNote({ text: e instanceof MediaError ? e.message : "Couldn’t send the voice message.", error: true });
+        }
+      };
+      // eslint-disable-next-line react-hooks/purity -- runs on tap (an event), not while rendering
+      const started = Date.now();
+      const timer = setInterval(() => {
+        const sec = Math.round((Date.now() - started) / 1000);
+        setRecSeconds(sec);
+        if (sec >= 300) stopRecording(true); // 5 minutes max
+      }, 250);
+      rec.current = { r, chunks, started, stream, timer, send: false };
+      setRecSeconds(0);
+      setRecording(true);
+      r.start(250);
+    } catch {
+      setMediaNote({ text: "Microphone not allowed. Allow it for this site in your browser settings.", error: true });
+    }
+  };
+
+  const stopRecording = (sendIt: boolean) => {
+    const cur = rec.current;
+    setRecording(false);
+    if (!cur) return;
+    clearInterval(cur.timer);
+    cur.send = sendIt;
+    if (cur.r.state !== "inactive") cur.r.stop();
+  };
   const [searching, setSearching] = useState(false);
   const [term, setTerm] = useState("");
   const [found, setFound] = useState<ChatItem[]>([]);
@@ -154,7 +234,7 @@ function Chat({ onInfo }: { onInfo: () => void }) {
     const t = text.trim();
     if (!t || sending) return;
     setSending(true);
-    const reply = replyTo && !secret ? { reply: { id: replyTo.id, text: replyTo.text.slice(0, 120), mine: replyTo.from === 0 } } : {};
+    const reply = replyTo && !secret ? { reply: { id: replyTo.id, text: (replyTo.text || (replyTo.media ? mediaLabel(replyTo.media) : "")).slice(0, 120), mine: replyTo.from === 0 } } : {};
     const r = await send(secret ? { kind: "secret", text: t, unlockAt: 7 } : state.vanish === "off" ? { kind: "msg", text: t, ...reply } : { kind: "msg", text: t, vanish: state.vanish, ...reply });
     setSending(false);
     setText("");
@@ -285,11 +365,16 @@ function Chat({ onInfo }: { onInfo: () => void }) {
           ))}
         </div>
         ) : null}
+        {mediaNote ? (
+          <p role="status" className={cx("mb-1.5 text-xs font-semibold", mediaNote.error ? "text-bad" : "text-plum")}>
+            {mediaNote.text}
+          </p>
+        ) : null}
         {replyTo ? (
           <div className="mb-2 flex items-center gap-2 rounded-2xl border-l-4 border-rose bg-card px-3 py-2 anim-fade-up">
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold text-plum">↩️ Replying to {replyTo.from === 0 ? "yourself" : name}</p>
-              <p className="truncate text-sm text-muted">{replyTo.text}</p>
+              <p className="truncate text-sm text-muted">{replyTo.text || (replyTo.media ? mediaLabel(replyTo.media) : "")}</p>
             </div>
             <button type="button" aria-label="Cancel reply" onClick={() => setReplyTo(null)} className="rounded-full p-1.5 text-muted hover:bg-blush">
               <X size={16} />
@@ -324,6 +409,17 @@ function Chat({ onInfo }: { onInfo: () => void }) {
                     inputRef.current?.focus();
                   }}
                 />
+                {mediaAvailable() ? (
+                  <MenuItem
+                    icon="📷"
+                    title="Photo or video"
+                    sub="Encrypted · videos up to 50 MB"
+                    onClick={() => {
+                      setTray(false);
+                      fileRef.current?.click();
+                    }}
+                  />
+                ) : null}
                 <MenuItem icon="⏱️" title="Disappearing messages" sub={state.vanish === "off" ? "Off" : vanish.label} onClick={() => { setTray(false); onInfo(); }} />
                 <MenuItem icon="💌" title="Love note" sub="A pretty note in German" href="/note" />
                 <MenuItem icon="📖" title="Share a word" sub="Add to your shared words" href="/words" />
@@ -345,6 +441,16 @@ function Chat({ onInfo }: { onInfo: () => void }) {
           >
             <Plus size={22} className={cx("transition-transform duration-300", tray && "rotate-45")} />
           </button>
+          <input ref={fileRef} type="file" accept="image/*,video/*" multiple hidden aria-hidden onChange={(e) => sendFiles(e.target.files)} />
+          {recording ? (
+            <div className="flex min-h-12 flex-1 items-center gap-3 rounded-3xl border border-rose bg-card px-4" role="status" aria-label="Recording">
+              <span className="h-3 w-3 animate-pulse rounded-full bg-bad" />
+              <span className="flex-1 font-semibold tabular-nums text-ink">{clock(recSeconds)}</span>
+              <button type="button" onClick={() => stopRecording(false)} className="rounded-full px-3 py-1.5 text-sm font-semibold text-muted hover:bg-blush">
+                Cancel
+              </button>
+            </div>
+          ) : (
           <textarea
             ref={inputRef}
             value={text}
@@ -364,14 +470,25 @@ function Chat({ onInfo }: { onInfo: () => void }) {
               secret && "border-rose",
             )}
           />
+          )}
           {sending ? (
             <span className="grid h-12 w-12 place-items-center">
               <Spinner />
             </span>
           ) : (
-            <button type="submit" aria-label="Send" disabled={!text.trim()} className="btn-primary grid h-12 w-12 shrink-0 place-items-center rounded-full text-white shadow-soft transition active:scale-95 disabled:opacity-40">
-              <Send size={20} />
-            </button>
+            recording ? (
+              <button type="button" aria-label="Send voice message" onClick={() => stopRecording(true)} className="btn-primary grid h-12 w-12 shrink-0 place-items-center rounded-full text-white shadow-soft transition active:scale-95">
+                <Send size={20} />
+              </button>
+            ) : !text.trim() && !secret && canRecord ? (
+              <button type="button" aria-label="Record a voice message" onClick={startRecording} className="btn-primary grid h-12 w-12 shrink-0 place-items-center rounded-full text-white shadow-soft transition active:scale-95">
+                <Mic size={20} />
+              </button>
+            ) : (
+              <button type="submit" aria-label="Send" disabled={!text.trim()} className="btn-primary grid h-12 w-12 shrink-0 place-items-center rounded-full text-white shadow-soft transition active:scale-95 disabled:opacity-40">
+                <Send size={20} />
+              </button>
+            )
           )}
         </form>
       </footer>

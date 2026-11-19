@@ -1,3 +1,4 @@
+import { openBytes, sealBytes } from "../lib/crypto";
 import { articleRound, cleanMemory, dailyConversation, dailySurprise, isReaction, teamLevel } from "../lib/couplelife";
 import { newKey } from "../lib/crypto";
 import { makeEnvelope, openEnvelope, sealEnvelope, type Payload, type Stats } from "../lib/link";
@@ -173,5 +174,40 @@ describe("replies and read receipts", () => {
     const sent = recordOutgoing(linkedChat(), "x", { kind: "read", upTo: now - 1000 }, now);
     expect(sent.myReadSent).toBe(now - 1000);
     expect(sent.chat).toHaveLength(1);
+  });
+});
+
+describe("photos, videos and voice messages", () => {
+  const media = { type: "image" as const, path: "A".repeat(32), key: couple.key, mime: "image/jpeg", size: 1234, w: 800, h: 600, thumb: "data:image/jpeg;base64,/9j/4AAQ" };
+  it("file bytes are encrypted and can't be changed", () => {
+    const bytes = new Uint8Array([1, 2, 3, 4, 5, 250]);
+    const sealed = sealBytes(couple.key, bytes);
+    expect(Array.from(sealed.slice(24))).not.toEqual(Array.from(bytes));
+    expect(Array.from(openBytes(couple.key, sealed))).toEqual(Array.from(bytes));
+    sealed[30] ^= 1;
+    expect(() => openBytes(couple.key, sealed)).toThrow();
+  });
+  it("a media message travels encrypted and validated", () => {
+    const env = roundTrip({ kind: "media", media, text: "Unser Café ☕" });
+    expect(env).toMatchObject({ kind: "media", media: { type: "image", path: media.path, mime: "image/jpeg" }, text: "Unser Café ☕" });
+    const linked: AppState = { ...freshState(), couple: { id: couple.id, key: couple.key, status: "linked", since: now, role: "creator" } };
+    expect(receive(linked, env, now).state.chat[0]).toMatchObject({ kind: "media", media: { path: media.path } });
+    for (const bad of [
+      { ...media, mime: "text/html" },
+      { ...media, type: "image", mime: "video/mp4" },
+      { ...media, path: "../../etc/passwd" },
+      { ...media, size: 60 * 1024 * 1024 },
+      { ...media, thumb: "javascript:alert(1)" },
+      { ...media, key: "short" },
+    ]) {
+      expect(() => roundTrip({ kind: "media", media: bad, text: "" })).toThrow();
+    }
+  });
+  it("only the sender can delete a media message", () => {
+    let s: AppState = { ...freshState(), couple: { id: couple.id, key: couple.key, status: "linked", since: now, role: "creator" } };
+    s = recordOutgoing(s, "p1", { kind: "media", media, text: "" }, now);
+    expect(s.chat[0].kind).toBe("media");
+    expect(receive(s, roundTrip({ kind: "unsend", to: "p1" }), now).state.chat).toHaveLength(1);
+    expect(recordOutgoing(s, "x", { kind: "unsend", to: "p1" }, now).chat).toHaveLength(0);
   });
 });

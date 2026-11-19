@@ -4,6 +4,7 @@ import { Button, cx, Speak } from "./ui";
 import { findTopic } from "../core/content/levels";
 import { REACTIONS } from "../core/lib/couplelife";
 import { getPrefs } from "../web/prefs";
+import { MediaView } from "./MediaView";
 import { couple, partnerName, useProgress, type ChatItem } from "../web/progress";
 
 export const VANISH_OPTIONS: { id: "off" | "seen" | "1d" | "30d"; label: string; hint: string }[] = [
@@ -135,6 +136,11 @@ export function ChatRow({ m, myStreak, now, onReply, highlight }: { m: ChatItem;
             </button>
           </div>
         </form>
+      ) : m.media ? (
+        <div className="flex flex-col gap-1.5">
+          <MediaView media={m.media} />
+          {m.text ? <p className="whitespace-pre-wrap break-words text-ink">{highlight ? <Marked text={m.text} term={highlight} /> : m.text}</p> : null}
+        </div>
       ) : (
         <div className="flex items-center gap-2">
           <p className={cx("flex-1 whitespace-pre-wrap break-words text-ink", m.kind === "note" && "font-script text-2xl")}>{highlight ? <Marked text={m.text} term={highlight} /> : m.text}</p>

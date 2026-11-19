@@ -75,6 +75,22 @@ export function open(key: string, sealed: string): unknown {
   return JSON.parse(decoder.decode(pt));
 }
 
+/** Encrypt raw bytes (a photo, video or voice file). Output: nonce ‖ ciphertext+tag. */
+export function sealBytes(key: string, bytes: Uint8Array): Uint8Array {
+  const nonce = randomBytes(NONCE_BYTES);
+  const ct = xchacha20poly1305(keyBytes(key), nonce).encrypt(bytes);
+  const out = new Uint8Array(nonce.length + ct.length);
+  out.set(nonce);
+  out.set(ct, nonce.length);
+  return out;
+}
+
+/** Decrypt bytes from sealBytes. Throws if the key is wrong or the file was changed. */
+export function openBytes(key: string, sealed: Uint8Array): Uint8Array {
+  if (sealed.length < NONCE_BYTES + 16) throw new Error("Too short");
+  return xchacha20poly1305(keyBytes(key), sealed.slice(0, NONCE_BYTES)).decrypt(sealed.slice(NONCE_BYTES));
+}
+
 // ---- PIN lock ----
 export type PinHash = { salt: string; hash: string; iterations: number };
 

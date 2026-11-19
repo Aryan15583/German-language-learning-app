@@ -44,6 +44,7 @@ export default function Inbox() {
     unsend: "deleted a message 🗑",
     clear: "cleared the chat 🧹",
     read: "read your messages ✓✓",
+    media: "sent you a photo or voice message 📷",
     msg: "sent you a message 💬",
     note: "sent you a love note 💌",
     secret: "sent you a secret 🔒",

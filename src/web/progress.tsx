@@ -18,6 +18,7 @@ import {
 import { helloBox, inboxFor, offerBox, otherRole, RelayError, relayClear, relayConfig, relayFetch, relaySend } from "../core/lib/relay";
 import { newDhPair } from "../core/lib/pair";
 import { messageLink } from "./share";
+import { deleteMedia, mediaLabel } from "./media";
 import { getPrefs } from "./prefs";
 import { pinWaitSeconds, recordPinTry } from "./pinGuard";
 import { disableNotifications, enableNotifications, ensurePush, localReminderCheck, reportLearned, setReminder, type Reminder, notifyStatus, notifyWanted, rememberPartnerName, showMessageNotification, type NotifyStatus } from "./notify";
@@ -269,7 +270,7 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
         relayClear(relay, offerBox(c.id, c.key)).catch(() => {});
       }
       // The app is open but not on screen (or not on the chat): show a phone notification.
-      const shown = fresh.filter((e) => ["msg", "note", "secret", "word", "duel"].includes(e.kind));
+      const shown = fresh.filter((e) => ["msg", "note", "secret", "word", "duel", "media"].includes(e.kind));
       const onChat = typeof window !== "undefined" && window.location.pathname.startsWith("/messages") && document.visibilityState === "visible";
       if (shown.length && !onChat && (typeof document === "undefined" || document.visibilityState !== "visible")) {
         const last = shown[shown.length - 1];
@@ -282,7 +283,9 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
                 : last.text
               : last.kind === "note"
                 ? `💌 ${last.text}`
-                : last.kind === "secret"
+                : last.kind === "media"
+                  ? `${mediaLabel(last.media)}${last.text ? `: ${last.text}` : ""}`
+                  : last.kind === "secret"
                   ? "🔒 Sent you a secret"
                   : last.kind === "word"
                     ? `📖 New word: ${last.word.de}`
@@ -460,6 +463,8 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
         else update((s) => L.editMessage(s, msgId, 0, text, Date.now()));
       },
       unsendMessage: (msgId) => {
+        const gone = stateRef.current.chat.find((m) => m.id === msgId && m.from === 0);
+        if (gone?.media) deleteMedia(gone.media.path).catch(() => {});
         if (C.isLinked(stateRef.current)) send({ kind: "unsend", to: msgId }).catch(() => {});
         else update((s) => L.unsendMessage(s, msgId, 0));
         archive?.apply([], [msgId]).catch(() => {});

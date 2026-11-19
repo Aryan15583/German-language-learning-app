@@ -89,6 +89,9 @@ export function recordOutgoing(s: AppState, envId: string, p: Payload, at: numbe
       break;
     case "read":
       return { ...s, myReadSent: Math.max(s.myReadSent, p.upTo) };
+    case "media":
+      next = mine("media", p.text, { media: p.media });
+      break;
     case "note":
       next = mine(p.kind, p.text);
       break;
@@ -112,7 +115,7 @@ export function recordOutgoing(s: AppState, envId: string, p: Payload, at: numbe
     default:
       return s;
   }
-  if (p.kind === "msg" || p.kind === "note" || p.kind === "secret") {
+  if (p.kind === "msg" || p.kind === "note" || p.kind === "secret" || p.kind === "media") {
     next = { ...next, partners: [{ ...next.partners[0], counts: { ...next.partners[0].counts, messages: next.partners[0].counts.messages + 1 } }, next.partners[1]] };
   }
   return next;
@@ -180,6 +183,9 @@ export function receive(s: AppState, env: Envelope, now: number): ReceiveResult 
       break;
     case "msg":
       theirs("msg", env.text, { ...(env.vanish ? { vanish: env.vanish } : {}), ...(env.reply ? { reply: { id: env.reply.id, text: env.reply.text, from: env.reply.mine ? 1 : 0 } } : {}) });
+      break;
+    case "media":
+      theirs("media", env.text, { media: env.media });
       break;
     case "read":
       // Never later than when they sent it.
