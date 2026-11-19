@@ -36,17 +36,18 @@ begin
   if not ok then raise exception 'daily limit not enforced'; end if;
   reset role;
 
-  -- Only the owner can delete.
+  -- Not signed in: can't delete.
+  set local role anon;
+  ok := false;
+  begin delete from storage.objects where name = repeat('b', 32); exception when insufficient_privilege then ok := true; end;
+  reset role;
+  if not exists (select 1 from storage.objects where name = repeat('b', 32)) then raise exception 'anon deleted a file'; end if;
+  -- My partner (the receiver) can delete the server copy once it's saved on their phone.
   perform set_config('request.jwt.claims', json_build_object('sub', other, 'role', 'authenticated')::text, true);
   set local role authenticated;
   delete from storage.objects where name = repeat('b', 32);
   reset role;
-  if not exists (select 1 from storage.objects where name = repeat('b', 32)) then raise exception 'someone else deleted my file'; end if;
-  perform set_config('request.jwt.claims', json_build_object('sub', me, 'role', 'authenticated')::text, true);
-  set local role authenticated;
-  delete from storage.objects where name = repeat('b', 32);
-  reset role;
-  if exists (select 1 from storage.objects where name = repeat('b', 32)) then raise exception 'owner could not delete'; end if;
+  if exists (select 1 from storage.objects where name = repeat('b', 32)) then raise exception 'receiver could not delete'; end if;
 
   if not exists (select 1 from storage.buckets where id = 'media' and public = false and file_size_limit = 52428800) then raise exception 'bucket settings wrong'; end if;
   if not exists (select 1 from cron.job where jobname = 'zh-media-cleanup') then raise exception 'cleanup job missing'; end if;

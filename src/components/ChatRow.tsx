@@ -138,7 +138,7 @@ export function ChatRow({ m, myStreak, now, onReply, highlight }: { m: ChatItem;
         </form>
       ) : m.media ? (
         <div className="flex flex-col gap-1.5">
-          <MediaView media={m.media} />
+          <MediaView media={m.media} from={m.from === 0 ? 0 : 1} at={m.at} />
           {m.text ? <p className="whitespace-pre-wrap break-words text-ink">{highlight ? <Marked text={m.text} term={highlight} /> : m.text}</p> : null}
         </div>
       ) : (

@@ -15,13 +15,15 @@ export type Prefs = {
   notifyPreview: boolean;
   /** With a PIN: lock again after the app was in the background this many minutes. */
   lockAfter: LockAfter;
+  /** Offer to save new photos and videos from my partner to the phone's gallery. */
+  galleryPrompt: boolean;
   /** Read receipts (✓✓). Off: I don't send them, and I don't see my partner's either. */
   readReceipts: boolean;
   /** My colour for the two of us: I'm pink and my partner blue, or the other way round. */
   myColor: "pink" | "blue";
 };
 
-export const DEFAULT_PREFS: Prefs = { animations: true, quickPhrases: true, homeExtras: true, nudge: true, notifyPreview: true, lockAfter: "1", myColor: "pink", readReceipts: true };
+export const DEFAULT_PREFS: Prefs = { animations: true, quickPhrases: true, homeExtras: true, nudge: true, notifyPreview: true, lockAfter: "1", myColor: "pink", readReceipts: true, galleryPrompt: true };
 
 const KEY = "zh-prefs";
 const EVENT = "zh-prefs";
@@ -47,6 +49,7 @@ export function getPrefs(): Prefs {
       notifyPreview: typeof p.notifyPreview === "boolean" ? p.notifyPreview : DEFAULT_PREFS.notifyPreview,
       myColor: p.myColor === "blue" ? "blue" : "pink",
       readReceipts: typeof p.readReceipts === "boolean" ? p.readReceipts : true,
+      galleryPrompt: typeof p.galleryPrompt === "boolean" ? p.galleryPrompt : true,
       lockAfter: p.lockAfter === "0" || p.lockAfter === "1" || p.lockAfter === "5" || p.lockAfter === "never" ? p.lockAfter : DEFAULT_PREFS.lockAfter,
     };
   } catch {
