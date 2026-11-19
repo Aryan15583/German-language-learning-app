@@ -12,7 +12,8 @@ import { markChatSeen } from "../components/AppShell";
 import { NotifyCard } from "../components/NotifyCard";
 import { notifyStatus } from "../web/notify";
 import { usePrefs } from "../web/prefs";
-import { clock, mediaAvailable, MediaError, mediaLabel, preparePhoto, prepareVideo, prepareVoice, uploadMedia, type Prepared } from "../web/media";
+import { localStats, notInGallery } from "../web/mediaStore";
+import { clock, mediaAvailable, MediaError, mediaLabel, saveToGallery, preparePhoto, prepareVideo, prepareVoice, uploadMedia, type Prepared } from "../web/media";
 
 /** The couple chat on its own full screen, like a messenger. Tap the name for chat settings. */
 export default function Messages() {
@@ -154,6 +155,20 @@ function Chat({ onInfo }: { onInfo: () => void }) {
   const myStreak = currentStreak(state);
   const vanish = VANISH_OPTIONS.find((o) => o.id === state.vanish)!;
   const [prefs] = usePrefs();
+  // Received photos/videos that aren't in the phone's gallery yet.
+  const [toGallery, setToGallery] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const t = setTimeout(() => {
+      notInGallery()
+        .then((x) => alive && setToGallery(x.length))
+        .catch(() => {});
+    }, 1500); // give new files a moment to arrive
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [state.chat.length]);
   // Ask once (gently) about notifications.
   const [askNotify, setAskNotify] = useState(() => {
     try {
@@ -306,6 +321,23 @@ function Chat({ onInfo }: { onInfo: () => void }) {
 
       {/* Messages */}
       <main className="flex-1 space-y-2 overflow-y-auto px-3 py-4 sm:px-5" aria-live="polite">
+        {prefs.galleryPrompt && toGallery > 0 ? (
+          <div className="mx-auto mb-3 flex max-w-md items-center gap-3 rounded-3xl bg-card p-3 shadow-card ring-1 ring-line/60 anim-fade-up">
+            <span className="text-2xl">📥</span>
+            <p className="min-w-0 flex-1 text-sm text-ink">
+              {toGallery} new {toGallery === 1 ? "photo or video" : "photos & videos"} from {name}
+            </p>
+            <Button
+              size="sm"
+              onClick={async () => {
+                await saveToGallery();
+                setToGallery(0);
+              }}
+            >
+              Save to gallery
+            </Button>
+          </div>
+        ) : null}
         {askNotify ? (
           <div className="mx-auto mb-3 flex max-w-md items-center gap-3 rounded-3xl bg-card p-3 shadow-card ring-1 ring-line/60">
             <span className="text-2xl">🔔</span>
@@ -576,6 +608,8 @@ function ChatInfo({ onBack }: { onBack: () => void }) {
       <Section title="Chat">
         <div className="px-4 pb-2">
           <Toggle on={prefs.quickPhrases} onChange={(on) => setPrefs({ quickPhrases: on })} title="Quick phrases" hint="Little German phrases above the message box." />
+          <Toggle on={prefs.galleryPrompt} onChange={(on) => setPrefs({ galleryPrompt: on })} title="Offer “Save to gallery”" hint="When new photos or videos arrive, one tap saves them to your phone." />
+          <MediaSpace />
           <Toggle on={prefs.readReceipts} onChange={(on) => setPrefs({ readReceipts: on })} title="Read receipts ✓✓" hint="Off: you don’t send them, and you don’t see your partner’s either." />
         </div>
       </Section>
@@ -725,5 +759,21 @@ function QuickAction({ icon, label, href }: { icon: ReactNode; label: string; hr
       {icon}
       {label}
     </Link>
+  );
+}
+
+/** How much space saved photos, videos and voice messages use on this phone. */
+function MediaSpace() {
+  const [st, setSt] = useState<{ count: number; bytes: number } | null>(null);
+  useEffect(() => {
+    localStats()
+      .then(setSt)
+      .catch(() => {});
+  }, []);
+  if (!st) return null;
+  return (
+    <p className="px-1 py-2 text-xs text-muted">
+      📦 On this phone: {st.count} {st.count === 1 ? "file" : "files"} · {(st.bytes / 1048576).toFixed(1)} MB. Kept here like Signal — the server copy is deleted once it’s delivered.
+    </p>
   );
 }

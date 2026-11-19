@@ -2,7 +2,8 @@
 --
 -- Every file is encrypted on the phone before upload (a fresh key per file, sent inside the
 -- end-to-end encrypted chat message). This bucket only ever holds scrambled bytes.
--- Only signed-in accounts can upload or download; files are deleted after 30 days.
+-- Only signed-in accounts can upload or download. Like Signal, the receiving phone keeps the
+-- file and deletes the server copy right away; anything left over is deleted after 30 days.
 
 -- A private bucket: max 50 MB per file, encrypted bytes only.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -12,6 +13,7 @@ on conflict (id) do update set public = false, file_size_limit = 52428800, allow
 drop policy if exists "zh media: upload" on storage.objects;
 drop policy if exists "zh media: download" on storage.objects;
 drop policy if exists "zh media: delete own" on storage.objects;
+drop policy if exists "zh media: delete" on storage.objects;
 
 -- Upload: signed in, a random 32-character name, at most 200 files a day per account.
 create policy "zh media: upload" on storage.objects
@@ -30,10 +32,11 @@ create policy "zh media: download" on storage.objects
   for select to authenticated
   using (bucket_id = 'media');
 
--- Delete: only your own files (e.g. when you delete a message).
-create policy "zh media: delete own" on storage.objects
+-- Delete: signed in. The receiving phone removes the server copy once it has saved the file
+-- (names are random 32-character secrets that only the two of you ever see).
+create policy "zh media: delete" on storage.objects
   for delete to authenticated
-  using (bucket_id = 'media' and owner_id = (select auth.uid())::text);
+  using (bucket_id = 'media');
 
 -- Once a day, the notify function deletes files older than 30 days.
 do $$

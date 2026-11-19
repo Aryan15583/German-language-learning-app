@@ -19,7 +19,8 @@ import { helloBox, inboxFor, offerBox, otherRole, RelayError, relayClear, relayC
 import { newDhPair } from "../core/lib/pair";
 import { messageLink } from "./share";
 import { WEEKLY_XP } from "../core/lib/weekly";
-import { deleteMedia, mediaLabel } from "./media";
+import { deleteMedia, mediaLabel, mediaUrl } from "./media";
+import { clearLocal, deleteLocal, deleteLocalUpTo } from "./mediaStore";
 import { getPrefs } from "./prefs";
 import { pinWaitSeconds, recordPinTry } from "./pinGuard";
 import { disableNotifications, enableNotifications, ensurePush, localReminderCheck, reportLearned, setReminder, type Reminder, notifyStatus, notifyWanted, rememberPartnerName, showMessageNotification, type NotifyStatus } from "./notify";
@@ -261,6 +262,11 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
         try {
           const env = tryOpen(stateRef.current, row.payload);
           if (!stateRef.current.seen.includes(env.id)) fresh.push(env);
+          // My partner deleted a photo/video/voice message: remove my saved copy too.
+          if (env.kind === "unsend") {
+            const gone = stateRef.current.chat.find((m) => m.id === env.to && m.from === 1);
+            if (gone?.media) deleteLocal(gone.media.path).catch(() => {});
+          }
           update((x) => C.receive(x, env, Date.now()).state);
         } catch {
           // Not for us or damaged: skip it, but don't get stuck on it.
@@ -268,6 +274,8 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
       }
       if (rows.length) update((x) => ({ ...x, relayCursor: { ...x.relayCursor, [box]: rows[rows.length - 1].id } }));
       setSyncStatus("ok");
+      // Like Signal: fetch new photos, videos and voice messages now, keep them on this phone, and let the server forget them.
+      for (const e of fresh) if (e.kind === "media") mediaUrl(e.media, 1, e.at).catch(() => {});
       // Just linked as the code maker: empty the pairing mailboxes so nothing about it stays on the server.
       if (c.status === "invited" && stateRef.current.couple?.status === "linked") {
         relayClear(relay, helloBox(c.id, c.key)).catch(() => {});
@@ -387,6 +395,7 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
   useEffect(() => {
     if (!ready || !archive || !state.chatClearedAt) return;
     queue.current = queue.current.then(() => archive.deleteUpTo(state.chatClearedAt)).catch(() => {});
+    deleteLocalUpTo(state.chatClearedAt).catch(() => {});
   }, [ready, archive, state.chatClearedAt]);
 
   // Disappearing messages: clear out anything whose time is up (now, and every 30 s).
@@ -469,7 +478,10 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
       },
       unsendMessage: (msgId) => {
         const gone = stateRef.current.chat.find((m) => m.id === msgId && m.from === 0);
-        if (gone?.media) deleteMedia(gone.media.path).catch(() => {});
+        if (gone?.media) {
+          deleteMedia(gone.media.path).catch(() => {});
+          deleteLocal(gone.media.path).catch(() => {});
+        }
         if (C.isLinked(stateRef.current)) send({ kind: "unsend", to: msgId }).catch(() => {});
         else update((s) => L.unsendMessage(s, msgId, 0));
         archive?.apply([], [msgId]).catch(() => {});
@@ -499,6 +511,7 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
         setLocked(false);
         archived.current = [];
         if (archive) queue.current = queue.current.then(() => archive.clear()).catch(() => {});
+        clearLocal().catch(() => {});
         update(() => L.freshState());
       },
 

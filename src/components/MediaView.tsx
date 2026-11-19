@@ -1,11 +1,12 @@
 import { Download, Play, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type { MediaRef } from "../core/lib/link";
-import { clock, mediaUrl, MediaError } from "../web/media";
+import { clock, galleryFileName, mediaUrl, MediaError } from "../web/media";
+import { getLocal, markInGallery } from "../web/mediaStore";
 import { cx } from "./ui";
 
 /** A photo, video or voice message inside a chat bubble. Decrypted on this phone only. */
-export function MediaView({ media }: { media: MediaRef }) {
+export function MediaView({ media, from = 1, at = 0 }: { media: MediaRef; from?: 0 | 1; at?: number }) {
   const [url, setUrl] = useState<string | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "error" | "expired">("idle");
   const [full, setFull] = useState(false);
@@ -13,27 +14,30 @@ export function MediaView({ media }: { media: MediaRef }) {
   const load = useCallback(async () => {
     setState("loading");
     try {
-      setUrl(await mediaUrl(media));
+      setUrl(await mediaUrl(media, from, at));
       setState("idle");
     } catch (e) {
       setState(e instanceof MediaError && e.message === "expired" ? "expired" : "error");
     }
-  }, [media]);
+  }, [media, from, at]);
 
-  // Photos up to 5 MB load by themselves; videos and voice load when you tap them.
+  // Anything already on this phone shows straight away; new photos up to 5 MB load by themselves.
   useEffect(() => {
-    if (media.type !== "image" || media.size > 5 * 1048576) return;
     let alive = true;
-    mediaUrl(media)
+    getLocal(media.path)
+      .catch(() => null)
+      .then((local) => (local || (media.type === "image" && media.size <= 5 * 1048576) ? mediaUrl(media, from, at) : Promise.reject(new Error("tap"))))
       .then((u) => alive && setUrl(u))
-      .catch((e) => alive && setState(e instanceof MediaError && e.message === "expired" ? "expired" : "error"));
+      .catch((e) => {
+        if (alive && e instanceof MediaError) setState(e.message === "expired" ? "expired" : "error");
+      });
     return () => {
       alive = false;
     };
-  }, [media]);
+  }, [media, from, at]);
 
   const ratio = media.w && media.h ? `${media.w} / ${media.h}` : media.type === "audio" ? undefined : "4 / 3";
-  const failed = state === "expired" ? "Expired — files are kept for 30 days." : state === "error" ? "Couldn’t load. Tap to try again." : null;
+  const failed = state === "expired" ? "Not on this phone, and no longer on the server." : state === "error" ? "Couldn’t load. Tap to try again." : null;
 
   if (media.type === "audio") {
     return (
@@ -88,8 +92,11 @@ export function MediaView({ media }: { media: MediaRef }) {
           <div className="flex justify-end gap-2 p-3">
             <a
               href={url}
-              download={`zwei-herzen-${media.path.slice(0, 8)}.${media.mime.split("/")[1].replace("quicktime", "mov").replace("jpeg", "jpg")}`}
-              onClick={(e) => e.stopPropagation()}
+              download={galleryFileName(media.mime, at)}
+              onClick={(e) => {
+                e.stopPropagation();
+                markInGallery([media.path]).catch(() => {});
+              }}
               className="flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white hover:bg-white/25"
             >
               <Download size={16} /> Save
