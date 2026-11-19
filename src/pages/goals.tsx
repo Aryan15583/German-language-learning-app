@@ -1,5 +1,6 @@
 import { AppShell } from "../components/AppShell";
 import { ReminderCard } from "../components/ReminderCard";
+import { WeeklyChallenges } from "../components/WeeklyChallenges";
 import { Card, ProgressBar, Script } from "../components/ui";
 import { SECRET_PHRASES } from "../core/content/berlin";
 import { LEVELS, meaning } from "../core/content/levels";
@@ -52,6 +53,9 @@ export default function Goals() {
             </p>
           </div>
         </Card>
+        <WeeklyChallenges />
+
+        <h2 className="mb-2 text-lg font-bold">Bigger goals 🎯</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           {goals.map((g) => {
             const done = g.value >= 1;
