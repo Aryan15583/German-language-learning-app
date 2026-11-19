@@ -39,28 +39,63 @@ const SLIDES = [
     text: "Step by step, hand in hand — from Mumbai through München, Köln and Dresden, all the way to Berlin. 🇩🇪",
   },
   {
-    art: <PhotoArt src="/art/tower.jpg" />,
-    title: "One big button",
-    text: "Tap ▶ Start every day. We pick your next words, quiz or big test — five minutes is enough.",
+    art: <RouteArt />,
+    title: "Five minutes a day",
+    text: "Tap ▶ Start and we pick your next words, quiz or test. Every lesson moves you two closer to Berlin.",
   },
   {
-    art: (
-      <div className="grid h-full place-items-center">
-        <Mascot size={180} className="anim-beat" />
-      </div>
-    ),
+    art: <TogetherArt />,
     title: "Grow closer",
-    text: "Chat, play, react ❤️ and keep a memory book — end-to-end encrypted, just for you two.",
+    text: "Chat in German, send photos and voice notes, duel each other and keep a memory book — end-to-end encrypted, just for you two.",
   },
 ];
+
+/** Mumbai → German cities → Berlin, as little stops. */
+function RouteArt() {
+  const stops = ["🇮🇳 Mumbai", "München", "Nürnberg", "Frankfurt", "Köln", "Leipzig", "Dresden", "Potsdam", "🇩🇪 Berlin"];
+  return (
+    <div className="relative h-full overflow-hidden bg-gradient-to-b from-blush to-rose-soft/60 p-5">
+      <HeartPlane className="absolute right-4 top-3 h-8 w-24 text-plum/60" />
+      <ol className="relative mt-6 flex h-[85%] flex-col justify-between border-l-4 border-dashed border-plum/40 pl-5 text-left">
+        {stops.map((s, k) => (
+          <li key={s} className="relative text-sm font-semibold text-ink">
+            <span className={cx("absolute -left-[29px] top-1 h-3.5 w-3.5 rounded-full ring-4 ring-blush", k === 0 || k === stops.length - 1 ? "bg-plum" : "bg-rose")} />
+            {s}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/** What you do together, as friendly tiles. */
+function TogetherArt() {
+  const tiles = [
+    ["💬", "Chat"],
+    ["📷", "Photos"],
+    ["🎤", "Voice"],
+    ["⚔️", "Duels"],
+    ["📖", "Memories"],
+    ["🔒", "Private"],
+  ];
+  return (
+    <div className="grid h-full grid-cols-2 gap-3 bg-gradient-to-br from-blush to-card p-5">
+      {tiles.map(([e, t]) => (
+        <div key={t} className="flex flex-col items-center justify-center rounded-3xl bg-surface/80 shadow-card">
+          <span className="text-3xl">{e}</span>
+          <span className="mt-1 text-xs font-bold text-plum">{t}</span>
+        </div>
+      ))}
+      <div className="col-span-2 -mt-1 flex justify-center">
+        <Mascot size={56} className="anim-beat" />
+      </div>
+    </div>
+  );
+}
 
 function CoupleArt() {
   // eslint-disable-next-line @next/next/no-img-element -- static export
   return <img src="/art/couple.jpg" alt="A couple looking at Berlin together" className="h-full w-full object-cover" />;
-}
-function PhotoArt({ src }: { src: string }) {
-  // eslint-disable-next-line @next/next/no-img-element -- static export
-  return <img src={src} alt="" className="h-full w-full object-cover" />;
 }
 
 /** Screen 2 of the design: three short intro slides with Next / Skip. */

@@ -42,6 +42,8 @@ export type Partner = {
   ready: number;
   /** XP per calendar day (last 60 days), for the streak chart. */
   history: Record<string, number>;
+  /** Weekly challenges: this ISO week, my counts when it started, and challenges already claimed. */
+  weekly?: { id: string; base: Counts; claimed: string[] };
   /** For the partner on a linked phone: their own streak and totals, from their last message. */
   remote: { streak: number; streakDay: string | null; wordsKnown: number; unitsPassed: number; at: number } | null;
 };
@@ -236,6 +238,10 @@ export function migrate(raw: unknown): AppState {
     ready: typeof p?.ready === "number" ? Math.max(0, Math.min(7, Math.floor(p.ready))) : 0,
     remote: p?.remote ?? null,
     history: p?.history && typeof p.history === "object" ? p.history : {},
+    weekly:
+      p?.weekly && typeof p.weekly.id === "string" && Array.isArray(p.weekly.claimed)
+        ? { id: p.weekly.id, base: { ...freshCounts(), ...(p.weekly.base ?? {}) }, claimed: p.weekly.claimed.filter((x) => typeof x === "string") }
+        : undefined,
   });
   return {
     partners: [partner(r.partners?.[0]), partner(r.partners?.[1])],
@@ -257,6 +263,22 @@ export function migrate(raw: unknown): AppState {
     myReadSent: typeof r.myReadSent === "number" && r.myReadSent > 0 ? r.myReadSent : 0,
     memories: Array.isArray(r.memories) ? r.memories.map(cleanMemory).filter((m): m is MemoryEntry => m !== null).slice(-MAX_MEMORIES) : [],
   };
+}
+
+// ---- Weekly challenges ----
+/** At the start of a new week, remember everyone's counts (progress counts from here). Same object if nothing changes. */
+export function rollWeek(s: AppState, today: string): AppState {
+  const week = isoWeek(today);
+  if (s.partners.every((p) => p.weekly?.id === week)) return s;
+  const partners = s.partners.map((p) => (p.weekly?.id === week ? p : { ...p, weekly: { id: week, base: { ...p.counts }, claimed: [] } })) as [Partner, Partner];
+  return { ...s, partners };
+}
+
+export function claimWeekly(s: AppState, i: PartnerIndex, id: string, xp: number, today: string): AppState {
+  const p = s.partners[i];
+  if (!p.weekly || p.weekly.id !== isoWeek(today) || p.weekly.claimed.includes(id)) return s;
+  const claimed = withPartner(s, i, (x) => ({ ...x, weekly: { ...x.weekly!, claimed: [...x.weekly!.claimed, id] } }));
+  return addXp(claimed, i, xp, today);
 }
 
 // ---- Memory book ----

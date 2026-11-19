@@ -18,6 +18,7 @@ import {
 import { helloBox, inboxFor, offerBox, otherRole, RelayError, relayClear, relayConfig, relayFetch, relaySend } from "../core/lib/relay";
 import { newDhPair } from "../core/lib/pair";
 import { messageLink } from "./share";
+import { WEEKLY_XP } from "../core/lib/weekly";
 import { deleteMedia, mediaLabel } from "./media";
 import { getPrefs } from "./prefs";
 import { pinWaitSeconds, recordPinTry } from "./pinGuard";
@@ -75,6 +76,8 @@ type Ctx = {
   disableNotify: () => Promise<void>;
   /** Daily learning reminder at a time of day. */
   saveReminder: (r: Reminder) => Promise<{ ok: boolean; push: boolean; status: NotifyStatus }>;
+  /** Claim a finished weekly challenge (+50 XP). */
+  claimWeekly: (id: string) => void;
   /** Clear the chat on this phone, or on both phones. */
   clearChat: (forBoth: boolean) => Promise<void>;
   /** Edit or delete one of my own chat messages (on both phones). */
@@ -139,7 +142,8 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
 
   /** Update state and keep the ref in step, so async code always sees the latest. */
   const update = useCallback((fn: (s: AppState) => AppState) => {
-    const next = fn(stateRef.current);
+    // A new week starts counting before anything else happens.
+    const next = fn(L.rollWeek(stateRef.current, today()));
     if (next === stateRef.current) return;
     stateRef.current = { ...next, updatedAt: Date.now() };
     setState(stateRef.current);
@@ -453,6 +457,7 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
       },
       disableNotify: () => disableNotifications(relay),
       saveReminder: (r) => setReminder(relay, r),
+      claimWeekly: (id) => update((s) => L.claimWeekly(s, s.learner, id, WEEKLY_XP, today())),
       clearChat: async (forBoth) => {
         const at = Date.now();
         if (forBoth && C.isLinked(stateRef.current)) await send({ kind: "clear", before: at }).catch(() => undefined);

@@ -2,6 +2,7 @@ import { BookOpen, ChevronRight, Dumbbell, Flame, Gamepad2, Heart, Lightbulb, Ma
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
+import { WeeklyLine } from "../components/WeeklyChallenges";
 import { Button, Card, cx, HeartPlane, Mascot, ProgressBar, Ring, Script, Speak } from "../components/ui";
 import { allTopics, LEVELS, levelWords, meaning } from "../core/content/levels";
 import { dailyConversation, dailySurprise, teamLevel } from "../core/lib/couplelife";
@@ -340,6 +341,7 @@ export default function Home() {
               {mine.weekXp} <span className="text-base font-semibold text-muted">XP so far</span>
             </p>
           )}
+          <WeeklyLine />
         </Card>
 
         {/* Couple activities (computers show three cards; phones have the tiles) */}
