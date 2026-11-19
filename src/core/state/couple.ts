@@ -85,8 +85,10 @@ export function recordOutgoing(s: AppState, envId: string, p: Payload, at: numbe
     pushChat(next, { id: envId, from: 0, kind, text, at, ...extra });
   switch (p.kind) {
     case "msg":
-      next = mine("msg", p.text, p.vanish ? { vanish: p.vanish } : {});
+      next = mine("msg", p.text, { ...(p.vanish ? { vanish: p.vanish } : {}), ...(p.reply ? { reply: { id: p.reply.id, text: p.reply.text, from: p.reply.mine ? 0 : 1 } } : {}) });
       break;
+    case "read":
+      return { ...s, myReadSent: Math.max(s.myReadSent, p.upTo) };
     case "note":
       next = mine(p.kind, p.text);
       break;
@@ -177,7 +179,11 @@ export function receive(s: AppState, env: Envelope, now: number): ReceiveResult 
     case "offer":
       break;
     case "msg":
-      theirs("msg", env.text, env.vanish ? { vanish: env.vanish } : {});
+      theirs("msg", env.text, { ...(env.vanish ? { vanish: env.vanish } : {}), ...(env.reply ? { reply: { id: env.reply.id, text: env.reply.text, from: env.reply.mine ? 1 : 0 } } : {}) });
+      break;
+    case "read":
+      // Never later than when they sent it.
+      next = { ...next, partnerReadAt: Math.max(next.partnerReadAt, Math.min(env.upTo, env.at)) };
       break;
     case "note":
       theirs(env.kind, env.text);

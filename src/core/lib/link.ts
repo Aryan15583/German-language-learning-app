@@ -47,7 +47,9 @@ export type Payload =
   | { kind: "join"; pub: string }
   | { kind: "stats" }
   | { kind: "duel"; duel: DuelMove }
-  | { kind: "msg"; text: string; vanish?: Vanish }
+  | { kind: "msg"; text: string; vanish?: Vanish; reply?: ReplyRef }
+  /** "I've read your messages up to this time" (✓✓). */
+  | { kind: "read"; upTo: number }
   /** "I've seen these disappearing messages" — the sender deletes its copy too. */
   | { kind: "viewed"; ids: string[] }
   | { kind: "note"; text: string }
@@ -61,6 +63,9 @@ export type Payload =
   | { kind: "unsend"; to: string }
   /** Clear the whole chat (everything up to this time) on both phones. */
   | { kind: "clear"; before: number };
+
+/** A quoted message: `mine` = the quoted message was written by the sender of this reply. */
+export type ReplyRef = { id: string; text: string; mine: boolean };
 
 export type Envelope = {
   v: 1;
@@ -137,10 +142,16 @@ function payload(x: Record<string, unknown>): Payload {
     }
     case "msg": {
       const text = str(x.text, LIMITS.text, "message");
-      if (x.vanish === undefined) return { kind: "msg", text };
-      const vanish = VANISH_MODES.includes(x.vanish as Vanish) ? (x.vanish as Vanish) : fail("timer invalid");
-      return { kind: "msg", text, vanish };
+      const out: { kind: "msg"; text: string; vanish?: Vanish; reply?: ReplyRef } = { kind: "msg", text };
+      if (x.vanish !== undefined) out.vanish = VANISH_MODES.includes(x.vanish as Vanish) ? (x.vanish as Vanish) : fail("timer invalid");
+      if (x.reply !== undefined) {
+        const r = isObj(x.reply) ? x.reply : fail("reply invalid");
+        out.reply = { id: idStr(r.id, "reply id"), text: str(r.text, 120, "reply text", true), mine: r.mine === true };
+      }
+      return out;
     }
+    case "read":
+      return { kind: "read", upTo: int(x.upTo, 0, 8_640_000_000_000_000, "time") };
     case "viewed": {
       const ids = Array.isArray(x.ids) && x.ids.length >= 1 && x.ids.length <= 50 ? x.ids : fail("ids invalid");
       return { kind: "viewed", ids: [...new Set(ids.map((id) => idStr(id, "message id")))] };

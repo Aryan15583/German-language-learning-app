@@ -127,6 +127,27 @@ export class ChatArchive {
     return out.reverse();
   }
 
+  /** Newest-first messages whose text contains `term` (case-insensitive). */
+  async search(term: string, limit = 50): Promise<ChatItem[]> {
+    const t = term.trim().toLowerCase();
+    if (!t) return [];
+    const db = await this.db;
+    const out: ChatItem[] = [];
+    const cursorReq = db.transaction("msgs").objectStore("msgs").index("at").openCursor(null, "prev");
+    await new Promise<void>((res, rej) => {
+      cursorReq.onerror = () => rej(cursorReq.error);
+      cursorReq.onsuccess = () => {
+        const c = cursorReq.result;
+        if (!c || out.length >= limit) return res();
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- drop the size field
+        const { size, ...m } = c.value as Stored;
+        if (m.kind !== "system" && m.text.toLowerCase().includes(t)) out.push(m);
+        c.continue();
+      };
+    });
+    return out;
+  }
+
   /** Delete every message sent at or before `at` (after "clear chat"). */
   async deleteUpTo(at: number): Promise<number> {
     const db = await this.db;

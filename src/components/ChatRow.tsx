@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button, cx, Speak } from "./ui";
 import { findTopic } from "../core/content/levels";
 import { REACTIONS } from "../core/lib/couplelife";
+import { getPrefs } from "../web/prefs";
 import { couple, partnerName, useProgress, type ChatItem } from "../web/progress";
 
 export const VANISH_OPTIONS: { id: "off" | "seen" | "1d" | "30d"; label: string; hint: string }[] = [
@@ -15,7 +16,7 @@ export const VANISH_OPTIONS: { id: "off" | "seen" | "1d" | "30d"; label: string;
 export const QUICK = ["Gut gemacht! 👏", "Ich bin stolz auf dich ❤️", "Du schaffst das! 💪", "Lass uns lernen! 📚", "Guten Morgen, Schatz! ☀️", "Ich vermisse dich 💞", "Ich liebe dich", "Schlaf gut! 🌙"];
 
 /** Our journey: link phones with a code, then chat, battle and share. */
-export function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; now: number }) {
+export function ChatRow({ m, myStreak, now, onReply, highlight }: { m: ChatItem; myStreak: number; now: number; onReply?: (m: ChatItem) => void; highlight?: string }) {
   const { state, react, addMemory, editMessage, unsendMessage } = useProgress();
   const [open, setOpen] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -67,8 +68,17 @@ export function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; n
   }
 
   const reacts = [m.reacts?.[0], m.reacts?.[1]].filter(Boolean) as string[];
+  const showTicks = mine && getPrefs().readReceipts;
+  const read = showTicks && m.at <= state.partnerReadAt;
+  const jump = (id: string) => {
+    const el = document.getElementById(`msg-${id}`);
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.classList.add("flash-msg");
+    setTimeout(() => el.classList.remove("flash-msg"), 1600);
+  };
   return (
-    <div className={cx("flex flex-col", mine ? "items-end" : "items-start")}>
+    <div id={`msg-${m.id}`} className={cx("flex flex-col rounded-3xl transition-colors", mine ? "items-end" : "items-start")}>
       <div
         className={cx(bubble, "relative cursor-pointer", reacts.length > 0 && "mb-3")}
         onClick={(e) => {
@@ -83,6 +93,16 @@ export function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; n
         aria-label="Message, press to react"
         aria-expanded={open}
       >
+      {m.reply ? (
+        <button
+          type="button"
+          onClick={() => jump(m.reply!.id)}
+          className={cx("mb-1.5 block w-full rounded-xl border-l-4 bg-surface/70 px-2.5 py-1.5 text-left text-xs", m.reply.from === 0 ? "border-me" : "border-them")}
+        >
+          <span className="block font-bold text-ink">{m.reply.from === 0 ? "You" : partnerName(state, 1)}</span>
+          <span className="block truncate text-muted">{m.reply.text || "…"}</span>
+        </button>
+      ) : null}
       {m.kind === "secret" ? <p className="text-xs font-bold text-rose">✨ Secret{mine ? " (sent)" : " unlocked"}</p> : null}
       {m.kind === "note" ? <p className="text-xs font-bold text-rose">💌 Love note</p> : null}
       {m.kind === "word" ? <p className="text-xs font-bold text-rose">📖 New shared word</p> : null}
@@ -117,7 +137,7 @@ export function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; n
         </form>
       ) : (
         <div className="flex items-center gap-2">
-          <p className={cx("flex-1 whitespace-pre-wrap break-words text-ink", m.kind === "note" && "font-script text-2xl")}>{m.text}</p>
+          <p className={cx("flex-1 whitespace-pre-wrap break-words text-ink", m.kind === "note" && "font-script text-2xl")}>{highlight ? <Marked text={m.text} term={highlight} /> : m.text}</p>
           {m.kind !== "word" ? <Speak text={m.text} /> : null}
         </div>
       )}
@@ -125,6 +145,11 @@ export function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; n
         {m.edited ? <span className="mr-1.5 italic">edited</span> : null}
         {time}
         {m.vanish ? <span className="ml-2 font-semibold text-plum">{couple.vanishLabel(m, now)}</span> : null}
+        {showTicks ? (
+          <span className={cx("ml-1.5 font-bold", read ? "text-them" : "text-muted")} aria-label={read ? "Seen" : "Sent"} title={read ? "Seen" : "Sent"}>
+            {read ? "✓✓" : "✓"}
+          </span>
+        ) : null}
       </p>
         {reacts.length ? (
           <span className={cx("absolute -bottom-3 flex gap-0.5 rounded-full bg-surface px-1.5 py-0.5 text-sm shadow-card ring-1 ring-line/60 anim-pop", mine ? "left-3" : "right-3")}>
@@ -164,6 +189,18 @@ export function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; n
               {saved ? "Saved 📖" : "📌 Memory book"}
             </button>
           ) : null}
+          {onReply ? (
+            <button
+              type="button"
+              onClick={() => {
+                onReply(m);
+                setOpen(false);
+              }}
+              className="rounded-full px-2.5 py-1.5 text-xs font-semibold text-plum hover:bg-blush"
+            >
+              ↩️ Reply
+            </button>
+          ) : null}
           {mine && (m.kind === "msg" || m.kind === "note") ? (
             <button
               type="button"
@@ -198,5 +235,18 @@ export function ChatRow({ m, myStreak, now }: { m: ChatItem; myStreak: number; n
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** Highlights a search term inside a message. */
+function Marked({ text, term }: { text: string; term: string }) {
+  const i = text.toLowerCase().indexOf(term.toLowerCase());
+  if (!term || i < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, i)}
+      <mark className="rounded bg-gold-soft px-0.5 text-ink">{text.slice(i, i + term.length)}</mark>
+      {text.slice(i + term.length)}
+    </>
   );
 }
