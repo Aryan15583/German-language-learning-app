@@ -48,6 +48,8 @@ export type Payload =
   | { kind: "stats" }
   | { kind: "duel"; duel: DuelMove }
   | { kind: "msg"; text: string; vanish?: Vanish; reply?: ReplyRef }
+  /** A photo, video or voice message: the encrypted file's name and key (+ optional caption). */
+  | { kind: "media"; media: MediaRef; text: string }
   /** "I've read your messages up to this time" (✓✓). */
   | { kind: "read"; upTo: number }
   /** "I've seen these disappearing messages" — the sender deletes its copy too. */
@@ -63,6 +65,34 @@ export type Payload =
   | { kind: "unsend"; to: string }
   /** Clear the whole chat (everything up to this time) on both phones. */
   | { kind: "clear"; before: number };
+
+/** An encrypted file in storage. `key` decrypts it; `thumb` is a tiny blurred preview. */
+export type MediaRef = { type: "image" | "video" | "audio"; path: string; key: string; mime: string; size: number; w?: number; h?: number; dur?: number; thumb?: string };
+export const MEDIA_MIMES: Record<MediaRef["type"], string[]> = {
+  image: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  video: ["video/mp4", "video/webm", "video/quicktime"],
+  audio: ["audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/aac"],
+};
+export const MEDIA_MAX_BYTES = 50 * 1024 * 1024;
+
+function mediaRef(x: unknown): MediaRef {
+  const m = isObj(x) ? x : fail("media missing");
+  const type = m.type === "image" || m.type === "video" || m.type === "audio" ? m.type : fail("media type invalid");
+  const mime = typeof m.mime === "string" ? m.mime.split(";")[0].trim().toLowerCase() : "";
+  if (!MEDIA_MIMES[type].includes(mime)) fail("media format not allowed");
+  const out: MediaRef = {
+    type,
+    path: typeof m.path === "string" && /^[A-Za-z0-9_-]{32}$/.test(m.path) ? m.path : fail("media name invalid"),
+    key: keyStr(m.key),
+    mime,
+    size: int(m.size, 1, MEDIA_MAX_BYTES, "media size"),
+  };
+  if (m.w !== undefined) out.w = int(m.w, 1, 20000, "width");
+  if (m.h !== undefined) out.h = int(m.h, 1, 20000, "height");
+  if (m.dur !== undefined) out.dur = int(m.dur, 0, 24 * 3600, "duration");
+  if (m.thumb !== undefined) out.thumb = typeof m.thumb === "string" && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]{1,4000}$/.test(m.thumb) ? m.thumb : fail("preview invalid");
+  return out;
+}
 
 /** A quoted message: `mine` = the quoted message was written by the sender of this reply. */
 export type ReplyRef = { id: string; text: string; mine: boolean };
@@ -150,6 +180,8 @@ function payload(x: Record<string, unknown>): Payload {
       }
       return out;
     }
+    case "media":
+      return { kind: "media", media: mediaRef(x.media), text: str(x.text ?? "", LIMITS.text, "caption", true) };
     case "read":
       return { kind: "read", upTo: int(x.upTo, 0, 8_640_000_000_000_000, "time") };
     case "viewed": {

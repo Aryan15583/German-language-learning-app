@@ -4,6 +4,7 @@
 //   GET  → returns the public Web Push key (made on first use and kept in push_keys)
 //   POST {id, mailbox}       → called by the database when a message arrives; pings that mailbox's phones once.
 //   POST {type: "reminders"} → called every 10 minutes; sends daily learning reminders that are due.
+//   POST {type: "cleanup"}   → called once a day; deletes encrypted media files older than 30 days.
 //
 // No libraries: Web Push (VAPID + aes128gcm, RFC 8291/8292) is done with the built-in Web Crypto API,
 // and the database is reached with plain fetch, so nothing can break on an npm import.
@@ -111,6 +112,30 @@ async function encrypt(payload: Uint8Array, p256dh: string, auth: string): Promi
 // ---------- sending ----------
 type Sub = { endpoint: string; p256dh: string; auth: string };
 
+/** Delete encrypted media older than 30 days (Supabase Storage API, service key). */
+async function cleanupMedia(): Promise<number> {
+  if (!SUPABASE_URL || !SERVICE_KEY) throw new Error("missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  const headers: Record<string, string> = { apikey: SERVICE_KEY, "Content-Type": "application/json" };
+  if (SERVICE_KEY.split(".").length === 3) headers.Authorization = `Bearer ${SERVICE_KEY}`;
+  const cutoff = Date.now() - 30 * 86_400_000;
+  let deleted = 0;
+  for (let round = 0; round < 20; round++) {
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/list/media`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ prefix: "", limit: 1000, offset: 0, sortBy: { column: "created_at", order: "asc" } }),
+    });
+    if (!res.ok) throw new Error(`storage list ${res.status}`);
+    const files = ((await res.json()) as { name: string; created_at?: string }[]).filter((f) => f.created_at && Date.parse(f.created_at) < cutoff);
+    if (!files.length) break;
+    const del = await fetch(`${SUPABASE_URL}/storage/v1/object/media`, { method: "DELETE", headers, body: JSON.stringify({ prefixes: files.map((f) => f.name) }) });
+    if (!del.ok) throw new Error(`storage delete ${del.status}`);
+    deleted += files.length;
+    if (files.length < 1000) break;
+  }
+  return deleted;
+}
+
 /** Only real push services (the database checks this too), so this function can't be aimed at other sites. */
 const PUSH_HOST = /^https:\/\/(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[a-z0-9-]+\.notify\.windows\.com|web\.push\.apple\.com|[a-z0-9-]+\.push\.apple\.com)\//;
 const endpointOk = (e: string) => PUSH_HOST.test(e) || (Deno.env.get("NOTIFY_TEST_ENDPOINTS") === "1" && e.startsWith("https://127.0.0.1:"));
@@ -154,6 +179,9 @@ Deno.serve(async (req) => {
     if (req.method !== "POST") return json({ error: "method" }, 405);
 
     const body = await req.json().catch(() => null);
+
+    // Media cleanup (safe to call any time: only removes files older than 30 days).
+    if (body?.type === "cleanup") return json({ deleted: await cleanupMedia() });
 
     // Daily reminders (safe to call any time: each phone gets at most one a day, only at its own time).
     if (body?.type === "reminders") {

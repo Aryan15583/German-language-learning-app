@@ -4,7 +4,7 @@ import { meet, recall, type Memory } from "../lib/srs";
 import { isLang, LEVELS, levelIndex, levelUnits, type Lang, type Level, type LevelId, type SubLevel } from "../content/levels";
 import { newId, type PinHash } from "../lib/crypto";
 import { isoWeek } from "../lib/game";
-import type { SharedWord, Vanish } from "../lib/link";
+import type { MediaRef, SharedWord, Vanish } from "../lib/link";
 import { cleanMemory, isReaction, MAX_MEMORIES, type MemoryEntry } from "../lib/couplelife";
 
 export type PartnerIndex = 0 | 1;
@@ -83,7 +83,7 @@ export type Couple = {
   myPub?: string;
 };
 
-export type ChatKind = "msg" | "note" | "secret" | "word" | "duel" | "system";
+export type ChatKind = "msg" | "note" | "secret" | "word" | "duel" | "system" | "media";
 
 export type ChatItem = {
   id: string;
@@ -102,6 +102,8 @@ export type ChatItem = {
   reacts?: { 0?: string; 1?: string };
   /** When the sender last edited the text. */
   edited?: number;
+  /** Photo, video or voice message (an encrypted file in storage). */
+  media?: MediaRef;
   /** The message this one answers (from: who wrote the quoted one, on this phone). */
   reply?: { id: string; text: string; from: PartnerIndex };
 };
@@ -289,7 +291,7 @@ export function clearChat(s: AppState, before: number, note: string, now: number
 
 /** Delete a message for both of us — only the person who sent it can. */
 export function unsendMessage(s: AppState, msgId: string, by: PartnerIndex): AppState {
-  const chat = s.chat.filter((m) => !(m.id === msgId && m.from === by && (EDITABLE.includes(m.kind) || m.kind === "secret")));
+  const chat = s.chat.filter((m) => !(m.id === msgId && m.from === by && (EDITABLE.includes(m.kind) || m.kind === "secret" || m.kind === "media")));
   return chat.length === s.chat.length ? s : { ...s, chat };
 }
 
