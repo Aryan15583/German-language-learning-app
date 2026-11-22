@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useReveal } from "../web/reveal";
+import { useSmoothScroll } from "../web/smooth";
 import { LEVELS, type Lang, type LevelId } from "../core/content/levels";
 import { useProgress } from "../web/progress";
 import { LangPicker, LevelPicker } from "./pickers";
@@ -27,12 +29,15 @@ export function Setup({ onDone }: { onDone?: () => void } = {}) {
   const [lb, setLb] = useState<LevelId>(LEVELS[state.partners[1].unlocked].id);
   const [langs, setLangs] = useState<[Lang, Lang]>([state.partners[0].lang, state.partners[1].lang]);
   const ok = accountMode ? !!a.trim() : !!(a.trim() && b.trim());
+  const root = useRef<HTMLDivElement>(null);
+  useReveal(root, prefs.animations, step);
+  useSmoothScroll(prefs.animations, step);
 
   if (step === "splash") return <WelcomeSplash onStart={() => setStep("intro")} />;
   if (step === "intro") return <Onboarding onDone={() => setStep("form")} />;
 
   return (
-    <div className="mx-auto max-w-xl px-5 pb-12 pt-10">
+    <div ref={root} className="mx-auto max-w-xl px-5 pb-12 pt-10">
       <Script className="text-5xl">Willkommen! 👋</Script>
       <p className="mt-2 text-lg text-muted">A few quick things, then you’re in.</p>
 

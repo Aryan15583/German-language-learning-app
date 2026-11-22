@@ -12,6 +12,8 @@ import { markChatSeen } from "../components/AppShell";
 import { NotifyCard } from "../components/NotifyCard";
 import { notifyStatus } from "../web/notify";
 import { usePrefs } from "../web/prefs";
+import { useReveal } from "../web/reveal";
+import { useSmoothScroll, useSmoothScrollIn } from "../web/smooth";
 import { localStats, notInGallery } from "../web/mediaStore";
 import { clock, mediaAvailable, MediaError, mediaLabel, saveToGallery, preparePhoto, prepareVideo, prepareVoice, uploadMedia, type Prepared } from "../web/media";
 
@@ -124,6 +126,12 @@ function Chat({ onInfo }: { onInfo: () => void }) {
   const fallback = useFallback();
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Smooth scrolling in the message list, and messages rising softly in.
+  const listRef = useRef<HTMLElement>(null);
+  const listInner = useRef<HTMLDivElement>(null);
+  const [motion] = usePrefs();
+  useSmoothScrollIn(listRef, listInner, motion.animations);
+  useReveal(listInner, motion.animations, "chat");
   // A clock for the "23 h left" labels (ticks every minute).
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -320,7 +328,8 @@ function Chat({ onInfo }: { onInfo: () => void }) {
       ) : null}
 
       {/* Messages */}
-      <main className="flex-1 space-y-2 overflow-y-auto px-3 py-4 sm:px-5" aria-live="polite">
+      <main ref={listRef} className="flex-1 overflow-y-auto px-3 py-4 sm:px-5" aria-live="polite">
+        <div ref={listInner} className="space-y-2">
         {prefs.galleryPrompt && toGallery > 0 ? (
           <div className="mx-auto mb-3 flex max-w-md items-center gap-3 rounded-3xl bg-card p-3 shadow-card ring-1 ring-line/60 anim-fade-up">
             <span className="text-2xl">📥</span>
@@ -377,6 +386,7 @@ function Chat({ onInfo }: { onInfo: () => void }) {
           />
         ))}
         <div ref={endRef} />
+        </div>
       </main>
 
       {/* Composer */}
@@ -557,8 +567,11 @@ function ChatInfo({ onBack }: { onBack: () => void }) {
   const { state, setVanish, unlink, relayOn, syncStatus, clearChat } = useProgress();
   const [confirmUnlink, setConfirmUnlink] = useState(false);
   const [clearAsk, setClearAsk] = useState<"mine" | "both" | null>(null);
+  const infoRef = useRef<HTMLDivElement>(null);
   const [cleared, setCleared] = useState("");
   const [prefs, setPrefs] = usePrefs();
+  useReveal(infoRef, prefs.animations, "info");
+  useSmoothScroll(prefs.animations, "info");
   const them = state.partners[1];
   const name = partnerName(state, 1);
   const hl = heartLevel(them.xp);
@@ -567,7 +580,7 @@ function ChatInfo({ onBack }: { onBack: () => void }) {
   const secrets = state.chat.filter((m) => m.kind === "secret").length;
 
   return (
-    <div className="mx-auto min-h-dvh max-w-xl bg-surface pb-10">
+    <div ref={infoRef} className="mx-auto min-h-dvh max-w-xl bg-surface pb-10">
       <header className="glass sticky top-0 z-20 flex items-center gap-2 px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
         <button type="button" onClick={onBack} aria-label="Back to chat" className="grid h-11 w-11 place-items-center rounded-full text-ink hover:bg-blush">
           <ArrowLeft size={22} />

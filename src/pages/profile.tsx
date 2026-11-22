@@ -292,7 +292,7 @@ function Appearance() {
       </div>
       <MyColor />
       <div className="mt-3 border-t border-line/60 pt-2">
-        <PrefToggle k="animations" title="Smooth animations" hint="Cards rise gently into view as you scroll." />
+        <PrefToggle k="animations" title="Smooth animations" hint="Gliding scroll and soft motion on every page." />
         <SoundToggle />
       </div>
     </Section>

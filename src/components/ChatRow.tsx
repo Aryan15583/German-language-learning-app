@@ -79,7 +79,7 @@ export function ChatRow({ m, myStreak, now, onReply, highlight }: { m: ChatItem;
     setTimeout(() => el.classList.remove("flash-msg"), 1600);
   };
   return (
-    <div id={`msg-${m.id}`} className={cx("flex flex-col rounded-3xl transition-colors", mine ? "items-end" : "items-start")}>
+    <div id={`msg-${m.id}`} data-reveal className={cx("flex flex-col rounded-3xl transition-colors", mine ? "items-end" : "items-start")}>
       <div
         className={cx(bubble, "relative cursor-pointer", reacts.length > 0 && "mb-3")}
         onClick={(e) => {
