@@ -1,5 +1,8 @@
 import { Eye, EyeOff, Lock as LockIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useReveal } from "../web/reveal";
+import { useSmoothScroll } from "../web/smooth";
+import { usePrefs } from "../web/prefs";
+import { useEffect, useRef, useState } from "react";
 import { emailProblem, passwordProblem } from "../core/lib/vault";
 import { useAccount } from "../web/account";
 import { Button, Card, Chip, cx, fieldClass, HeartPlane, Spinner } from "./ui";
@@ -40,6 +43,10 @@ export function AuthScreen() {
 }
 
 function AuthForm({ chosenMode, setMode }: { chosenMode: Mode; setMode: (m: Mode) => void }) {
+  const root = useRef<HTMLDivElement>(null);
+  const [motion] = usePrefs();
+  useReveal(root, motion.animations, "auth");
+  useSmoothScroll(motion.animations, "auth");
   const acct = useAccount();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -136,7 +143,7 @@ function AuthForm({ chosenMode, setMode }: { chosenMode: Mode; setMode: (m: Mode
   const showPassword = mode !== "forgot" || phase !== "signed-out";
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center px-5 pb-10 pt-10">
+    <div ref={root} className="mx-auto flex min-h-dvh max-w-md flex-col items-center px-5 pb-10 pt-10">
       {/* eslint-disable-next-line @next/next/no-img-element -- static export */}
       <img src="/icons/icon-192.png" alt="" width={84} height={84} className="rounded-3xl shadow-soft" />
       <h1 className="mt-3 font-script text-4xl font-bold text-plum">Zwei Herzen ♡</h1>

@@ -1,6 +1,8 @@
 import { Flame, Volume2, VolumeX, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { usePrefs } from "../web/prefs";
+import { useSmoothScrollIn } from "../web/smooth";
 import { checkTypedAnswer, isAccepted } from "../core/lib/answers";
 import { isQuestion, type DuoStep } from "../core/lib/duo";
 import { formsIn } from "../core/lib/forms";
@@ -21,6 +23,11 @@ const PRAISE = ["Richtig! 🎉", "Super! ⭐", "Toll! 💞", "Genau! ✨", "Perf
 /** A Duolingo-style lesson: one tiny step at a time, a big Check button, mistakes repeated at the end. */
 export function DuoLesson({ steps, lang, title, emoji, exit, onAnswer, onFinish }: { steps: DuoStep[]; lang: Lang; title: string; emoji: string; exit: string; onAnswer?: (word: string, ok: boolean) => void; onFinish: (r: DuoResult) => void }) {
   const [queue, setQueue] = useState<DuoStep[]>(steps);
+  // Smooth motion: each exercise rises in softly; the exercise area scrolls with a glide.
+  const [motion] = usePrefs();
+  const scrollBox = useRef<HTMLDivElement>(null);
+  const scrollInner = useRef<HTMLDivElement>(null);
+  useSmoothScrollIn(scrollBox, scrollInner, motion.animations);
   const [pos, setPos] = useState(0);
   const [verdict, setVerdict] = useState<Verdict | null>(null);
   const [checker, setChecker] = useState<Checker>(null);
@@ -101,8 +108,10 @@ export function DuoLesson({ steps, lang, title, emoji, exit, onAnswer, onFinish 
       </p>
 
       {/* The exercise */}
-      <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 pb-40 pt-4">
-        <Exercise key={`${pos}-${step.kind}`} step={step} lang={lang} locked={!!verdict} setChecker={(c) => setChecker(() => c)} />
+      <div ref={scrollBox} className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 pb-40 pt-4">
+        <div ref={scrollInner} key={`${pos}-${step.kind}`} className={motion.animations ? "step-in" : undefined}>
+          <Exercise step={step} lang={lang} locked={!!verdict} setChecker={(c) => setChecker(() => c)} />
+        </div>
       </div>
 
       {/* Footer: Check → feedback → Continue */}

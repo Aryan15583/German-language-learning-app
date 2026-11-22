@@ -1,5 +1,7 @@
 import { Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { usePrefs } from "../web/prefs";
+import { useScrollLine } from "../web/reveal";
 import { AppShell } from "../components/AppShell";
 import { Button, Card, Chip, cx, fieldClass, Script } from "../components/ui";
 import { JOURNEY } from "../core/content/berlin";
@@ -20,6 +22,9 @@ export default function Memories() {
   const [date, setDate] = useState("");
   const [adding, setAdding] = useState(false);
   const streak = currentStreak(state);
+  const lineRef = useRef<HTMLOListElement>(null);
+  const [prefs] = usePrefs();
+  useScrollLine(lineRef, prefs.animations);
   const cards = postcards(state.partners[state.learner]);
 
   const moments = useMemo(() => {
@@ -99,10 +104,11 @@ export default function Memories() {
         )}
 
         {moments.length ? (
-          <ol className="relative mt-6 border-l-4 border-dashed border-rose-soft pl-6">
+          <ol ref={lineRef} className="relative mt-6 border-l-4 border-dashed border-rose-soft pl-6">
+            <span aria-hidden className="scroll-line absolute -left-1 top-0 h-full w-1 rounded-full bg-gradient-to-b from-plum to-rose" />
             {moments.map((m) => (
               <li key={m.id} className="relative mb-5">
-                <span className="absolute -left-[42px] grid h-9 w-9 place-items-center rounded-full bg-blush text-lg ring-4 ring-surface">{m.emoji}</span>
+                <span data-pop className="absolute -left-[42px] grid h-9 w-9 place-items-center rounded-full bg-blush text-lg ring-4 ring-surface">{m.emoji}</span>
                 <Card className="p-4">
                   <div className="flex items-start gap-2">
                     <div className="min-w-0 flex-1">

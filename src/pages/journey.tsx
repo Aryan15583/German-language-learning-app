@@ -1,4 +1,7 @@
 import { Lock, Plane } from "lucide-react";
+import { useRef } from "react";
+import { usePrefs } from "../web/prefs";
+import { useScrollLine } from "../web/reveal";
 import { AppShell } from "../components/AppShell";
 import { Button, Card, cx, ProgressBar, Script } from "../components/ui";
 import { JOURNEY, type JourneyStop } from "../core/content/berlin";
@@ -13,6 +16,9 @@ export default function Journey() {
   const p = state.partners[state.learner];
   const { points, together } = couplePoints(state, accountMode);
   const at = reachedIndex(points);
+  const lineRef = useRef<HTMLOListElement>(null);
+  const [prefs] = usePrefs();
+  useScrollLine(lineRef, prefs.animations);
   const next = nextStop(points);
   const cards = postcards(p);
 
@@ -39,9 +45,10 @@ export default function Journey() {
 
           <RouteMap reached={at} />
 
-          <ol className="relative mt-6 border-l-4 border-dashed border-rose-soft pl-6">
+          <ol ref={lineRef} className="relative mt-6 border-l-4 border-dashed border-rose-soft pl-6">
+            <span aria-hidden className="scroll-line absolute -left-1 top-0 h-full w-1 rounded-full bg-gradient-to-b from-plum to-rose" />
             <li className="mb-6">
-              <span className="absolute -left-[18px] grid h-8 w-8 place-items-center rounded-full bg-plum text-white">🇮🇳</span>
+              <span data-pop className="absolute -left-[18px] grid h-8 w-8 place-items-center rounded-full bg-plum text-white">🇮🇳</span>
               <p className="font-bold">Mumbai — the starting point</p>
               <p className="text-sm text-muted">Where it all began. 💞</p>
             </li>
@@ -101,6 +108,7 @@ function Stop({ stop, state, here, lang }: { stop: JourneyStop; state: ReturnTyp
   return (
     <li className="relative mb-6">
       <span
+        data-pop
         className={cx(
           "absolute -left-[42px] grid h-9 w-9 place-items-center rounded-full text-lg",
           state === "explored" ? "bg-gold" : state === "open" ? "bg-plum text-white" : "bg-line",

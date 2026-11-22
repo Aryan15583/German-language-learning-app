@@ -221,22 +221,41 @@ h1, h2, h3 { letter-spacing: -0.015em; }
   .baiko-heart { display: none; }
 }
 
-/* Slow, premium scroll reveal (see src/web/reveal.ts). */
-html { scroll-behavior: smooth; }
+/* Smooth, premium motion (src/web/reveal.ts + Lenis in src/web/smooth.ts), like bidverify.vercel.app, a touch softer. */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: hidden; }
+
+:root { --ease-soft: cubic-bezier(0.22, 1, 0.36, 1); --ease-back: cubic-bezier(0.34, 1.4, 0.64, 1); }
 .reveal {
   opacity: 0;
-  transform: translate3d(0, 36px, 0) scale(0.985);
-  filter: blur(6px);
-  transition:
-    opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 1.1s cubic-bezier(0.16, 1, 0.3, 1),
-    filter 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  transform: translate3d(0, 22px, 0);
+  transition: opacity 0.75s var(--ease-soft), transform 0.9s var(--ease-soft);
   will-change: opacity, transform;
 }
-.reveal.is-in { opacity: 1; transform: none; filter: none; }
+.pop {
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.45s var(--ease-soft), transform 0.6s var(--ease-back);
+}
+.reveal.is-in, .pop.is-in { opacity: 1; transform: none; }
+
+/* Page intro (first load): the top bar slides down, menu items follow one by one. */
+@keyframes zh-drop { from { opacity: 0; transform: translate3d(0, -12px, 0); } to { opacity: 1; transform: none; } }
+.intro-drop { animation: zh-drop 0.8s var(--ease-soft) both; }
+
+/* A new exercise in a lesson rises softly in. */
+@keyframes zh-step { from { opacity: 0; transform: translate3d(0, 18px, 0); } to { opacity: 1; transform: none; } }
+.step-in { animation: zh-step 0.6s var(--ease-soft) both; }
+
+/* A timeline line that grows as you scroll (set --p from 0 to 1). */
+.scroll-line { transform-origin: top center; transform: scaleY(var(--p, 1)); }
+
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  .reveal { opacity: 1; transform: none; filter: none; transition: none; }
+  .reveal, .pop { opacity: 1; transform: none; transition: none; }
+  .intro-drop, .step-in { animation: none; }
+  .scroll-line { transform: none; }
 }
 
 /* Tappable cards lift a little on hover. */

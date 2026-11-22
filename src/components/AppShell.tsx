@@ -6,6 +6,7 @@ import { allTopics, levelOfTopic } from "../core/content/levels";
 import { couple, partnerName, useProgress } from "../web/progress";
 import { usePrefs } from "../web/prefs";
 import { useReveal } from "../web/reveal";
+import { useSmoothScroll } from "../web/smooth";
 import { useTheme } from "../web/theme";
 import { BrandTitle, SecretHeart } from "./BrandTitle";
 import { cx, HeartPlane } from "./ui";
@@ -60,13 +61,22 @@ const isActive = (path: string, href: string) => (href === "/" ? path === "/" : 
  * The app frame. Phones: content + big bottom tabs. Computers: sidebar + top bar.
  * `focus` hides the phone tabs on screens where you should concentrate (lessons, quizzes).
  */
+let introPlayed = false;
+
 export function AppShell({ children, focus }: { children: ReactNode; focus?: boolean }) {
   const router = useRouter();
   const path = router.pathname;
   const mainRef = useRef<HTMLElement>(null);
   // Cards rise gently into place as you scroll (not inside lessons and quizzes).
   const [prefs] = usePrefs();
-  useReveal(mainRef, !focus && prefs.animations, router.asPath);
+  useReveal(mainRef, prefs.animations, router.asPath);
+  // The intro (top bar drops in, menu items follow) plays once, when the app first opens.
+  const [intro] = useState(() => {
+    const first = !introPlayed && prefs.animations;
+    introPlayed = true;
+    return first;
+  });
+  useSmoothScroll(prefs.animations, router.asPath);
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[260px_1fr]">
@@ -81,15 +91,17 @@ export function AppShell({ children, focus }: { children: ReactNode; focus?: boo
           </div>
         </Link>
         <nav className="flex flex-col gap-1.5" aria-label="Main">
-          {SIDEBAR.map(({ href, label, icon: Icon }) => {
+          {SIDEBAR.map(({ href, label, icon: Icon }, k) => {
             const on = isActive(path, href);
             return (
               <Link
                 key={href}
                 href={href}
                 aria-current={on ? "page" : undefined}
+                style={intro ? { animationDelay: `${120 + k * 45}ms` } : undefined}
                 className={cx(
                   "flex items-center gap-3 rounded-2xl px-4 py-3 text-[15px] font-medium transition duration-200",
+                  intro && "intro-drop",
                   on ? "btn-primary text-white" : "text-ink/85 hover:translate-x-0.5 hover:bg-blush hover:text-ink",
                 )}
               >
@@ -106,7 +118,7 @@ export function AppShell({ children, focus }: { children: ReactNode; focus?: boo
       </aside>
 
       <div className="min-w-0">
-        <TopBar />
+        <TopBar intro={intro} />
         <main ref={mainRef} className={cx("mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6 lg:px-8 lg:pt-2", focus ? "pb-10" : "pb-28 lg:pb-12")}>{children}</main>
       </div>
 
@@ -139,12 +151,12 @@ export function AppShell({ children, focus }: { children: ReactNode; focus?: boo
   );
 }
 
-function TopBar() {
+function TopBar({ intro }: { intro: boolean }) {
   const { state } = useProgress();
   const unread = useUnread();
   const me = partnerName(state, state.learner);
   return (
-    <header className="glass sticky top-0 z-20 border-b border-line/50 lg:border-none lg:bg-transparent lg:backdrop-blur-none">
+    <header className={cx("glass sticky top-0 z-20 border-b border-line/50 lg:border-none lg:bg-transparent lg:backdrop-blur-none", intro && "intro-drop")}>
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8 lg:py-5">
         <div className="lg:hidden">
           <BrandTitle />
