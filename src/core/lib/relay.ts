@@ -31,6 +31,8 @@ export const inboxFor = (coupleId: string, key: string, recipient: Role) => hash
 
 /** Where the joiner's first message goes while the creator waits. */
 export const helloBox = (coupleId: string, codeKey: string) => hash(`zh-hello-v1|${coupleId}|${codeKey}`);
+/** Where each phone keeps its (encrypted) "online / last seen" note. */
+export const presenceBox = (coupleId: string, key: string, role: Role) => hash(`zh-presence-v1|${coupleId}|${key}|${role}`);
 /** Where the code maker leaves their public key for the partner (safe pairing v2). */
 export const offerBox = (coupleId: string, codeKey: string) => hash(`zh-offer-v2|${coupleId}|${codeKey}`);
 
@@ -116,3 +118,8 @@ export function minuteOfDay(time: string): number | null {
 
 /** Empty a pairing mailbox once it's done its job (see 0006_security.sql). */
 export const relayClear = (cfg: RelayConfig, mailbox: string, fetchImpl: typeof fetch = fetch) => call<null>(cfg, "relay_clear", { p_mailbox: mailbox }, fetchImpl);
+
+// ---- online / last seen (see 0008_presence.sql) ----
+export const presenceSet = (cfg: RelayConfig, box: string, payload: string, fetchImpl: typeof fetch = fetch) => call<null>(cfg, "presence_set", { p_box: box, p_payload: payload }, fetchImpl);
+export const presenceGet = (cfg: RelayConfig, box: string, fetchImpl: typeof fetch = fetch) => call<string | null>(cfg, "presence_get", { p_box: box }, fetchImpl);
+export const presenceClear = (cfg: RelayConfig, box: string, fetchImpl: typeof fetch = fetch) => call<null>(cfg, "presence_clear", { p_box: box }, fetchImpl);

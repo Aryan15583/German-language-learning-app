@@ -1,6 +1,6 @@
 import { BookHeart, ChevronRight, Crown, Lock, Mail, MessageCircle, Sparkles, Swords } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell, useUnread } from "../components/AppShell";
 import { useFallback } from "../components/Fallback";
 import { Button, Card, cx, fieldClass, Script, Spinner } from "../components/ui";
@@ -9,6 +9,7 @@ import { CODE_TTL_MS, formatCode } from "../core/lib/link";
 import { couple, partnerName, today, useProgress } from "../web/progress";
 import { appBaseUrl, shareText } from "../web/share";
 import { usePrefs } from "../web/prefs";
+import { presenceLabel } from "../core/lib/presence";
 
 export default function Us() {
   const { state } = useProgress();
@@ -193,6 +194,13 @@ function CoupleChat() {
   const last = [...state.chat].reverse().find((m) => m.kind !== "system");
   const unread = useUnread();
   const [prefs] = usePrefs();
+  const { partnerPresence } = useProgress();
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setClock(Date.now()), 20_000);
+    return () => clearInterval(t);
+  }, []);
+  const seen = presenceLabel(partnerPresence, clock);
   const preview = !last
     ? "Say hallo! 👋"
     : last.kind === "duel"
@@ -225,7 +233,7 @@ function CoupleChat() {
             {preview}
           </span>
           <span className="block text-xs text-muted">
-            ❤️ Lv {hl.level} {hl.title} · 🔥 {them.remote?.streak ?? 0} days
+            {seen ? <span className={cx(seen === "online" ? "font-semibold text-good" : "")}>{seen} · </span> : null}❤️ Lv {hl.level} · 🔥 {them.remote?.streak ?? 0} days
           </span>
         </span>
         <ChevronRight className="shrink-0 text-muted" size={20} />
