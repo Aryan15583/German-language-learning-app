@@ -12,6 +12,7 @@ import { Setup } from "../components/Setup";
 import { LoadingScreen } from "../components/LoadingScreen";
 import { AccountProvider, stateKey, useAccount } from "../web/account";
 import { ProgressProvider, useProgress } from "../web/progress";
+import { usePageTransitions } from "../web/pageTransition";
 
 function Ready({ children }: { children: React.ReactNode }) {
   const { ready, locked, state, accountMode } = useProgress();
@@ -44,6 +45,7 @@ function Gate({ children }: { children: React.ReactNode }) {
 }
 
 export default function App({ Component, pageProps }: AppProps) {
+  usePageTransitions();
   return (
     <>
       <Head>
