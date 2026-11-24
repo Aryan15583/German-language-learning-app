@@ -1,5 +1,5 @@
 // Buttery smooth scrolling (Lenis), like bidverify.vercel.app — tuned a little softer.
-// Mouse wheels and touchpads glide; phones keep their own native touch scrolling.
+// Mouse wheels, touchpads and (gently) finger swipes on phones all glide.
 import Lenis from "lenis";
 import { useEffect, useRef } from "react";
 
@@ -17,7 +17,11 @@ export function useSmoothScroll(enabled: boolean, routeKey: string) {
       easing: easeOutExpo,
       smoothWheel: true,
       wheelMultiplier: 0.9,
-      touchMultiplier: 1.5,
+      // Phones: swipes follow the finger, then coast to a soft stop.
+      syncTouch: true,
+      syncTouchLerp: 0.085,
+      touchInertiaExponent: 1.6,
+      touchMultiplier: 1.2,
       // Inner scroll areas (sidebar, menus, pop-ups, text boxes) scroll on their own.
       prevent: (node: HTMLElement) => !!node.closest?.(".desk-scroll, [data-lenis-prevent], [role=dialog], [role=menu], textarea"),
     });
