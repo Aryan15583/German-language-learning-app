@@ -230,8 +230,8 @@ html.lenis, html.lenis body { height: auto; }
 :root { --ease-soft: cubic-bezier(0.22, 1, 0.36, 1); --ease-back: cubic-bezier(0.34, 1.4, 0.64, 1); }
 .reveal {
   opacity: 0;
-  transform: translate3d(0, 22px, 0);
-  transition: opacity 0.75s var(--ease-soft), transform 0.9s var(--ease-soft);
+  transform: translate3d(0, 24px, 0);
+  transition: opacity 0.9s var(--ease-soft), transform 1.05s var(--ease-soft);
   will-change: opacity, transform;
 }
 .pop {
@@ -250,15 +250,32 @@ html.lenis, html.lenis body { height: auto; }
 .step-in { animation: zh-step 0.6s var(--ease-soft) both; }
 
 /* Phone navigation: the tab highlight glides, the tapped icon springs, pages fade in, the top bar tucks away. */
-.tab-pill { transition: transform 0.6s var(--ease-soft), opacity 0.3s ease; will-change: transform; }
+.tab-pill { transition: transform 0.7s var(--ease-soft), opacity 0.3s ease; will-change: transform; }
 .tab-btn { -webkit-tap-highlight-color: transparent; transition: color 0.35s ease, transform 0.25s var(--ease-soft); }
 .tab-btn:active { transform: scale(0.92); }
 @keyframes zh-tab-pop { 0% { transform: scale(0.82); } 55% { transform: scale(1.1); } 100% { transform: scale(1); } }
 .tab-pop { animation: zh-tab-pop 0.55s var(--ease-back) both; }
 @keyframes zh-page { from { opacity: 0; transform: translate3d(0, 10px, 0); } to { opacity: 1; transform: none; } }
-.page-in { animation: zh-page 0.55s var(--ease-soft) both; }
-.topbar { transition: transform 0.45s var(--ease-soft); }
-@media (max-width: 1023px) { .topbar-hidden { transform: translate3d(0, -110%, 0); } }
+.page-in { animation: zh-page 0.7s var(--ease-soft) both; }
+.topbar { transition: transform 0.55s var(--ease-soft); }
+
+/* Page changes (View Transitions): old page fades away, new page floats in; the bars stay put. */
+::view-transition-old(root) { animation: zh-vt-out 0.32s var(--ease-soft) both; }
+::view-transition-new(root) { animation: zh-vt-in 0.6s var(--ease-soft) both; }
+@keyframes zh-vt-out { to { opacity: 0; transform: translate3d(0, -8px, 0) scale(0.995); } }
+@keyframes zh-vt-in { from { opacity: 0; transform: translate3d(0, 14px, 0); } }
+nav[aria-label="Main"] { view-transition-name: zh-tabs; }
+.topbar { view-transition-name: zh-top; }
+::view-transition-group(zh-tabs), ::view-transition-group(zh-top) { animation-duration: 0s; }
+/* With view transitions the page already floats in, so skip the second fade. */
+.vt-on .page-in { animation: none; }
+
+/* Phones: lighter glass while scrolling (big blurs are the slowest thing to draw), on its own layer. */
+@media (max-width: 1023px) {
+  .glass { backdrop-filter: saturate(1.3) blur(10px); -webkit-backdrop-filter: saturate(1.3) blur(10px); }
+  nav[aria-label="Main"], .topbar { transform: translateZ(0); will-change: transform; }
+}
+@media (max-width: 1023px) { .topbar.topbar-hidden { transform: translate3d(0, -110%, 0); } }
 
 /* A timeline line that grows as you scroll (set --p from 0 to 1). */
 .scroll-line { transform-origin: top center; transform: scaleY(var(--p, 1)); }
@@ -267,6 +284,7 @@ html.lenis, html.lenis body { height: auto; }
   .reveal, .pop { opacity: 1; transform: none; transition: none; }
   .intro-drop, .step-in, .tab-pop, .page-in { animation: none; }
   .tab-pill, .topbar { transition: none; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
   .scroll-line { transform: none; }
 }
 

@@ -13,14 +13,14 @@ export function useSmoothScroll(enabled: boolean, routeKey: string) {
     if (!enabled || typeof window === "undefined") return;
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     const l = new Lenis({
-      duration: 1.4,
+      duration: 1.5,
       easing: easeOutExpo,
       smoothWheel: true,
       wheelMultiplier: 0.9,
       // Phones: swipes follow the finger, then coast to a soft stop.
       syncTouch: true,
-      syncTouchLerp: 0.085,
-      touchInertiaExponent: 1.6,
+      syncTouchLerp: 0.07,
+      touchInertiaExponent: 1.8,
       touchMultiplier: 1.2,
       // Inner scroll areas (sidebar, menus, pop-ups, text boxes) scroll on their own.
       prevent: (node: HTMLElement) => !!node.closest?.(".desk-scroll, [data-lenis-prevent], [role=dialog], [role=menu], textarea"),
