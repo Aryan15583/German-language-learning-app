@@ -15,6 +15,7 @@ closed-app notification says “Shreya 💌 — New message from Shreya” (like
 Then do the same with `supabase/migrations/0005_reminders.sql` (daily reminders). Run it after 0004.
 Then `supabase/migrations/0006_security.sql` (security hardening). Run it after 0005.
 Then `supabase/migrations/0007_media.sql` (photos, videos and voice messages). Run it after 0006, and paste the newest notify function (it also deletes media older than 30 days).
+Then `supabase/migrations/0008_presence.sql` ("online / last seen").
 
 ## 2. Create the “notify” function (3 minutes)
 

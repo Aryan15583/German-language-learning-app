@@ -12,6 +12,7 @@ import { markChatSeen } from "../components/AppShell";
 import { NotifyCard } from "../components/NotifyCard";
 import { notifyStatus } from "../web/notify";
 import { usePrefs } from "../web/prefs";
+import { presenceLabel } from "../core/lib/presence";
 import { useReveal } from "../web/reveal";
 import { useSmoothScroll, useSmoothScrollIn } from "../web/smooth";
 import { localStats, notInGallery } from "../web/mediaStore";
@@ -35,7 +36,7 @@ function Avatar({ name, size = "h-10 w-10 text-base" }: { name: string; size?: s
 }
 
 function Chat({ onInfo }: { onInfo: () => void }) {
-  const { state, send, syncStatus, syncNow, viewMessages, leaveChat, archive } = useProgress();
+  const { state, send, syncStatus, syncNow, viewMessages, leaveChat, archive, partnerPresence } = useProgress();
   const [text, setText] = useState("");
   const [secret, setSecret] = useState(false);
   const [sending, setSending] = useState(false);
@@ -135,7 +136,7 @@ function Chat({ onInfo }: { onInfo: () => void }) {
   // A clock for the "23 h left" labels (ticks every minute).
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 60_000);
+    const t = setInterval(() => setNow(Date.now()), 20_000);
     return () => clearInterval(t);
   }, []);
   // Long chats stay fast: show the newest messages, and load older ones on request.
@@ -163,6 +164,7 @@ function Chat({ onInfo }: { onInfo: () => void }) {
   const myStreak = currentStreak(state);
   const vanish = VANISH_OPTIONS.find((o) => o.id === state.vanish)!;
   const [prefs] = usePrefs();
+  const seen = presenceLabel(partnerPresence, now);
   // Received photos/videos that aren't in the phone's gallery yet.
   const [toGallery, setToGallery] = useState(0);
   useEffect(() => {
@@ -275,11 +277,23 @@ function Chat({ onInfo }: { onInfo: () => void }) {
           <ArrowLeft size={22} />
         </Link>
         <button type="button" onClick={onInfo} className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-1.5 py-1 text-left hover:bg-blush/60" aria-label={`${name} — chat settings`}>
-          <Avatar name={name} />
+          <span className="relative">
+            <Avatar name={name} />
+            {seen === "online" ? <span aria-hidden className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-good ring-2 ring-surface" /> : null}
+          </span>
           <span className="min-w-0">
             <span className="block truncate font-bold text-ink">{name}</span>
-            <span className="block truncate text-xs text-muted">
-              {state.vanish !== "off" ? (
+            <span className="block truncate text-xs text-muted" aria-live="polite">
+              {seen ? (
+                <span className={cx(seen === "online" && "font-semibold text-good")}>
+                  {seen}
+                  {state.vanish !== "off" ? (
+                    <span className="ml-1.5 font-semibold text-plum">
+                      · <Timer size={12} className="mr-0.5 inline" /> {vanish.label}
+                    </span>
+                  ) : null}
+                </span>
+              ) : state.vanish !== "off" ? (
                 <span className="font-semibold text-plum">
                   <Timer size={12} className="mr-0.5 inline" /> {vanish.label}
                 </span>
@@ -623,6 +637,7 @@ function ChatInfo({ onBack }: { onBack: () => void }) {
           <Toggle on={prefs.quickPhrases} onChange={(on) => setPrefs({ quickPhrases: on })} title="Quick phrases" hint="Little German phrases above the message box." />
           <Toggle on={prefs.galleryPrompt} onChange={(on) => setPrefs({ galleryPrompt: on })} title="Offer “Save to gallery”" hint="When new photos or videos arrive, one tap saves them to your phone." />
           <MediaSpace />
+          <Toggle on={prefs.lastSeen} onChange={(on) => setPrefs({ lastSeen: on })} title="Last seen & online" hint="Off: you don’t share yours, and you don’t see your partner’s either." />
           <Toggle on={prefs.readReceipts} onChange={(on) => setPrefs({ readReceipts: on })} title="Read receipts ✓✓" hint="Off: you don’t send them, and you don’t see your partner’s either." />
         </div>
       </Section>

@@ -15,13 +15,14 @@ import {
   type Payload,
   type SharedWord,
 } from "../core/lib/link";
-import { helloBox, inboxFor, offerBox, otherRole, RelayError, relayClear, relayConfig, relayFetch, relaySend } from "../core/lib/relay";
+import { helloBox, inboxFor, offerBox, presenceBox, presenceClear, presenceGet, presenceSet, otherRole, RelayError, relayClear, relayConfig, relayFetch, relaySend } from "../core/lib/relay";
 import { newDhPair } from "../core/lib/pair";
 import { messageLink } from "./share";
 import { WEEKLY_XP } from "../core/lib/weekly";
 import { deleteMedia, mediaLabel, mediaUrl } from "./media";
 import { clearLocal, deleteLocal, deleteLocalUpTo } from "./mediaStore";
-import { getPrefs } from "./prefs";
+import { getPrefs, usePrefs } from "./prefs";
+import { HEARTBEAT_MS, openPresence, sealPresence, type Presence } from "../core/lib/presence";
 import { pinWaitSeconds, recordPinTry } from "./pinGuard";
 import { disableNotifications, enableNotifications, ensurePush, localReminderCheck, reportLearned, setReminder, type Reminder, notifyStatus, notifyWanted, rememberPartnerName, showMessageNotification, type NotifyStatus } from "./notify";
 import { archiveDiff, type ArchiveStats } from "../core/lib/archive";
@@ -77,6 +78,8 @@ type Ctx = {
   disableNotify: () => Promise<void>;
   /** Daily learning reminder at a time of day. */
   saveReminder: (r: Reminder) => Promise<{ ok: boolean; push: boolean; status: NotifyStatus }>;
+  /** My partner's "online / last seen" (null: unknown, or switched off). */
+  partnerPresence: Presence | null;
   /** Claim a finished weekly challenge (+50 XP). */
   claimWeekly: (id: string) => void;
   /** Clear the chat on this phone, or on both phones. */
@@ -373,6 +376,51 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [ready]);
 
+  // ---- online / last seen (encrypted; see 0008_presence.sql) ----
+  const [partnerPresence, setPartnerPresence] = useState<Presence | null>(null);
+  const [prefsNow] = usePrefs();
+  const shareSeen = prefsNow.lastSeen;
+  useEffect(() => {
+    const c = state.couple;
+    if (!ready || !relay || !c || c.status !== "linked") return;
+    const role = c.role ?? "joiner";
+    const mine = presenceBox(c.id, c.key, role);
+    const theirs = presenceBox(c.id, c.key, otherRole(role));
+    if (!shareSeen) {
+      // Off, like WhatsApp: I don't share mine, and I don't see theirs.
+      presenceClear(relay, mine).catch(() => {});
+      return;
+    }
+    const say = (online: boolean) => presenceSet(relay, mine, sealPresence(c.key, { at: Date.now(), online })).catch(() => {});
+    const look = () =>
+      presenceGet(relay, theirs)
+        .then((p) => setPartnerPresence(openPresence(c.key, p, Date.now())))
+        .catch(() => {});
+    let beat: ReturnType<typeof setInterval> | null = null;
+    let peek: ReturnType<typeof setInterval> | null = null;
+    const here = () => {
+      say(true);
+      look();
+      beat ??= setInterval(() => say(true), HEARTBEAT_MS);
+      peek ??= setInterval(look, 15_000);
+    };
+    const away = () => {
+      say(false);
+      if (beat) clearInterval(beat);
+      if (peek) clearInterval(peek);
+      beat = peek = null;
+    };
+    const onVis = () => (document.visibilityState === "visible" ? here() : away());
+    if (document.visibilityState === "visible") here();
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pagehide", away);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pagehide", away);
+      away();
+    };
+  }, [ready, relay, coupleKey, shareSeen]); // eslint-disable-line react-hooks/exhaustive-deps -- re-run when the couple changes
+
   // ---- chat archive (IndexedDB): the full history, saved in the background ----
   const [archive] = useState(() => (typeof indexedDB === "undefined" ? null : new ChatArchive(archiveName(storageKey))));
   const archived = useRef<AppState["chat"] | null>(null);
@@ -466,6 +514,7 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
       },
       disableNotify: () => disableNotifications(relay),
       saveReminder: (r) => setReminder(relay, r),
+      partnerPresence: shareSeen && C.isLinked(state) ? partnerPresence : null,
       claimWeekly: (id) => update((s) => L.claimWeekly(s, s.learner, id, WEEKLY_XP, today())),
       clearChat: async (forBoth) => {
         const at = Date.now();
@@ -613,7 +662,7 @@ export function ProgressProvider({ children, storageKey = KEY, initial = null, o
       dismissWelcome: () => update((s) => ({ ...s, welcomeDone: true })),
       syncNow,
     }),
-    [state, ready, accountMode, locked, relay, syncStatus, update, envelopeFor, deliver, send, openLink, syncNow, archive],
+    [state, ready, accountMode, locked, relay, syncStatus, update, envelopeFor, deliver, send, openLink, syncNow, archive, partnerPresence, shareSeen],
   );
 
   return <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>;
