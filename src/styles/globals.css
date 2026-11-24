@@ -249,12 +249,24 @@ html.lenis, html.lenis body { height: auto; }
 @keyframes zh-step { from { opacity: 0; transform: translate3d(0, 18px, 0); } to { opacity: 1; transform: none; } }
 .step-in { animation: zh-step 0.6s var(--ease-soft) both; }
 
+/* Phone navigation: the tab highlight glides, the tapped icon springs, pages fade in, the top bar tucks away. */
+.tab-pill { transition: transform 0.6s var(--ease-soft), opacity 0.3s ease; will-change: transform; }
+.tab-btn { -webkit-tap-highlight-color: transparent; transition: color 0.35s ease, transform 0.25s var(--ease-soft); }
+.tab-btn:active { transform: scale(0.92); }
+@keyframes zh-tab-pop { 0% { transform: scale(0.82); } 55% { transform: scale(1.1); } 100% { transform: scale(1); } }
+.tab-pop { animation: zh-tab-pop 0.55s var(--ease-back) both; }
+@keyframes zh-page { from { opacity: 0; transform: translate3d(0, 10px, 0); } to { opacity: 1; transform: none; } }
+.page-in { animation: zh-page 0.55s var(--ease-soft) both; }
+.topbar { transition: transform 0.45s var(--ease-soft); }
+@media (max-width: 1023px) { .topbar-hidden { transform: translate3d(0, -110%, 0); } }
+
 /* A timeline line that grows as you scroll (set --p from 0 to 1). */
 .scroll-line { transform-origin: top center; transform: scaleY(var(--p, 1)); }
 
 @media (prefers-reduced-motion: reduce) {
   .reveal, .pop { opacity: 1; transform: none; transition: none; }
-  .intro-drop, .step-in { animation: none; }
+  .intro-drop, .step-in, .tab-pop, .page-in { animation: none; }
+  .tab-pill, .topbar { transition: none; }
   .scroll-line { transform: none; }
 }
 

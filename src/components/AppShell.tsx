@@ -1,7 +1,7 @@
 import { BarChart3, Bell, BookHeart, BookOpen, BookText, Gamepad2, Swords, Heart, Home, Map, Moon, Search, Settings, Sun, Trophy, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { allTopics, levelOfTopic } from "../core/content/levels";
 import { couple, partnerName, useProgress } from "../web/progress";
 import { usePrefs } from "../web/prefs";
@@ -62,6 +62,7 @@ const isActive = (path: string, href: string) => (href === "/" ? path === "/" : 
  * `focus` hides the phone tabs on screens where you should concentrate (lessons, quizzes).
  */
 let introPlayed = false;
+let lastTab = -1;
 
 export function AppShell({ children, focus }: { children: ReactNode; focus?: boolean }) {
   const router = useRouter();
@@ -70,6 +71,15 @@ export function AppShell({ children, focus }: { children: ReactNode; focus?: boo
   // Cards rise gently into place as you scroll (not inside lessons and quizzes).
   const [prefs] = usePrefs();
   useReveal(mainRef, prefs.animations, router.asPath);
+  const motionOn = prefs.animations;
+  // Tab highlight: start where it was on the last page, then glide to this page's tab.
+  const activeTab = TABS.findIndex((t) => isActive(path, t.href));
+  const [pillAt, setPillAt] = useState(() => (prefs.animations && lastTab >= 0 && activeTab >= 0 ? lastTab : activeTab));
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setPillAt(activeTab));
+    if (activeTab >= 0) lastTab = activeTab;
+    return () => cancelAnimationFrame(id);
+  }, [activeTab]);
   // The intro (top bar drops in, menu items follow) plays once, when the app first opens.
   const [intro] = useState(() => {
     const first = !introPlayed && prefs.animations;
@@ -119,7 +129,7 @@ export function AppShell({ children, focus }: { children: ReactNode; focus?: boo
 
       <div className="min-w-0">
         <TopBar intro={intro} />
-        <main ref={mainRef} className={cx("mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6 lg:px-8 lg:pt-2", focus ? "pb-10" : "pb-28 lg:pb-12")}>{children}</main>
+        <main ref={mainRef} className={cx(prefs.animations && "page-in", "mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6 lg:px-8 lg:pt-2", focus ? "pb-10" : "pb-28 lg:pb-12")}>{children}</main>
       </div>
 
       {/* Phone tabs */}
@@ -128,7 +138,15 @@ export function AppShell({ children, focus }: { children: ReactNode; focus?: boo
           aria-label="Main"
           className="glass fixed inset-x-0 bottom-0 z-30 border-t border-line/60 pb-[env(safe-area-inset-bottom)] lg:hidden"
         >
-          <div className="mx-auto grid max-w-lg grid-cols-5">
+          <div className="relative mx-auto grid max-w-lg grid-cols-5">
+            {/* The highlight glides from the tab you were on to the one you tapped. */}
+            <span
+              aria-hidden
+              className={cx("tab-pill pointer-events-none absolute left-0 top-1 flex w-1/5 justify-center", pillAt < 0 && "opacity-0")}
+              style={{ transform: `translate3d(${Math.max(0, pillAt) * 100}%, 0, 0)` }}
+            >
+              <span className="h-8 w-14 rounded-full bg-blush" />
+            </span>
             {TABS.map(({ href, label, icon: Icon }) => {
               const on = isActive(path, href);
               return (
@@ -136,10 +154,9 @@ export function AppShell({ children, focus }: { children: ReactNode; focus?: boo
                   key={href}
                   href={href}
                   aria-current={on ? "page" : undefined}
-                  className={cx("relative flex flex-col items-center gap-0.5 py-2.5 text-[12px] font-semibold transition", on ? "text-plum" : "text-muted")}
+                  className={cx("tab-btn relative flex flex-col items-center gap-0.5 py-2.5 text-[12px] font-semibold", on ? "text-plum" : "text-muted")}
                 >
-                  {on ? <span aria-hidden className="absolute top-1 h-8 w-14 rounded-full bg-blush" /> : null}
-                  <Icon size={on ? 25 : 23} strokeWidth={on ? 2.4 : 1.8} className="relative" />
+                  <Icon size={on ? 25 : 23} strokeWidth={on ? 2.4 : 1.8} className={cx("relative", on && motionOn && "tab-pop")} />
                   <span className="relative">{label}</span>
                 </Link>
               );
@@ -151,12 +168,46 @@ export function AppShell({ children, focus }: { children: ReactNode; focus?: boo
   );
 }
 
+/** On phones: hide the top bar while scrolling down, bring it back when scrolling up. */
+function useHideOnScroll(enabled: boolean) {
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    if (!enabled) return;
+    let last = window.scrollY;
+    let frame = 0;
+    const check = () => {
+      frame = 0;
+      const y = window.scrollY;
+      if (Math.abs(y - last) < 6) return;
+      setHidden(y > last && y > 90);
+      last = y;
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(check);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [enabled]);
+  return hidden;
+}
+
 function TopBar({ intro }: { intro: boolean }) {
   const { state } = useProgress();
   const unread = useUnread();
   const me = partnerName(state, state.learner);
+  const [prefs] = usePrefs();
+  const hidden = useHideOnScroll(prefs.animations);
   return (
-    <header className={cx("glass sticky top-0 z-20 border-b border-line/50 lg:border-none lg:bg-transparent lg:backdrop-blur-none", intro && "intro-drop")}>
+    <header
+      className={cx(
+        "topbar glass sticky top-0 z-20 border-b border-line/50 lg:border-none lg:bg-transparent lg:backdrop-blur-none",
+        intro && "intro-drop",
+        hidden && "topbar-hidden",
+      )}
+    >
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8 lg:py-5">
         <div className="lg:hidden">
           <BrandTitle />
