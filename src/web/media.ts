@@ -5,6 +5,7 @@ import { newKey, openBytes, randomBytes, sealBytes, toBase64Url } from "../core/
 import { MEDIA_MAX_BYTES, MEDIA_MIMES, type MediaRef } from "../core/lib/link";
 import { getLocal, markInGallery, notInGallery, putLocal } from "./mediaStore";
 import { supabase } from "./supabase";
+import { isNativeApp, nativeSaveToGallery } from "./native";
 
 const BUCKET = "media";
 const MAX_SIDE = 1600;
@@ -150,6 +151,12 @@ const fileName = (mime: string, at: number) => {
 /** Save received photos and videos to the phone (Gallery / Google Photos → Download). Must run from a tap. */
 export async function saveToGallery(): Promise<number> {
   const items = await notInGallery();
+  if (isNativeApp()) {
+    // In the Android app: straight into the phone's gallery, in a "Zwei Herzen" album.
+    const n = await nativeSaveToGallery(items.map((f) => ({ blob: f.blob, mime: f.mime, name: fileName(f.mime, f.at) })));
+    await markInGallery(items.map((f) => f.path));
+    return n;
+  }
   for (const f of items) {
     const url = URL.createObjectURL(f.blob);
     const a = document.createElement("a");

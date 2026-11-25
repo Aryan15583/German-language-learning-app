@@ -1,8 +1,9 @@
-// Message notifications. Two layers:
+// Message notifications. Two layers (in the Android app, Firebase does layer 2 and native notifications layer 1):
 //  1. While the app is open or in the background, new messages show as phone notifications (with the text).
 //  2. With the "notify" function set up on Supabase, a Web Push ping arrives even when the app is closed.
 //     The server never sees the message, so that ping just says "New message" (like Signal).
 import { getPrefs } from "./prefs";
+import { isNativeApp, nativeNotify, nativePushOff, nativePushToken } from "./native";
 import { minuteOfDay, pushLearned, pushPublicKey, pushSetReminder, pushSubscribe, pushUnsubscribe, type RelayConfig } from "../core/lib/relay";
 
 const PREF = "zh-notify";
@@ -10,8 +11,8 @@ const META = "zh-meta";
 
 export type NotifyStatus = "unsupported" | "blocked" | "off" | "on";
 
-export const notifySupported = () => typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator;
-export const pushSupported = () => notifySupported() && "PushManager" in window;
+export const notifySupported = () => isNativeApp() || (typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator);
+export const pushSupported = () => isNativeApp() || (notifySupported() && "PushManager" in window);
 
 export function notifyWanted(): boolean {
   try {
@@ -29,6 +30,7 @@ function setWanted(on: boolean) {
 }
 
 export function notifyStatus(): NotifyStatus {
+  if (isNativeApp()) return notifyWanted() ? "on" : "off"; // the app asks Android for permission when turning on
   if (!notifySupported()) return "unsupported";
   if (Notification.permission === "denied") return "blocked";
   return Notification.permission === "granted" && notifyWanted() ? "on" : "off";
@@ -51,8 +53,14 @@ const b64urlToBytes = (s: string) => {
 };
 const bytesToB64url = (buf: ArrayBuffer | null) => (buf ? btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "") : "");
 
-/** This phone's Web Push address (made if needed), or null when closed-app pings aren't possible. */
-async function pushSub(relay: RelayConfig | null): Promise<{ endpoint: string; p256dh: string; auth: string } | null> {
+type PushAddress = { endpoint: string; p256dh: string | null; auth: string | null };
+
+/** This phone's push address (made if needed), or null when closed-app pings aren't possible. In the app: its Firebase token. */
+async function pushSub(relay: RelayConfig | null, ask = false): Promise<PushAddress | null> {
+  if (isNativeApp()) {
+    const token = relay ? await nativePushToken(ask).catch(() => null) : null;
+    return token ? { endpoint: `fcm:${token}`, p256dh: null, auth: null } : null;
+  }
   if (!relay || !pushSupported() || Notification.permission !== "granted") return null;
   try {
     const reg = await navigator.serviceWorker.ready;
@@ -108,6 +116,18 @@ const timeZone = () => {
  * Returns whether it can also arrive while the app is closed.
  */
 export async function setReminder(relay: RelayConfig | null, r: Reminder): Promise<{ ok: boolean; push: boolean; status: NotifyStatus }> {
+  if (isNativeApp()) {
+    const sub = await pushSub(relay, r.on);
+    if (r.on && !sub) return { ok: false, push: false, status: "blocked" };
+    try {
+      window.localStorage.setItem(REMIND, JSON.stringify(r));
+    } catch {
+      // not remembered
+    }
+    let push = false;
+    if (sub && relay) push = await pushSetReminder(relay, sub, r.on ? minuteOfDay(r.time) : null, r.on ? timeZone() : null).then(() => r.on, () => false);
+    return { ok: true, push, status: "on" };
+  }
   if (r.on) {
     if (!notifySupported()) return { ok: false, push: false, status: "unsupported" };
     const perm = Notification.permission === "default" ? await Notification.requestPermission() : Notification.permission;
@@ -133,7 +153,20 @@ export async function setReminder(relay: RelayConfig | null, r: Reminder): Promi
 
 /** Tell the server I've learned today, so no reminder comes (once per day). */
 export async function reportLearned(relay: RelayConfig | null, day: string) {
-  if (!relay || !getReminder().on || !pushSupported() || Notification.permission !== "granted") return;
+  if (!relay || !getReminder().on) return;
+  if (isNativeApp()) {
+    try {
+      if (window.localStorage.getItem("zh-learned-sent") === day) return;
+      const sub = await pushSub(relay);
+      if (!sub) return;
+      await pushLearned(relay, sub.endpoint, day);
+      window.localStorage.setItem("zh-learned-sent", day);
+    } catch {
+      // try again next time
+    }
+    return;
+  }
+  if (!pushSupported() || Notification.permission !== "granted") return;
   try {
     if (window.localStorage.getItem("zh-learned-sent") === day) return;
     const reg = await navigator.serviceWorker.ready;
@@ -156,6 +189,7 @@ export async function localReminderCheck(learnedToday: boolean, day: string) {
   try {
     if (window.localStorage.getItem("zh-remind-shown") === day) return;
     window.localStorage.setItem("zh-remind-shown", day);
+    if (isNativeApp()) return await nativeNotify("Zeit für Deutsch! 🇩🇪", "5 minutes today keeps your streak alive 🔥 Berlin is waiting for you two ❤️", "/");
     const reg = await navigator.serviceWorker.ready;
     await reg.showNotification("Zeit für Deutsch! 🇩🇪", {
       body: "5 minutes today keeps your streak alive 🔥 Berlin is waiting for you two ❤️",
@@ -171,6 +205,13 @@ export async function localReminderCheck(learnedToday: boolean, day: string) {
 
 /** Ask permission and turn notifications on. */
 export async function enableNotifications(relay: RelayConfig | null, mailbox: string | null, partner: string): Promise<{ status: NotifyStatus; push: boolean }> {
+  if (isNativeApp()) {
+    const sub = await pushSub(relay, true);
+    if (!sub) return { status: "blocked", push: false };
+    setWanted(true);
+    const push = mailbox && relay ? await pushSubscribe(relay, mailbox, sub).then(() => true, () => false) : false;
+    return { status: "on", push };
+  }
   if (!notifySupported()) return { status: "unsupported", push: false };
   const perm = Notification.permission === "default" ? await Notification.requestPermission() : Notification.permission;
   if (perm !== "granted") return { status: perm === "denied" ? "blocked" : "off", push: false };
@@ -181,6 +222,12 @@ export async function enableNotifications(relay: RelayConfig | null, mailbox: st
 
 export async function disableNotifications(relay: RelayConfig | null) {
   setWanted(false);
+  if (isNativeApp()) {
+    const sub = await pushSub(relay);
+    if (sub && relay) await pushUnsubscribe(relay, sub.endpoint).catch(() => {});
+    await nativePushOff();
+    return;
+  }
   if (!pushSupported()) return;
   try {
     const reg = await navigator.serviceWorker.ready;
@@ -199,6 +246,7 @@ export async function showMessageNotification(title: string, body: string) {
   if (notifyStatus() !== "on") return;
   // Privacy setting: hide the text on the lock screen.
   if (!getPrefs().notifyPreview) body = "New message 💌";
+  if (isNativeApp()) return nativeNotify(title, body).catch(() => {});
   try {
     const reg = await navigator.serviceWorker.ready;
     await reg.showNotification(title, { body, tag: "zh-chat", icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", data: { url: "/messages" }, renotify: true } as NotificationOptions);

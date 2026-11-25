@@ -8,6 +8,8 @@
 //
 // No libraries: Web Push (VAPID + aes128gcm, RFC 8291/8292) is done with the built-in Web Crypto API,
 // and the database is reached with plain fetch, so nothing can break on an npm import.
+// The Android app gets its notifications through Firebase (FCM v1); that needs the secret
+// FCM_SERVICE_ACCOUNT (the Firebase service-account JSON) in Supabase → Edge Functions → Secrets.
 //
 // Deploy: Supabase → Edge Functions → Deploy a new function → Via Editor → name "notify" → paste this file →
 // Deploy → then turn OFF "Enforce JWT verification" (the database calls it; every request is checked below).
@@ -110,7 +112,7 @@ async function encrypt(payload: Uint8Array, p256dh: string, auth: string): Promi
 }
 
 // ---------- sending ----------
-type Sub = { endpoint: string; p256dh: string; auth: string };
+type Sub = { endpoint: string; p256dh: string | null; auth: string | null };
 
 /** Delete encrypted media older than 30 days (Supabase Storage API, service key). */
 async function cleanupMedia(): Promise<number> {
@@ -136,6 +138,75 @@ async function cleanupMedia(): Promise<number> {
   return deleted;
 }
 
+// ---------- Firebase (Android app) ----------
+type ServiceAccount = { project_id: string; client_email: string; private_key: string };
+const GOOGLE_TOKEN_URL = Deno.env.get("FCM_TEST_TOKEN_URL") || "https://oauth2.googleapis.com/token";
+const FCM_BASE = Deno.env.get("FCM_TEST_BASE") || "https://fcm.googleapis.com";
+let fcmToken: { value: string; exp: number } | null = null;
+
+function serviceAccount(): ServiceAccount | null {
+  try {
+    const sa = JSON.parse(Deno.env.get("FCM_SERVICE_ACCOUNT") ?? "") as ServiceAccount;
+    return sa.project_id && sa.client_email && sa.private_key ? sa : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A short-lived Google access token for FCM, signed with the service account's key (RS256). */
+async function fcmAccessToken(sa: ServiceAccount): Promise<string> {
+  if (fcmToken && fcmToken.exp > Date.now() + 60_000) return fcmToken.value;
+  const pem = sa.private_key.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+  const der = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey("pkcs8", der, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
+  const now = Math.floor(Date.now() / 1000);
+  const header = b64u(utf8(JSON.stringify({ alg: "RS256", typ: "JWT" })));
+  const claims = b64u(utf8(JSON.stringify({ iss: sa.client_email, scope: "https://www.googleapis.com/auth/firebase.messaging", aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600 })));
+  const sig = new Uint8Array(await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, utf8(`${header}.${claims}`)));
+  const res = await fetch(GOOGLE_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: `${header}.${claims}.${b64u(sig)}` }),
+  });
+  const j = (await res.json().catch(() => ({}))) as { access_token?: string; expires_in?: number };
+  if (!res.ok || !j.access_token) throw new Error(`google token ${res.status}`);
+  fcmToken = { value: j.access_token, exp: Date.now() + (j.expires_in ?? 3600) * 1000 };
+  return fcmToken.value;
+}
+
+/** Send one Firebase notification. Returns "ok", "gone" (token no longer valid) or "error". */
+async function sendFcm(token: string, payload: { t: string }): Promise<"ok" | "gone" | "error"> {
+  const sa = serviceAccount();
+  if (!sa) {
+    console.error("FCM_SERVICE_ACCOUNT secret missing — Android notifications can't be sent");
+    return "error";
+  }
+  const remind = payload.t === "remind";
+  const res = await fetch(`${FCM_BASE}/v1/projects/${sa.project_id}/messages:send`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${await fcmAccessToken(sa)}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: {
+        token,
+        notification: remind
+          ? { title: "Zeit für Deutsch! 🇩🇪", body: "5 minutes today keeps your streak alive 🔥 Berlin is waiting for you two ❤️" }
+          : { title: "Zwei Herzen ♡", body: "💌 New message" },
+        data: { t: payload.t, url: remind ? "/" : "/messages" },
+        android: {
+          priority: remind ? "NORMAL" : "HIGH",
+          ttl: remind ? "3600s" : "86400s",
+          notification: { channel_id: remind ? "reminders" : "messages", icon: "ic_stat_heart", color: "#8b2f55", tag: remind ? "zh-remind" : "zh-chat" },
+        },
+      },
+    }),
+  });
+  if (res.ok) return "ok";
+  const text = await res.text();
+  if (res.status === 404 || /UNREGISTERED|registration-token-not-registered/i.test(text)) return "gone";
+  console.error("fcm failed", res.status, text.slice(0, 200));
+  return "error";
+}
+
 /** Only real push services (the database checks this too), so this function can't be aimed at other sites. */
 const PUSH_HOST = /^https:\/\/(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[a-z0-9-]+\.notify\.windows\.com|web\.push\.apple\.com|[a-z0-9-]+\.push\.apple\.com)\//;
 const endpointOk = (e: string) => PUSH_HOST.test(e) || (Deno.env.get("NOTIFY_TEST_ENDPOINTS") === "1" && e.startsWith("https://127.0.0.1:"));
@@ -145,8 +216,16 @@ async function sendAll(subs: Sub[], payload: { t: string }): Promise<number> {
   const remind = payload.t === "remind";
   let sent = 0;
   await Promise.all(
-    subs.filter((s) => endpointOk(s.endpoint)).map(async (s) => {
+    subs.filter((s) => endpointOk(s.endpoint) || /^fcm:[A-Za-z0-9_:-]{100,400}$/.test(s.endpoint)).map(async (s) => {
       try {
+        // The Android app: through Firebase.
+        if (s.endpoint.startsWith("fcm:")) {
+          const r = await sendFcm(s.endpoint.slice(4), payload);
+          if (r === "ok") sent++;
+          else if (r === "gone") await rest(`push_subs?endpoint=eq.${q(s.endpoint)}`, { method: "DELETE" });
+          return;
+        }
+        if (!s.p256dh || !s.auth) return;
         const body = await encrypt(utf8(JSON.stringify(payload)), s.p256dh, s.auth);
         const res = await fetch(s.endpoint, {
           method: "POST",
