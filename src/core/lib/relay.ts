@@ -83,7 +83,7 @@ export async function relayFetch(
 }
 
 // ---- message notifications (Web Push; see supabase/migrations/0004_push_notifications.sql) ----
-export const pushSubscribe = (cfg: RelayConfig, mailbox: string, sub: { endpoint: string; p256dh: string; auth: string }, fetchImpl: typeof fetch = fetch) =>
+export const pushSubscribe = (cfg: RelayConfig, mailbox: string, sub: { endpoint: string; p256dh: string | null; auth: string | null }, fetchImpl: typeof fetch = fetch) =>
   call<null>(cfg, "push_subscribe", { p_mailbox: mailbox, p_endpoint: sub.endpoint, p_p256dh: sub.p256dh, p_auth: sub.auth }, fetchImpl);
 export const pushUnsubscribe = (cfg: RelayConfig, endpoint: string, fetchImpl: typeof fetch = fetch) => call<null>(cfg, "push_unsubscribe", { p_endpoint: endpoint }, fetchImpl);
 
@@ -102,7 +102,7 @@ export async function pushPublicKey(cfg: RelayConfig, fetchImpl: typeof fetch = 
 // ---- daily reminders (see supabase/migrations/0005_reminders.sql) ----
 export const pushSetReminder = (
   cfg: RelayConfig,
-  sub: { endpoint: string; p256dh: string; auth: string },
+  sub: { endpoint: string; p256dh: string | null; auth: string | null },
   minute: number | null,
   tz: string | null,
   fetchImpl: typeof fetch = fetch,

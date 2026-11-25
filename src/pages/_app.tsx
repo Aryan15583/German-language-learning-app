@@ -13,6 +13,9 @@ import { LoadingScreen } from "../components/LoadingScreen";
 import { AccountProvider, stateKey, useAccount } from "../web/account";
 import { ProgressProvider, useProgress } from "../web/progress";
 import { usePageTransitions } from "../web/pageTransition";
+import { initNativeApp } from "../web/native";
+import Router from "next/router";
+import { useEffect } from "react";
 
 function Ready({ children }: { children: React.ReactNode }) {
   const { ready, locked, state, accountMode } = useProgress();
@@ -46,6 +49,10 @@ function Gate({ children }: { children: React.ReactNode }) {
 
 export default function App({ Component, pageProps }: AppProps) {
   usePageTransitions();
+  // Inside the Android app: notification taps, the back button, notification channels.
+  useEffect(() => {
+    initNativeApp((url) => Router.push(url)).catch(() => {});
+  }, []);
   return (
     <>
       <Head>

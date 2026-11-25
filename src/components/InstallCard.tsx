@@ -1,12 +1,14 @@
-import { CheckCircle2, Download, MoreVertical, Share, SquarePlus } from "lucide-react";
+import { CheckCircle2, Download, Smartphone, MoreVertical, Share, SquarePlus } from "lucide-react";
 import { useState } from "react";
 import { useInstall } from "../web/install";
+import { isNativeApp } from "../web/native";
 import { Button, Card } from "./ui";
 
 /** Profile → "Download the app": one button where the browser allows it, simple steps where it doesn't. */
 export function InstallCard() {
   const { canPrompt, installed, platform, install } = useInstall();
   const [note, setNote] = useState("");
+  if (isNativeApp()) return null; // inside the Android app there's nothing to install
 
   return (
     <Card className="mt-4">
@@ -81,5 +83,48 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
       <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-plum text-sm font-bold text-white">{n}</span>
       <span className="pt-0.5">{children}</span>
     </li>
+  );
+}
+
+export const APK_URL = "https://github.com/Aryan15583/German-language-learning-app/releases/download/android/zwei-herzen.apk";
+
+/**
+ * Extra, like Spotify: the website keeps working as it is; Android phones can also get the real app.
+ * Shown only on Android browsers (inside the app it says you're already using it).
+ */
+export function AndroidAppCard() {
+  const { platform } = useInstall();
+  if (isNativeApp()) {
+    return (
+      <Card className="mt-4">
+        <p className="flex items-center gap-2 font-semibold text-good">
+          <CheckCircle2 size={18} /> You’re using the Zwei Herzen Android app. 💞
+        </p>
+        <p className="mt-1 text-sm text-muted">Same account and chats as the website. It updates by itself.</p>
+      </Card>
+    );
+  }
+  if (platform !== "android") return null;
+  return (
+    <Card className="mt-4">
+      <h2 className="mb-1 flex items-center gap-2 text-lg font-bold">
+        <Smartphone size={20} className="text-plum" /> Also available: the Android app
+      </h2>
+      <p className="text-sm text-muted">Prefer a real app? It opens without Chrome — same account, same chats. The website keeps working too.</p>
+      <Button size="lg" variant="soft" className="mt-3" href={APK_URL}>
+        <Download size={20} /> Get the Android app
+      </Button>
+      <ol className="mt-4 flex flex-col gap-2 text-sm text-ink">
+        <Step n={1}>
+          Open <b>zwei-herzen.apk</b> when it has downloaded.
+        </Step>
+        <Step n={2}>
+          If Android asks, allow <b>“Install unknown apps”</b> once.
+        </Step>
+        <Step n={3}>
+          Tap <b>Install</b>, then <b>Open</b>, and log in with the same email.
+        </Step>
+      </ol>
+    </Card>
   );
 }
