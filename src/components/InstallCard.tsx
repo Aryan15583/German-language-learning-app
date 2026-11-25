@@ -1,5 +1,5 @@
 import { CheckCircle2, Download, Smartphone, MoreVertical, Share, SquarePlus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useInstall } from "../web/install";
 import { isNativeApp } from "../web/native";
 import { Button, Card } from "./ui";
@@ -94,6 +94,19 @@ export const APK_URL = "https://github.com/Aryan15583/German-language-learning-a
  */
 export function AndroidAppCard() {
   const { platform } = useInstall();
+  // Only show the download once the app has really been published on GitHub.
+  const [published, setPublished] = useState(false);
+  useEffect(() => {
+    if (platform !== "android" || isNativeApp()) return;
+    let alive = true;
+    fetch("https://api.github.com/repos/Aryan15583/German-language-learning-app/releases/tags/android", { headers: { Accept: "application/vnd.github+json" } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((rel: { assets?: { name: string }[] } | null) => alive && setPublished(!!rel?.assets?.some((a) => a.name === "zwei-herzen.apk")))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [platform]);
   if (isNativeApp()) {
     return (
       <Card className="mt-4">
@@ -104,7 +117,7 @@ export function AndroidAppCard() {
       </Card>
     );
   }
-  if (platform !== "android") return null;
+  if (platform !== "android" || !published) return null;
   return (
     <Card className="mt-4">
       <h2 className="mb-1 flex items-center gap-2 text-lg font-bold">
