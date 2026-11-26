@@ -1,6 +1,6 @@
 // Inside the Android app (Capacitor): native notifications (Firebase), the phone's back button,
 // and saving to the gallery. On the website none of this runs.
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 
 export const isNativeApp = () => typeof window !== "undefined" && Capacitor.isNativePlatform();
 
@@ -75,17 +75,11 @@ export async function initNativeApp(navigate: (url: string) => void) {
   });
 }
 
-/** Save files to the phone's gallery, in a "Zwei Herzen" album. */
+/** Save files to the phone's gallery, in a "Zwei Herzen" album (no permission needed on Android 10+). */
+type ZhGallery = { save(o: { data: string; mime: string; name: string }): Promise<void> };
+let gallery: ZhGallery | null = null;
 export async function nativeSaveToGallery(files: { blob: Blob; mime: string; name: string }[]): Promise<number> {
-  const { Media } = await import("@capacitor-community/media");
-  const album = "Zwei Herzen";
-  const { path } = await Media.getAlbumsPath();
-  const find = async () => (await Media.getAlbums()).albums.find((a) => a.name === album && (!path || a.identifier.startsWith(path)));
-  let target = await find();
-  if (!target) {
-    await Media.createAlbum({ name: album });
-    target = await find();
-  }
+  gallery ??= registerPlugin<ZhGallery>("ZhGallery");
   let saved = 0;
   for (const f of files) {
     const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -94,19 +88,21 @@ export async function nativeSaveToGallery(files: { blob: Blob; mime: string; nam
       r.onerror = () => reject(r.error);
       r.readAsDataURL(f.blob);
     });
-    const opts = { path: dataUrl, albumIdentifier: target?.identifier, fileName: f.name.replace(/\.[^.]+$/, "") };
-    if (f.mime.startsWith("video/")) await Media.saveVideo(opts);
-    else await Media.savePhoto(opts);
+    await gallery.save({ data: dataUrl.slice(dataUrl.indexOf(",") + 1), mime: f.mime || "image/jpeg", name: f.name });
     saved++;
   }
   return saved;
 }
 
-/** This app's build number (the GitHub build it came from), or null on the website. */
-export async function nativeAppBuild(): Promise<number | null> {
+/** This app's version, e.g. "1.0.12" (null on the website). */
+export async function nativeAppVersion(): Promise<string | null> {
   if (!isNativeApp()) return null;
   const { App } = await import("@capacitor/app");
   const info = await App.getInfo().catch(() => null);
-  const n = Number(info?.build);
-  return Number.isFinite(n) ? n : null;
+  return info?.version ?? null;
+}
+
+/** Open the app's page in the Google Play app (never the browser). */
+export function openPlayStore() {
+  window.location.href = "market://details?id=app.zweiherzen.android";
 }

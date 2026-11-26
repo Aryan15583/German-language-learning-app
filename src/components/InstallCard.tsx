@@ -1,8 +1,8 @@
 import { CheckCircle2, Download, Smartphone, MoreVertical, RefreshCw, Share, SquarePlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useInstall } from "../web/install";
-import { applyWebUpdate, checkWebUpdate, latestAndroidBuild, type WebUpdate } from "../web/appUpdate";
-import { isNativeApp, nativeAppBuild } from "../web/native";
+import { applyWebUpdate, checkWebUpdate, type WebUpdate } from "../web/appUpdate";
+import { isNativeApp, nativeAppVersion, openPlayStore } from "../web/native";
 import { Button, Card } from "./ui";
 
 /** Profile → "Download the app": one button where the browser allows it, simple steps where it doesn't. */
@@ -99,94 +99,52 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
   );
 }
 
-export const APK_URL = "https://github.com/Aryan15583/German-language-learning-app/releases/download/android/zwei-herzen.apk";
+/** The app's Google Play page. Set PLAY_LIVE once the app is published there. */
+export const PLAY_URL = "https://play.google.com/store/apps/details?id=app.zweiherzen.android";
+const PLAY_LIVE = false;
 
 /**
- * Extra, like Spotify: the website keeps working as it is; Android phones can also get the real app.
- * Shown only on Android browsers (inside the app it says you're already using it).
+ * The Android app is separate from the website and only comes from Google Play.
+ * Website (Android phones): a "Get it on Google Play" link once it's published.
+ * Inside the app: its version, and updates through Google Play.
  */
 export function AndroidAppCard() {
   const { platform } = useInstall();
-  // Only show the download once the app has really been published on GitHub.
-  const [published, setPublished] = useState(false);
-  useEffect(() => {
-    if (platform !== "android" || isNativeApp()) return;
-    let alive = true;
-    fetch("https://api.github.com/repos/Aryan15583/German-language-learning-app/releases/tags/android", { headers: { Accept: "application/vnd.github+json" } })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((rel: { assets?: { name: string }[] } | null) => alive && setPublished(!!rel?.assets?.some((a) => a.name === "zwei-herzen.apk")))
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [platform]);
   if (isNativeApp()) return <NativeAppCard />;
-  if (platform !== "android" || !published) return null;
+  if (platform !== "android" || !PLAY_LIVE) return null;
   return (
     <Card className="mt-4">
       <h2 className="mb-1 flex items-center gap-2 text-lg font-bold">
         <Smartphone size={20} className="text-plum" /> Also available: the Android app
       </h2>
-      <p className="text-sm text-muted">Prefer a real app? It opens without Chrome — same account, same chats. The website keeps working too.</p>
+      <p className="text-sm text-muted">A real app from Google Play — same account, same chats. The website keeps working too.</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button size="lg" variant="soft" href={APK_URL}>
-          <Download size={20} /> Get the Android app
-        </Button>
-        <Button size="lg" variant="ghost" className="ring-1 ring-inset ring-rose-soft/60" href={APK_URL}>
-          <RefreshCw size={18} /> Update the app
-        </Button>
+        <a href={PLAY_URL} target="_blank" rel="noopener noreferrer" className="btn-primary inline-flex items-center gap-2 rounded-full px-7 py-4 text-lg font-semibold text-white">
+          <Download size={20} /> Get it on Google Play
+        </a>
       </div>
-      <p className="mt-2 text-xs text-muted">Already have it? “Update the app” gets the newest version — install it over the old one; your chats and progress stay.</p>
-      <ol className="mt-4 flex flex-col gap-2 text-sm text-ink">
-        <Step n={1}>
-          Open <b>zwei-herzen.apk</b> when it has downloaded.
-        </Step>
-        <Step n={2}>
-          If Android asks, allow <b>“Install unknown apps”</b> once.
-        </Step>
-        <Step n={3}>
-          Tap <b>Install</b>, then <b>Open</b>, and log in with the same email.
-        </Step>
-      </ol>
     </Card>
   );
 }
 
-/** Inside the Android app: its version, an Update button for the app itself, and one for the content. */
+/** Inside the Android app: its version, and updates through Google Play. */
 function NativeAppCard() {
-  const [mine, setMine] = useState<number | null>(null);
-  const [latest, setLatest] = useState<number | null | "checking">("checking");
-  const check = () => {
-    setLatest("checking");
-    latestAndroidBuild().then(setLatest);
-  };
+  const [version, setVersion] = useState<string | null>(null);
   useEffect(() => {
-    nativeAppBuild().then(setMine).catch(() => {});
-    latestAndroidBuild().then(setLatest);
+    nativeAppVersion().then(setVersion).catch(() => {});
   }, []);
-  const newer = typeof latest === "number" && mine !== null && latest > mine;
   return (
     <Card className="mt-4">
       <p className="flex items-center gap-2 font-semibold text-good">
-        <CheckCircle2 size={18} /> You’re using the Zwei Herzen Android app. 💞
+        <CheckCircle2 size={18} /> You’re using the Zwei Herzen app. 💞
       </p>
-      <p className="mt-1 text-sm text-muted">
-        Same account and chats as the website. New features arrive by themselves{mine !== null ? ` · App build ${mine}` : ""}.
-      </p>
+      <p className="mt-1 text-sm text-muted">Same account and chats as the website{version ? ` · Version ${version}` : ""}.</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {newer ? (
-          <Button size="md" href={APK_URL}>
-            <Download size={18} /> Update the app (build {latest})
-          </Button>
-        ) : (
-          <Button size="md" variant="soft" onClick={check} disabled={latest === "checking"}>
-            <RefreshCw size={16} className={latest === "checking" ? "animate-spin" : ""} />
-            {latest === "checking" ? "Checking…" : latest === null ? "Couldn’t check — try again" : "App is up to date ✓"}
-          </Button>
-        )}
-        <UpdateButton />
+        <Button size="md" variant="soft" onClick={() => openPlayStore()}>
+          <RefreshCw size={16} /> Check for updates
+        </Button>
       </div>
-      {newer ? <p className="mt-2 text-xs text-muted">Opens the download in your browser. Tap the file, then Install — it installs over this one and your chats and progress stay.</p> : null}
+      <p className="mt-2 text-xs text-muted">Opens Google Play. Updates also install by themselves there.</p>
     </Card>
   );
 }

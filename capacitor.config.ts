@@ -1,15 +1,15 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 // The Android app (see android/ and .github/workflows/android.yml).
-// It opens the live site in the app's own built-in browser engine (Android System WebView),
-// so it updates by itself whenever the site updates — no new APK needed for normal changes.
+// A real, self-contained app: all screens are built into the app (from out/), nothing is loaded
+// from the website and Chrome is never opened. Updates come through Google Play.
 const config: CapacitorConfig = {
   appId: "app.zweiherzen.android",
   appName: "Zwei Herzen",
   webDir: "out",
   server: {
-    url: "https://zwei-herzen-until-berlin.vercel.app",
     androidScheme: "https",
+    hostname: "app.zweiherzen",
     cleartext: false,
   },
   android: {

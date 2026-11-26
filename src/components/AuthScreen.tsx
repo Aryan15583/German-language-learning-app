@@ -5,6 +5,7 @@ import { usePrefs } from "../web/prefs";
 import { useEffect, useRef, useState } from "react";
 import { emailProblem, passwordProblem } from "../core/lib/vault";
 import { useAccount } from "../web/account";
+import { isNativeApp } from "../web/native";
 import { Button, Card, Chip, cx, fieldClass, HeartPlane, Spinner } from "./ui";
 import { Onboarding, WelcomeSplash } from "./Welcome";
 
@@ -298,7 +299,7 @@ function AuthForm({ chosenMode, setMode }: { chosenMode: Mode; setMode: (m: Mode
           </div>
         ) : null}
 
-        {phase === "signed-out" && mode !== "forgot" && acct.settings?.google ? (
+        {phase === "signed-out" && mode !== "forgot" && acct.settings?.google && !isNativeApp() ? (
           <div className="mt-5">
             <div className="mb-4 flex items-center gap-3 text-sm text-muted">
               <span className="h-px flex-1 bg-line" /> or <span className="h-px flex-1 bg-line" />

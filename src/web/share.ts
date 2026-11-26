@@ -1,5 +1,9 @@
 // Sharing links when in-app delivery isn't set up, and reading secret #fragments safely.
-export const appBaseUrl = () => (typeof window !== "undefined" ? window.location.origin : "https://zwei-herzen-until-berlin.vercel.app");
+import { Capacitor } from "@capacitor/core";
+
+export const SITE_URL = "https://zwei-herzen-until-berlin.vercel.app";
+/** The website address (inside the Android app, the page's own address is a private one). */
+export const appBaseUrl = () => (typeof window !== "undefined" && !Capacitor.isNativePlatform() ? window.location.origin : SITE_URL);
 
 export const messageLink = (sealed: string) => `${appBaseUrl()}/inbox#${sealed}`;
 

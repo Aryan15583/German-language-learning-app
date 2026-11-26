@@ -13,14 +13,16 @@ import { LoadingScreen } from "../components/LoadingScreen";
 import { AccountProvider, stateKey, useAccount } from "../web/account";
 import { ProgressProvider, useProgress } from "../web/progress";
 import { usePageTransitions } from "../web/pageTransition";
-import { initNativeApp } from "../web/native";
+import { initNativeApp, isNativeApp } from "../web/native";
 import Router from "next/router";
 import { useEffect } from "react";
 
 function Ready({ children }: { children: React.ReactNode }) {
   const { ready, locked, state, accountMode } = useProgress();
   if (!ready) return <LoadingScreen />;
-  const needsSetup = accountMode ? !state.partners[0].name : !state.partners[0].name || !state.partners[1].name;
+  const needsSetup = accountMode
+    ? !state.partners[0].name
+    : !state.partners[0].name || !state.partners[1].name;
   if (needsSetup) return <Setup />;
   // Locked: show only the PIN screen, so nothing private is on the page behind it.
   if (locked) return <Lock />;
@@ -52,19 +54,39 @@ export default function App({ Component, pageProps }: AppProps) {
   // Inside the Android app: notification taps, the back button, notification channels.
   useEffect(() => {
     initNativeApp((url) => Router.push(url)).catch(() => {});
+    // The app serves the home page file for every address (e.g. after a reload on /messages):
+    // open the page the address names.
+    if (
+      isNativeApp() &&
+      Router.pathname !== window.location.pathname.replace(/\/$/, "") &&
+      window.location.pathname !== "/"
+    ) {
+      Router.replace(
+        window.location.pathname +
+          window.location.search +
+          window.location.hash,
+      ).catch(() => {});
+    }
   }, []);
   return (
     <>
       <Head>
         <title>Zwei Herzen ♡ Until Berlin</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
       </Head>
       <ErrorBoundary>
-        <AccountProvider>
-          <Gate>
-            <Component {...pageProps} />
-          </Gate>
-        </AccountProvider>
+        {(Component as { isPublic?: boolean }).isPublic ? (
+          <Component {...pageProps} />
+        ) : (
+          <AccountProvider>
+            <Gate>
+              <Component {...pageProps} />
+            </Gate>
+          </AccountProvider>
+        )}
       </ErrorBoundary>
     </>
   );
