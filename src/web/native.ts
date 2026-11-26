@@ -101,3 +101,12 @@ export async function nativeSaveToGallery(files: { blob: Blob; mime: string; nam
   }
   return saved;
 }
+
+/** This app's build number (the GitHub build it came from), or null on the website. */
+export async function nativeAppBuild(): Promise<number | null> {
+  if (!isNativeApp()) return null;
+  const { App } = await import("@capacitor/app");
+  const info = await App.getInfo().catch(() => null);
+  const n = Number(info?.build);
+  return Number.isFinite(n) ? n : null;
+}
