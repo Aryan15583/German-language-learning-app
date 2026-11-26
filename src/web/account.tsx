@@ -7,6 +7,7 @@ import { archiveName, deleteArchive } from "./chatStore";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { accountsEnabled, fetchAuthSettings, supabase, type AuthSettings } from "./supabase";
 import { cloudIsNewer, deriveVaultKey, newSalt, openBackup, sealBackup } from "../core/lib/vault";
+import { appBaseUrl } from "./share";
 
 export type Phase = "loading" | "off" | "signed-out" | "unlock" | "recovery" | "ready" | "error";
 
@@ -265,7 +266,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       hasBackup,
       settings,
       resendConfirmation: async (email) => {
-        const redirect = typeof window !== "undefined" ? window.location.origin : undefined;
+        const redirect = typeof window !== "undefined" ? appBaseUrl() : undefined;
         const { error } = await supabase()!.auth.resend({ type: "signup", email: email.trim(), options: { emailRedirectTo: redirect } });
         return error ? { ok: false, error: friendlyAuthError(error.message) } : { ok: true };
       },
@@ -280,7 +281,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       },
       signUp: async (email, password) => {
         const sb = supabase()!;
-        const redirect = typeof window !== "undefined" ? window.location.origin : undefined;
+        const redirect = typeof window !== "undefined" ? appBaseUrl() : undefined;
         const { data, error } = await sb.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: redirect } });
         if (error) return { ok: false, error: friendlyAuthError(error.message) };
         if (!data.session || !data.user) {
@@ -312,7 +313,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         return openVault(account, password, true);
       },
       sendReset: async (email) => {
-        const redirect = typeof window !== "undefined" ? window.location.origin : undefined;
+        const redirect = typeof window !== "undefined" ? appBaseUrl() : undefined;
         const { error } = await supabase()!.auth.resetPasswordForEmail(email.trim(), { redirectTo: redirect });
         return error ? { ok: false, error: friendlyAuthError(error.message) } : { ok: true };
       },

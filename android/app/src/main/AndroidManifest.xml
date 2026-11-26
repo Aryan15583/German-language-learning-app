@@ -47,9 +47,7 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- Message notifications and daily reminders -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- "Save to gallery" on older phones (Android 9 and below; newer ones need no permission) -->
+    <!-- "Save to gallery" on older phones (Android 9 and below; newer ones need no permission).
+         The app never reads the phone's photos, so no photo/video read permission. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 </manifest>

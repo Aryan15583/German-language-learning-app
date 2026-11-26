@@ -1,17 +1,20 @@
-# Builds the Android app (APK) and publishes it as the "android" release, so the website's
-# "Download the app" button always gives the newest version.
+# Builds the Android app for Google Play. The whole app is built in (nothing loads from the
+# website), so every change to the app makes a new build.
+#  - Always: an .aab (for Google Play) and an .apk (for testing) as downloads on the run's page.
+#  - On main, once the PLAY_SERVICE_ACCOUNT_JSON secret is set: uploaded to Google Play
+#    (internal testing track) by itself.
 name: Android app
 
 on:
   push:
     branches: [main]
-    paths: ["android/**", "capacitor.config.ts", "package.json", "package-lock.json", ".github/workflows/android.yml"]
+    paths-ignore: ["**.md", "supabase/**", "docs/**"]
   pull_request:
-    paths: ["android/**", "capacitor.config.ts", "package.json", "package-lock.json", ".github/workflows/android.yml"]
+    paths-ignore: ["**.md", "supabase/**", "docs/**"]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: android-${{ github.ref }}
@@ -25,7 +28,11 @@ jobs:
       GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ZH_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
       ZH_VERSION_CODE: ${{ github.run_number }}
+      # The same public Supabase settings the website is built with (Vercel → Environment Variables).
+      EXPO_PUBLIC_RELAY_URL: ${{ secrets.RELAY_URL }}
+      EXPO_PUBLIC_RELAY_KEY: ${{ secrets.RELAY_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -37,7 +44,15 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm ci
-      - name: Build the web files (offline fallback inside the app)
+
+      - name: Supabase settings
+        run: |
+          if [ -z "$EXPO_PUBLIC_RELAY_URL" ] || [ -z "$EXPO_PUBLIC_RELAY_KEY" ]; then
+            if [ "${{ github.event_name }}" = "pull_request" ]; then echo "::warning::RELAY_URL / RELAY_KEY secrets not set — test build without accounts."; exit 0; fi
+            echo "::error::Add the RELAY_URL and RELAY_KEY secrets (the same values as Vercel's EXPO_PUBLIC_RELAY_URL / EXPO_PUBLIC_RELAY_KEY)."; exit 1
+          fi
+
+      - name: Build the app's screens
         run: npm run build
       - run: npx cap sync android
 
@@ -50,38 +65,42 @@ jobs:
             echo "::warning::GOOGLE_SERVICES_JSON secret not set — the app builds, but closed-app notifications won't work."
           fi
 
-      - name: Signing key
+      - name: Signing key (the upload key for Google Play)
         run: |
           if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ZH_KEYSTORE_PASSWORD" ]; then
             printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/zweiherzen.jks"
             echo "ZH_KEYSTORE_PATH=$RUNNER_TEMP/zweiherzen.jks" >> "$GITHUB_ENV"
             echo "SIGNED=1" >> "$GITHUB_ENV"
           else
-            echo "::warning::Signing secrets not set — building a test (debug) APK that can't be published."
+            echo "::warning::Signing secrets not set — building a test (debug) app only."
           fi
 
-      - name: Build APK
+      - name: Build
         working-directory: android
         run: |
-          if [ "$SIGNED" = "1" ]; then ./gradlew --no-daemon assembleRelease; cp app/build/outputs/apk/release/app-release.apk ../zwei-herzen.apk
-          else ./gradlew --no-daemon assembleDebug; cp app/build/outputs/apk/debug/app-debug.apk ../zwei-herzen.apk; fi
-          ls -la ../zwei-herzen.apk
+          mkdir -p ../dist
+          if [ "$SIGNED" = "1" ]; then
+            ./gradlew --no-daemon bundleRelease assembleRelease
+            cp app/build/outputs/bundle/release/app-release.aab ../dist/zwei-herzen.aab
+            cp app/build/outputs/apk/release/app-release.apk ../dist/zwei-herzen.apk
+          else
+            ./gradlew --no-daemon assembleDebug
+            cp app/build/outputs/apk/debug/app-debug.apk ../dist/zwei-herzen-test.apk
+          fi
+          ls -la ../dist
 
       - uses: actions/upload-artifact@v4
         with:
-          name: zwei-herzen-apk
-          path: zwei-herzen.apk
-          retention-days: 14
+          name: zwei-herzen-android-${{ github.run_number }}
+          path: dist/
+          retention-days: 30
 
-      - name: Publish (newest APK for the website's download button)
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && env.SIGNED == '1'
-        uses: softprops/action-gh-release@v2
+      - name: Upload to Google Play (internal testing)
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && env.SIGNED == '1' && env.PLAY_SERVICE_ACCOUNT_JSON != ''
+        uses: r0adkll/upload-google-play@v1
         with:
-          tag_name: android
-          name: Zwei Herzen for Android
-          body: |
-            Install: open this on your Android phone, tap zwei-herzen.apk, then Install
-            (allow "Install unknown apps" for your browser or file manager once).
-            Build ${{ github.run_number }} · the app updates its content by itself; this file only changes when the app shell does.
-          files: zwei-herzen.apk
-          make_latest: true
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: app.zweiherzen.android
+          releaseFiles: dist/zwei-herzen.aab
+          track: internal
+          status: completed
